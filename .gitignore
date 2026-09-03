@@ -11,10 +11,13 @@ src/main/resources/application-local.yml
 # 브라우저 도구 산출물 = 재생성물
 .playwright-mcp/
 
-# 하네스 설정: 팀 기준선(settings.json)은 추적하고 개인 설정만 뺀다.
-# v1 은 .claude/* 전체를 무시했다 — 이 저장소는 서버에 배포되는 공용물이라 뒤집었다.
-.claude/settings.local.json
-.claude/worktrees/
+# 하네스(.claude/)는 저장소에 올리지 않고 각자 로컬에서만 관리한다 (2026-09-03 병주 확정).
+# ⚠ 이력이 두 번 뒤집힌 자리다 — v1 은 전체 무시 → 이 저장소는 「서버에 배포되는 공용물」이라
+#   추적으로 뒤집었다 → 다시 로컬 전용으로 되돌렸다. 되돌리기 전에 왜 바뀌었나를 먼저 물어라.
+# ⛔ 이 줄만으로는 안 빠진다. 이미 추적 중이던 87개는 `git rm -r --cached .claude/` 로 뺐다.
+#   하네스는 zip 으로 배포되고 판이 사람마다 달라, 올리면 저장소가 판 충돌 지점이 된다.
+# ⚠ stack.yaml 의 toolPaths·env 에는 PC 경로가 들어간다 — 파일째 공유되면 그 값이 나간다.
+.claude/
 .worktrees/
 
 # 저장소 루트에 떨어지는 화면 캡처 = 그때 한 번 보는 것
@@ -83,3 +86,9 @@ docs/superpowers/specs/2026-08-09-artifact-chain-redesign-design.md
 docs/superpowers/specs/2026-08-09-brd-design.md
 docs/superpowers/specs/2026-08-09-traceability-matrix-design.md
 docs/superpowers/specs/2026-08-11-received-document-workspace-redesign.md
+
+# 하네스 산출물·인수인계 — 로컬 전용이다 (파일 경로가 그대로 들어간다)
+# 마찰 로그(.claude/harness-friction.jsonl)는 위 `.claude/` 가 이미 덮는다.
+# ⛔ 개별 파일명이 아니라 패턴으로 적는다 — 나열하면 나중에 만든 로컬 문서가 안 걸린다.
+.work/
+/HARNESS_*.md
