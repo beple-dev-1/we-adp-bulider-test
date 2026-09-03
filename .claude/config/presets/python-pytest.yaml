@@ -1,0 +1,74 @@
+# 프리셋 — Python · pytest
+#
+# 탐지 신호: pyproject.toml · requirements.txt · setup.py 중 하나가 있다
+# 검증 상태: **미검증** — 명령 형태만 옮겼고 실제 과업으로 완주한 적이 없다.
+#             /setup 이 적용 직후 --verify-commands 로 실제 실행을 확인한다.
+#
+# Python 은 컴파일 단계가 없다. compileCommand 는 문법 검사로 갈음한다 —
+# /code-review 가 이 명령으로 "문법이 깨지지 않았는지" 만 본다.
+# 가상환경을 쓰면 명령 앞에 활성화가 필요할 수 있다. env·toolPaths 로 뺀다.
+#
+# 실측으로 확인된 것 (2026-09-01, Windows)
+#   - `python3` 는 Windows Store 스텁이라 깨진다. `python` 을 쓴다.
+#   - pytest 는 표준 라이브러리가 아니다. 없으면 `No module named pytest` 로 죽는다.
+#     설치는 환경 변경이라 /setup 이 하지 않는다 — test.enabled 를 내리고 보고한다.
+#   - `compileall` 은 `__pycache__` 를 남긴다. .gitignore 에 넣는다.
+
+vcs:
+  kind: git
+  commitDeploys: false
+  # 실제 브랜치 이름으로 채운다. 틀리면 /git 이 기본 브랜치 보호를 건너뛴다 —
+  # 조용히 직접 커밋되고 아무 게이트도 안 잡는다(2026-08-31 실측).
+  # /setup 이 VCS_BRANCH 탐지값으로 채운다. svn·형상관리 미사용이면 none.
+  defaultBranch: __FILL__    # 예: main · master · none
+  separateHarnessRepo: false
+
+env: {}
+toolPaths: []
+
+build:
+  enabled: true
+  tool: none
+  # 컴파일이 없으므로 문법 검사로 대신한다
+  compileCommand: python -m compileall -q .
+  buildCommand: none
+
+test:
+  enabled: true
+  framework: pytest
+  suites: []
+  runCommand: python -m pytest -q {target}
+  runAllCommand: python -m pytest -q
+  scopeNote: >
+    순수 함수와 픽스처로 대체 가능한 범위까지 러너로 검증한다.
+    실제 DB·외부 API 가 필요한 경로는 런타임 검증으로 넘긴다.
+
+runtime:
+  enabled: true
+  baseUrl: http://localhost:8000
+  startCommand: none
+  # 내리는 명령. 비우면 수동으로 내린다.
+  # 빌드 도구가 자식 JVM/프로세스를 분리 실행하는 경우가 있다 — 부모만 죽이면
+  # 자식이 orphan 으로 남아 포트와 파일DB 락을 계속 점유한다. 포트가 실제로 닫혔는지 본다.
+  stopCommand: none
+  browser: false
+  frontendUrl: ""
+  screenshotDir: ""
+
+db:
+  used: false
+  metaQueryable: false
+  vendor: ""
+  metaOnly: true
+
+review:
+  reviewerAgent: claude
+  reviewerModel: sonnet
+  maxFiles: 40
+  maxLines: 2000
+
+lint:
+  enabled: false
+  command: ""
+  securityCommand: ""
+  excludePaths: []

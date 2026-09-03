@@ -1,0 +1,37 @@
+# 프로젝트 프로파일
+#
+# 이 파일은 하네스를 내 프로젝트에 연동하는 설정이다.
+# `__FILL__` 이 하나라도 남아 있으면 하네스는 미연동으로 판정한다.
+# 검사 방법: bash .claude/scripts/check-profile.sh
+
+# 워크스페이스 이름 (보고서·커밋 메시지에 쓰인다)
+workspaceName: __FILL__
+
+# 산출물 루트 — 브리프·계획서·테스트 결과서가 쌓이는 곳
+# 이 경로는 VCS 에 올리지 않는 것을 권고한다 (.gitignore 에 추가)
+outputDir: __FILL__          # 예: target · docs/works · .work
+
+# 임시 파일 경로
+tempDir: __FILL__            # 예: target/tmp
+
+# 계획 수립 스킬 이름 (기본값 dev-plan — 바꾸지 않아도 된다)
+planSkill: dev-plan
+
+# 참조 문서 — 없으면 빈 문자열로 둔다
+customDocs:
+  devGuide: ""               # 예: docs/dev-guide.md
+  antiPatterns: ""           # 예: docs/anti-patterns.md
+
+# 프로젝트(모듈) 목록 — 단일 모듈이면 항목 1개면 된다
+projects:
+  - name: __FILL__           # 예: my-service
+    shortName: __FILL__      # 예: main
+    description: __FILL__
+    dir: __FILL__            # 워크스페이스 루트 기준 상대 경로. 루트 자체면 "."
+    outputDir: __FILL__      # 보통 위 outputDir 과 같게 둔다
+    # 이 모듈 안에 하위 모듈이 또 있는가. 있으면 스코프를 그 단위로 더 나눌지 검토한다
+    multiModule: false
+    # 이 모듈에 적용할 코딩 지침 문서 경로 (없으면 빈 배열)
+    guideline:
+      backend: ""            # 예: docs/guide-backend.md
+      frontend: []           # 예: [docs/guide-frontend.md]

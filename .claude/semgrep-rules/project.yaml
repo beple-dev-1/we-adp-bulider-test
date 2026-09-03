@@ -1,0 +1,63 @@
+# Project security rules (sample).
+#
+# IMPORTANT: keep this file ASCII-only.
+# On Windows, semgrep reads rule files with the system codepage (cp949 for ko-KR),
+# so non-ASCII characters make the whole file fail to load.
+# Write messages in English here; explain in Korean in docs if needed.
+#
+# Validate after editing:  semgrep --validate --config .claude/semgrep-rules/project.yaml
+# Run:                     semgrep --config .claude/semgrep-rules/project.yaml --error {path}
+#
+# GOTCHA (measured 2026-08-28): `metavariable-regex` is only honored inside a
+# `patterns:` (AND) block. If you put it next to a bare `pattern:` or
+# `pattern-either:` at rule level, semgrep silently IGNORES the filter --
+# `--validate` still passes and the rule then matches everything.
+# That mistake produced 12 false positives on a 9-file project.
+# Always: patterns: [ - pattern-either/pattern ..., - metavariable-regex ... ]
+#
+# Language coverage of the samples below:
+#   hardcoded-secret-assignment : java, js, ts, python
+#   log-of-sensitive-field      : js, ts        (console.* only)
+#   empty-catch-block-js        : js, ts
+#   empty-catch-block-java      : java
+# A Java-only project therefore gets 2 of 4 rules. Add your own per language.
+# Note: semgrep's default ignore list skips test files.
+
+rules:
+  - id: hardcoded-secret-assignment
+    languages: [java, javascript, typescript, python]
+    severity: ERROR
+    message: "Possible hardcoded secret. Move it to config or environment variables."
+    patterns:
+      - pattern: $X = "..."
+      - metavariable-regex:
+          metavariable: $X
+          regex: "(?i).*(password|passwd|secret|api_?key|apikey|access_?key|private_?key|token|credential).*"
+
+  - id: log-of-sensitive-field
+    languages: [javascript, typescript]
+    severity: WARNING
+    message: "Possible personal data in a log call. Mask it or log an identifier only."
+    patterns:
+      - pattern-either:
+          - pattern: console.log(..., $X, ...)
+          - pattern: console.debug(..., $X, ...)
+          - pattern: console.info(..., $X, ...)
+      - metavariable-regex:
+          metavariable: $X
+          regex: "(?i).*(ssn|jumin|card_?no|cardnumber|passport|resident_?no).*"
+
+  - id: empty-catch-block-js
+    languages: [javascript, typescript]
+    severity: WARNING
+    message: "Exception is swallowed. Log it or decide what to do."
+    patterns:
+      - pattern: catch($E) { ... }
+      - pattern-not: catch($E) { $STMT; ... }
+
+  - id: empty-catch-block-java
+    languages: [java]
+    severity: WARNING
+    message: "Exception is swallowed. Log it or decide what to do."
+    pattern: |
+      try { ... } catch($TYPE $E) { }

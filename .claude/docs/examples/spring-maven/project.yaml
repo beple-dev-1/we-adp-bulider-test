@@ -1,0 +1,24 @@
+# 채워진 예시 — Java · Spring Boot · Maven · git 단일 모듈
+# 이 파일을 .claude/config/project.yaml 로 복사한 뒤 값만 바꾼다.
+
+workspaceName: acme-order
+
+outputDir: .work
+tempDir: .work/tmp
+
+planSkill: dev-plan
+
+customDocs:
+  devGuide: .claude/docs/guideline/backend.md
+  antiPatterns: .claude/docs/anti-patterns.md
+
+projects:
+  - name: acme-order
+    shortName: main
+    description: 주문·정산 API (Spring Boot 3.3)
+    dir: "."
+    outputDir: .work
+    multiModule: false
+    guideline:
+      backend: .claude/docs/guideline/backend.md
+      frontend: []

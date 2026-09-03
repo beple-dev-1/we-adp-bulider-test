@@ -1,0 +1,50 @@
+# 채워진 예시 — Java · Spring Boot · Maven · git · PostgreSQL
+
+vcs:
+  kind: git
+  # ⚠ 이 두 값은 **프로젝트마다 다르다.** 이 예시를 복사해 쓸 때 그대로 두지 말고 확인한다.
+  #   템플릿(config/stack.yaml)은 __FILL__ 로 두어 게이트가 잡지만, 예시를 복사하면 그 보호를 지나친다.
+  commitDeploys: false
+  defaultBranch: main
+  separateHarnessRepo: false
+
+build:
+  enabled: true
+  tool: maven
+  compileCommand: mvn -q -DskipTests compile
+  buildCommand: mvn -q -DskipTests package
+
+test:
+  enabled: true
+  framework: junit5
+  runCommand: mvn -q -Dtest={target} test
+  runAllCommand: mvn -q test
+  # Spring 은 슬라이스 테스트가 되므로 러너 범위가 넓다
+  scopeNote: >
+    순수 로직과 @WebMvcTest·@DataJpaTest 슬라이스까지 러너로 검증한다.
+    외부 시스템 연동과 실제 화면 확인만 런타임 검증으로 넘긴다.
+
+runtime:
+  enabled: true
+  baseUrl: http://localhost:8080
+  startCommand: mvn -q spring-boot:run
+  # 내리는 명령. 비우면 수동으로 내린다
+  stopCommand: none
+  browser: false
+
+db:
+  used: true
+  metaQueryable: true        # postgres MCP·psql 등 조회 수단이 있는 경우
+  vendor: postgresql
+  metaOnly: true
+
+review:
+  reviewerAgent: claude      # 에이전트 이름 또는 none. 모델명을 넣지 않는다
+  reviewerModel: sonnet      # 비우면 세션 기본 모델
+  maxFiles: 40
+  maxLines: 2000
+
+lint:
+  enabled: true
+  command: mvn -q spotless:check
+  securityCommand: semgrep --config .claude/semgrep-rules/project.yaml --error

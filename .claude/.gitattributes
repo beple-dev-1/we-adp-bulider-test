@@ -1,0 +1,10 @@
+# 하네스 파일의 줄바꿈을 LF 로 고정한다.
+# 셸 스크립트가 CRLF 로 배포되면 리눅스·맥에서 실행이 실패한다.
+#
+# 루트가 아니라 여기 두는 이유 — 이 파일이 `.claude/` 안에 있으면
+# **하네스 폴더 하나만 복사해도 보호가 따라간다.** 프로젝트의 줄바꿈 정책은 건드리지 않는다.
+* text=auto eol=lf
+*.sh   text eol=lf
+*.md   text eol=lf
+*.yaml text eol=lf
+*.json text eol=lf

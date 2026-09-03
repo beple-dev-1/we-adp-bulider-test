@@ -1,0 +1,34 @@
+# 채워진 예시 — TypeScript · Node · npm 워크스페이스(모듈 2개) · git
+
+workspaceName: acme-web
+
+outputDir: .work
+tempDir: .work/tmp
+
+planSkill: dev-plan
+
+customDocs:
+  devGuide: ""
+  antiPatterns: .claude/docs/anti-patterns.md
+
+projects:
+  - name: api
+    shortName: api
+    description: Fastify 기반 백엔드
+    dir: packages/api
+    outputDir: .work
+    multiModule: false
+    guideline:
+      backend: .claude/docs/guideline/backend.md
+      frontend: []
+
+  - name: web
+    shortName: web
+    description: React 관리자 화면
+    dir: packages/web
+    outputDir: .work
+    multiModule: false
+    guideline:
+      backend: ""
+      frontend:
+        - .claude/docs/guideline/frontend.md

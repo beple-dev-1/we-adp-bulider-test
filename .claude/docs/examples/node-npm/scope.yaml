@@ -1,0 +1,33 @@
+# 채워진 예시 — 모노레포에서 패키지 단위로 스코프를 나눈 경우
+
+sharedModules:
+  - packages/shared/**
+
+protectedPaths:
+  - .env
+  - .env.*
+  - packages/api/src/config/secrets.ts
+  - .github/workflows/**
+
+scopes:
+  - id: api
+    description: 백엔드 API
+    allowedPaths:
+      - packages/api/src/**
+      - packages/api/test/**
+    refReadPaths:
+      - packages/web/src/api/**
+
+  - id: web
+    description: 관리자 화면
+    allowedPaths:
+      - packages/web/src/**
+      - packages/web/test/**
+    refReadPaths:
+      - packages/api/src/routes/**
+
+  - id: shared
+    description: 공용 타입·유틸
+    allowedPaths:
+      - packages/shared/**
+    refReadPaths: []
