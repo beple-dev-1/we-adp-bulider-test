@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" href="../../src/main/resources/static/css/tokens.css">
+  <link rel="stylesheet" href="../../src/main/resources/static/css/reset.css">
+  <link rel="stylesheet" href="../../src/main/resources/static/css/typography.css">
+  <link rel="stylesheet" href="../../src/main/resources/static/css/components.css">
+  <link rel="stylesheet" href="../../src/main/resources/static/css/shell.css">
+  <link rel="stylesheet" href="_mock.css">
+  <link rel="stylesheet" href="../../src/main/resources/static/css/screens.css">
+  <title>받은 문서 내용 분석 중</title>
+</head>
+<body>
+<template id="본문">
+  <div class="page-head document-page-head document-compare-head">
+    <div><h1 class="page-head__title">8/12 전자결재 회의록</h1></div>
+    <div class="document-compare-head__actions">
+      <a class="button" href="01-received-docs.html">목록으로</a>
+    </div>
+  </div>
+
+  <dl class="document-compare-meta" aria-label="문서 정보">
+    <div><dt>문서 상태</dt><dd>내용 분석 중</dd></div>
+    <div><dt>문서 종류</dt><dd>회의록</dd></div>
+    <div><dt>적용 구분</dt><dd><span class="badge badge--outline">익산</span></dd></div>
+    <div><dt>회의 일시</dt><dd class="cell__sub">없음</dd></div>
+    <div><dt>참석자</dt><dd>이영희 외 2명</dd></div>
+    <div><dt>등록 파일</dt><dd><a href="#">전자결재_회의록.pdf · 2.4 MB</a></dd></div>
+  </dl>
+
+  <section class="document-processing-bar" role="status" aria-live="polite" aria-labelledby="document-processing-title">
+    <div class="document-processing-bar__label">
+      <h2 id="document-processing-title">문서 내용 분석 중</h2>
+      <span>완료되면 문서 내용이 표시됩니다.</span>
+    </div>
+    <span class="document-processing-bar__track" aria-hidden="true"><span></span></span>
+  </section>
+
+</template>
+<script src="_shell.js"></script>
+<script>틀({제목:'받은 문서 상세',모양:'산출물',지금:'received-docs',프로젝트이름:'G2C',프로젝트번호:1,프로젝트들:['G2C','서울페이'],사람:'이영희',안읽은알림:2});</script>
+</body>
+</html>

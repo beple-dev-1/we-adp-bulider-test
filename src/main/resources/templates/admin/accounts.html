@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{fragments/shell :: layout('사용자 관리', '관리', 'accounts', ~{:: content})}">
+<body>
+<div th:fragment="content">
+
+  <div class="page-head list-page-head">
+    <div>
+      <h1 class="page-head__title">사용자 관리</h1>
+      <p class="page-intro">Builder에 로그인하는 사용자와 Claude 계정 연결 상태를 관리합니다.</p>
+    </div>
+    <a class="button button--primary" th:href="@{/admin/accounts/new}">사용자 등록</a>
+  </div>
+
+  <div class="state-panel state-panel--success account-success" role="status" th:if="${success}">
+    <strong>사용자 등록을 완료했습니다.</strong>
+    <p th:text="${success}"></p>
+  </div>
+
+  <form class="filter-bar filter-bar--accounts" method="get" th:action="@{/admin/accounts}" role="search">
+    <div class="field">
+      <label class="field__label" for="user-search">사용자 검색</label>
+      <input class="field__control" id="user-search" name="q" type="search"
+             th:value="${q}" placeholder="아이디, 이름 또는 이메일">
+    </div>
+    <button class="button" type="submit">사용자 조회</button>
+  </form>
+
+  <section class="state-panel list-empty-state" role="status" th:if="${accounts.isEmpty()}">
+    <span class="list-empty-state__icon" aria-hidden="true">
+      <svg viewBox="0 0 32 32" fill="none"><path d="M6.5 7.5h19v17h-19z"/><path d="M6.5 19.5h5l2.2 3h4.6l2.2-3h5"/><path d="M11 12h10M11 15.5h7"/></svg>
+    </span>
+    <strong>조회된 내용이 없습니다.</strong>
+  </section>
+
+  <div class="table-wrap table-wrap--tall" th:unless="${accounts.isEmpty()}">
+    <table class="data-table data-table--dense">
+      <thead><tr>
+        <th scope="col">사용자</th><th scope="col">로그인 아이디</th><th scope="col">이메일</th>
+        <th scope="col">권한</th><th scope="col">Claude 계정</th>
+      </tr></thead>
+      <tbody>
+      <tr th:each="a : ${accounts}">
+        <td><a class="document-link" th:href="@{/admin/accounts/{n}(n=${a.id()})}"
+               th:text="${a.name()}"></a></td>
+        <td class="num" th:text="${a.loginId()}"></td>
+        <td th:text="${a.email()}"></td>
+        <td th:text="${a.role()}"></td>
+        <td>
+          <span th:class="${a.claudeState() == '연결 완료' ? 'status-badge status-badge--complete'
+                    : 'status-badge status-badge--waiting'}"
+                th:text="${a.claudeState()}"></span>
+        </td>
+      </tr>
+      </tbody>
+    </table>
+  </div>
+
+</div>
+</body>
+</html>

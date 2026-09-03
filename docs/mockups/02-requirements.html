@@ -1,0 +1,32 @@
+<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<link rel="stylesheet" href="../../src/main/resources/static/css/tokens.css"><link rel="stylesheet" href="../../src/main/resources/static/css/reset.css"><link rel="stylesheet" href="../../src/main/resources/static/css/typography.css"><link rel="stylesheet" href="../../src/main/resources/static/css/components.css"><link rel="stylesheet" href="../../src/main/resources/static/css/shell.css"><link rel="stylesheet" href="_mock.css"><link rel="stylesheet" href="../../src/main/resources/static/css/screens.css"></head><body>
+<template id="본문">
+  <div class="page-head"><h1 class="page-head__title">요구사항</h1></div>
+  <p class="page-intro">받은 문서와 기획 저장소를 참고해 AI가 생성한 요구사항을 확인하고, 확정과 정의서 생성 요청을 관리합니다.</p>
+  <div class="summary-strip" aria-label="요구사항 현황">
+    <span>전체 <strong class="num">43</strong></span>
+    <span>생성 완료 <strong class="num">9</strong></span>
+    <span>확정 완료 <strong class="num">30</strong></span>
+    <span>제외 <strong class="num">4</strong></span>
+    <span>정의서 생성 요청 <strong class="num">0</strong></span>
+  </div>
+  <form class="filter-bar filter-bar--five" action="#" role="search">
+    <div class="field"><label class="field__label" for="req-search">요구 내용 검색</label><input class="field__control" id="req-search" type="search" placeholder="번호 또는 요구 내용을 입력하세요"></div>
+    <div class="field"><label class="field__label" for="req-source">출처 문서</label><select class="field__control" id="req-source"><option>전체</option><option>8/12 전자결재 회의록</option><option>8/5 전자결재 회의록</option></select></div>
+    <div class="field"><label class="field__label" for="req-status">요구사항 상태</label><select class="field__control" id="req-status"><option>전체</option><option>생성 완료</option><option>확정 완료</option><option>제외</option></select></div>
+    <!-- ⛔ 잠긴 칸이다 (2026-08-16 병주 확정) — 요구사항정의서는 계획 3 이라 만드는 기계가 없다 -->
+    <div class="field"><label class="field__label" for="req-definition-request">정의서 생성 요청</label><select class="field__control" id="req-definition-request" disabled title="요구사항정의서는 다음 단계에서 열립니다."><option>요청 전</option></select></div>
+    <div class="field"><label class="field__label" for="req-facet">적용 구분</label><select class="field__control" id="req-facet"><option>전체</option><option>익산</option><option>제주</option></select></div>
+  </form>
+  <div class="table-wrap table-wrap--tall"><table class="data-table data-table--dense"><thead><tr><th scope="col">번호</th><th scope="col">요구 사항</th><th scope="col">출처 문서</th><th scope="col">적용 구분</th><th scope="col">요구사항 상태</th><th scope="col">정의서 생성 요청</th><th scope="col">요구사항정의서</th></tr></thead><tbody>
+    <tr><td class="num nowrap">REQ-001</td><td><a href="02a-requirement-detail.html">상신할 때 임시저장을 지원해 주세요.</a></td><td><a href="01b-received-document-edit.html">8/5 전자결재 회의록</a></td><td><span class="badge badge--outline">제주</span></td><td><span class="status-badge status-badge--complete">확정 완료</span></td><td><span class="status-badge status-badge--waiting">요청 전</span></td><td class="cell__sub">미생성</td></tr>
+    <tr><td class="num nowrap">REQ-002</td><td><a href="02a-requirement-detail.html">최근 결재선을 기본값으로 제안해 주세요.</a></td><td><a href="01b-received-document-edit.html">8/5 전자결재 회의록</a></td><td><span class="badge badge--outline">제주</span></td><td><span class="status-badge status-badge--complete">확정 완료</span></td><td><span class="status-badge status-badge--waiting">요청 전</span></td><td class="cell__sub">미생성</td></tr>
+    <!-- ⛔ 제외에 진행 단계 색을 주지 않는다 — 걸음이 아니라 사람이 고른 갈래다 (screen-shell) -->
+    <tr><td class="num nowrap">REQ-011</td><td><span class="cell"><a href="02a-requirement-detail.html">모바일에서도 결재할 수 있게 해 주세요.</a><span class="cell__sub">이번 범위가 아닙니다.</span></span></td><td><a href="01b-received-document-edit.html">8/5 전자결재 회의록</a></td><td><span class="badge badge--outline">제주</span></td><td><span class="badge badge--outline">제외</span></td><td><span class="status-badge status-badge--waiting">요청 전</span></td><td class="cell__sub">미생성</td></tr>
+    <!-- ⚠ 아래 두 줄의 「보완 관계」 보조글은 실물이 아직 못 그린다 — 그 관계를 담는 자리가 DB 에 없다.
+             ⛔ 개념을 버린 것이 아니라 아직 안 선 것이다(ia 설계). 자리가 서면 실물이 따라온다. -->
+    <tr><td class="num nowrap">REQ-042</td><td><span class="cell"><a href="02a-requirement-detail.html">작성 중인 결재 문서를 자동으로 저장해 주세요.</a><span class="cell__sub"><span class="num">REQ-001</span>을 보완하는 요구입니다.</span></span></td><td><a href="01b-received-document-edit.html">8/12 전자결재 회의록</a></td><td><span class="badge badge--outline">익산</span></td><td><span class="status-badge status-badge--complete">확정 완료</span></td><td><span class="status-badge status-badge--waiting">요청 전</span></td><td class="cell__sub">미생성</td></tr>
+    <tr><td class="num nowrap">REQ-043</td><td><span class="cell"><a href="02a-requirement-detail.html"><strong>상신 화면에서 임시 저장 기능을 제공해 주세요.</strong></a><span class="cell__sub"><span class="num">REQ-001</span>과 비슷합니다. 같은 요구인지 확인해 주세요.</span></span></td><td><a href="01b-received-document-edit.html">8/12 전자결재 회의록</a></td><td><span class="badge badge--outline">익산</span></td><td><span class="status-badge status-badge--review">생성 완료</span></td><td><span class="status-badge status-badge--waiting">요청 전</span></td><td class="cell__sub">미생성</td></tr>
+  </tbody></table></div>
+  <div class="list-table-foot"><span aria-hidden="true"></span><nav class="list-pagination" aria-label="요구사항 페이지 이동"><span class="list-page-button" aria-disabled="true" aria-label="이전 페이지">‹</span><a class="list-page-button is-current" href="#" aria-current="page">1</a><a class="list-page-button" href="#">2</a><a class="list-page-button" href="#">3</a><a class="list-page-button" href="#">4</a><a class="list-page-button" href="#">5</a><a class="list-page-button" href="#">6</a><a class="list-page-button" href="#">7</a><a class="list-page-button" href="#">8</a><a class="list-page-button" href="#">9</a><a class="list-page-button" href="#">10</a><a class="list-page-button" href="#" aria-label="다음 페이지">›</a></nav><div class="list-page-size"><label class="sr-only" for="requirements-page-size">목록 크기</label><select class="field__control" id="requirements-page-size"><option>10개씩</option><option>20개씩</option><option>50개씩</option><option>100개씩</option></select></div></div>
+</template><script src="_shell.js"></script><script>틀({제목:'요구사항',모양:'산출물',지금:'requirements',프로젝트이름:'G2C',프로젝트번호:1,프로젝트들:['G2C','서울페이'],사람:'이영희',안읽은알림:2});</script></body></html>

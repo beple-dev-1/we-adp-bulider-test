@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{fragments/shell :: layout(${title}, ${shape}, ${current}, ~{:: content})}">
+<body><div th:fragment="content">
+  <header class="page-head list-page-head">
+    <div>
+      <h1 class="page-head__title" th:text="${editing ? '메뉴 수정' : (group ? '메뉴 그룹 추가' : (createOptions.screenId == null ? '메뉴 추가' : '메뉴 연결'))}"></h1>
+      <p class="page-intro" th:text="${editing ? '메뉴 정보를 확인하고 상위 메뉴를 변경합니다.' : (group ? '그룹 이름과 상위 메뉴를 정합니다.' : '메뉴명과 위치를 정하고 화면을 연결합니다.')}"></p>
+    </div>
+    <a class="button" th:href="@{/projects/{p}/artifacts/menu-tree/{s}(p=${projectId},s=${systemCode})}">IA로 돌아가기</a>
+  </header>
+
+  <form class="ia-row-editor ia-menu-editor" method="post" th:action="${formAction}" th:if="${editing}">
+    <input type="hidden" name="version" th:value="${workbench.structure.version}">
+
+    <section class="rq-card" aria-labelledby="ia-menu-information-title">
+      <div class="rq-card__head"><div><h2 id="ia-menu-information-title">메뉴 정보</h2>
+        <p>메뉴와 화면 정보는 유지되며 상위 메뉴만 변경할 수 있습니다.</p></div></div>
+      <div class="rq-card__body ia-menu-information">
+        <dl class="ia-menu-current-summary">
+          <div><dt>메뉴명</dt><dd th:text="${editOptions.menuName}"></dd></div>
+          <div><dt>화면 ID</dt>
+            <dd class="num" th:text="${editOptions.originalScreenId == null ? '—' : (editOptions.standardScreenId == null ? editOptions.originalScreenId : editOptions.standardScreenId)}"></dd></div>
+        </dl>
+        <div class="field ia-menu-parent-field"><label class="field__label" for="parent-node-key">상위 메뉴</label>
+          <select class="field__control" id="parent-node-key" name="parentNodeKey">
+            <option value="" th:selected="${editOptions.parentNodeKey == null}">최상위</option>
+            <option th:each="parent : ${editOptions.parents}" th:value="${parent.nodeKey}"
+                    th:text="${parent.displayPath}" th:selected="${parent.nodeKey == editOptions.parentNodeKey}"></option>
+          </select>
+          <p class="field__help">하위 메뉴도 함께 이동합니다. 같은 단계의 순서는 트리의 위·아래 버튼으로 조정합니다.</p></div>
+      </div>
+    </section>
+
+    <div class="rq-actions ia-editor-actions">
+      <a class="button" th:href="@{/projects/{p}/artifacts/menu-tree/{s}(p=${projectId},s=${systemCode})}">취소</a>
+      <button class="button button--primary" type="submit">저장</button>
+    </div>
+  </form>
+
+  <form class="ia-row-editor ia-menu-editor" data-menu-create-form method="post" th:action="${formAction}" th:unless="${editing}">
+    <input type="hidden" name="version" th:value="${workbench.structure.version}">
+
+    <section class="rq-card" aria-labelledby="ia-menu-create-title">
+      <div class="rq-card__head"><div><h2 id="ia-menu-create-title" th:text="${group ? '메뉴 그룹 정보' : '메뉴 정보'}">메뉴 정보</h2>
+        <p th:text="${group ? '그룹은 화면을 연결하지 않고 하위 메뉴를 묶습니다.' : '순서와 경로는 선택한 상위 메뉴를 기준으로 자동 설정됩니다.'}"></p></div></div>
+      <div class="rq-card__body ia-menu-create-fields">
+        <div class="field"><label class="field__label" for="menu-name">메뉴명</label>
+          <input class="field__control" id="menu-name" name="menuName" required maxlength="100" autofocus
+                 th:value="${createOptions.menuName}" placeholder="메뉴에 표시할 이름"></div>
+        <div class="field"><label class="field__label" for="create-parent-node-key">상위 메뉴</label>
+          <select class="field__control" id="create-parent-node-key" name="parentNodeKey">
+            <option value="">최상위</option>
+            <option th:each="parent : ${createOptions.parents}" th:value="${parent.nodeKey}"
+                    th:text="${parent.displayPath}"></option>
+          </select></div>
+        <div class="field" th:if="${!group and createOptions.screenId == null}"><label class="field__label" for="screen-id">연결 화면</label>
+          <select class="field__control" id="screen-id" name="screenId">
+            <option value="" th:selected="${createOptions.screenId == null}">연결하지 않음</option>
+            <option th:each="screen : ${availableScreens}" th:value="${screen.screenId}"
+                    th:text="${screen.screenName} + ' · ' + ${screen.screenId}"
+                    th:selected="${screen.screenId == createOptions.screenId}"></option>
+          </select>
+          <p class="field__help">화면이 없는 그룹 메뉴라면 연결하지 않음을 선택합니다.</p></div>
+        <div class="field" th:if="${!group and createOptions.screenId != null}">
+          <span class="field__label">연결 화면</span>
+          <input type="hidden" name="screenId" th:value="${createOptions.screenId}">
+          <div class="ia-menu-fixed-screen" aria-label="연결 화면">
+            <span class="ia-menu-fixed-screen__label">화면 ID</span>
+            <span class="num" th:text="${createOptions.standardScreenId ?: '표준 화면 ID 미등록'}"></span>
+          </div>
+          <p class="field__help">미연결 화면 목록에서 선택한 화면으로 고정됩니다.</p></div>
+      </div>
+    </section>
+
+    <div class="rq-actions ia-editor-actions">
+      <a class="button" th:href="@{/projects/{p}/artifacts/menu-tree/{s}(p=${projectId},s=${systemCode})}">취소</a>
+      <button class="button button--primary" type="submit" th:text="${group ? '그룹 추가' : '추가'}">추가</button>
+    </div>
+  </form>
+</div></body></html>

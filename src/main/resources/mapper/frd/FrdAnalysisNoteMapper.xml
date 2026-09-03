@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.bizplay.builder.frd.FrdAnalysisNoteMapper">
+    <resultMap id="note" type="com.bizplay.builder.frd.FrdAnalysisNote">
+        <constructor>
+            <idArg column="id" javaType="java.lang.String"/>
+            <arg column="frd_id" javaType="java.lang.String"/>
+            <arg column="seq" javaType="_int"/>
+            <arg column="kind" javaType="com.bizplay.builder.frd.FrdAnalysisNote$Kind"/>
+            <arg column="content" javaType="java.lang.String"/>
+            <arg column="created_at" javaType="java.time.Instant"/>
+        </constructor>
+    </resultMap>
+
+    <insert id="insert" parameterType="com.bizplay.builder.frd.FrdAnalysisNote">
+        insert into builder.adk_builder_frd_analysis_note (id, frd_id, seq, kind, content)
+        values (#{id}, #{frdId}, #{seq}, #{kind}, #{content})
+    </insert>
+
+    <select id="selectByFrdId" parameterType="java.lang.String" resultMap="note">
+        select id, frd_id, seq, kind, content, created_at
+          from builder.adk_builder_frd_analysis_note
+         where frd_id = #{frdId}
+         order by kind, seq
+    </select>
+
+    <delete id="deleteByFrdId" parameterType="java.lang.String">
+        delete from builder.adk_builder_frd_analysis_note where frd_id = #{frdId}
+    </delete>
+</mapper>

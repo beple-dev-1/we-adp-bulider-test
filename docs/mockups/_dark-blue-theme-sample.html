@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Builder Dark Blue 색상 샘플</title>
+  <link rel="stylesheet" href="../../src/main/resources/static/css/tokens.css">
+  <link rel="stylesheet" href="../../src/main/resources/static/css/reset.css">
+  <link rel="stylesheet" href="../../src/main/resources/static/css/typography.css">
+  <link rel="stylesheet" href="../../src/main/resources/static/css/components.css">
+  <link rel="stylesheet" href="../../src/main/resources/static/css/shell.css">
+  <link rel="stylesheet" href="_mock.css">
+  <link rel="stylesheet" href="../../src/main/resources/static/css/screens.css">
+  <style>
+    :root {
+      /* 보스 지정 색상: Builder 왼쪽 메뉴 */
+      --builder-sidebar: #00008b;
+      --builder-sidebar-hover: #14149c;
+      --builder-sidebar-active: #3030b0;
+      /* 메뉴와 함께 움직이는 브랜드 상호작용 색상 */
+      --color-action-primary: #00008b;
+      --color-action-primary-hover: #00006f;
+      --color-action-primary-soft: #efefff;
+      --color-lilac: #c5c9ff;
+      --color-lilac-soft: #efefff;
+    }
+    .app-nav__title { color: rgb(255 255 255 / 62%); }
+    .app-nav__project-label { color: rgb(255 255 255 / 68%); }
+    .app-nav a { color: rgb(255 255 255 / 82%); }
+    .app-nav .artifact-link--red::before { background: #ff7b73; }
+    .app-nav .artifact-link--green::before { background: #42d79a; }
+    .field__control:focus { border-color: #5a5ad0; box-shadow: 0 0 0 3px rgb(0 0 139 / 13%); }
+    @media (max-width: 767px) { .app-nav a { color: var(--color-ink); } }
+  </style>
+</head>
+<body>
+<template id="본문">
+  <div class="page-head list-page-head">
+    <div>
+      <h1 class="page-head__title">FRD 작업</h1>
+      <p class="page-intro">요구사항별 FRD 작업과 화면 진행 상태를 확인합니다.</p>
+    </div>
+    <a class="button button--primary" href="#">FRD 작업 만들기</a>
+  </div>
+
+  <form class="filter-bar filter-bar--five filter-bar--with-action" action="#" role="search" onsubmit="return false">
+    <div class="field"><label class="field__label" for="sample-system">시스템</label><select class="field__control" id="sample-system"><option>시스템 전체</option></select></div>
+    <div class="field"><label class="field__label" for="sample-owner">담당자</label><select class="field__control" id="sample-owner"><option>담당자 전체</option></select></div>
+    <div class="field"><label class="field__label" for="sample-status">상태</label><select class="field__control" id="sample-status"><option>상태 전체</option></select></div>
+    <div class="field"><label class="field__label" for="sample-search">FRD 검색</label><input class="field__control" id="sample-search" type="search" placeholder="FRD 번호 또는 요구사항을 입력하세요"></div>
+    <button class="button" type="submit">검색</button>
+  </form>
+
+  <div class="table-wrap table-wrap--tall">
+    <table class="data-table data-table--dense">
+      <thead><tr><th scope="col">FRD</th><th scope="col">요구사항</th><th scope="col">적용 대상</th><th scope="col">시스템</th><th scope="col">작업 범위</th><th scope="col">상태</th><th scope="col">담당자</th><th scope="col">생성일시</th><th scope="col">완료일시</th></tr></thead>
+      <tbody>
+        <tr><td class="num nowrap"><a href="#">FRD-003</a></td><td>상신 임시저장 지원</td><td><span class="badge badge--outline">전체</span></td><td><span class="badge badge--outline">웹뷰</span></td><td class="nowrap">화면 3개 · 수정 3개 · 백엔드 2건</td><td><span class="status-badge status-badge--complete">완료</span></td><td>이영희</td><td class="num nowrap">2026-08-25 09:30</td><td class="num nowrap">2026-08-25 16:20</td></tr>
+        <tr><td class="num nowrap"><a href="#">FRD-004</a></td><td>작성 문서 자동 저장</td><td><span class="badge badge--outline">제주</span></td><td><span class="badge badge--outline">백오피스</span></td><td class="nowrap">화면 2개 · 신규 1개 · 수정 1개</td><td><span class="status-badge status-badge--progress">수정 중</span></td><td>김철수</td><td class="num nowrap">2026-08-25 10:15</td><td>–</td></tr>
+        <tr><td class="num nowrap"><a href="#">FRD-005</a></td><td>야간 정산 배치 주기 변경</td><td><span class="badge badge--outline">익산</span></td><td>–</td><td class="nowrap">프론트 없음 · 백엔드 3건</td><td><span class="status-badge status-badge--review">분석 결과 확인</span></td><td>이영희</td><td class="num nowrap">2026-08-25 11:40</td><td>–</td></tr>
+        <tr><td class="num nowrap"><a href="#">FRD-006</a></td><td>공지 게시 기능 개선</td><td><span class="badge badge--outline">익산</span></td><td><span class="badge badge--outline">웹뷰</span></td><td class="nowrap">화면 2개 · 수정 2개</td><td><span class="status-badge status-badge--error">분석 오류</span></td><td>박민수</td><td class="num nowrap">2026-08-25 13:05</td><td>–</td></tr>
+      </tbody>
+    </table>
+  </div>
+</template>
+<script src="_shell.js"></script>
+<script>틀({제목:'Builder Dark Blue 색상 샘플',모양:'산출물',지금:'frds',프로젝트이름:'G2C',프로젝트번호:1,프로젝트들:['G2C','서울페이'],사람:'이영희',안읽은알림:2});</script>
+</body>
+</html>

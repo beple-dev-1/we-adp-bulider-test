@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{fragments/shell :: layout('프로젝트 등록', '관리', 'projects', ~{:: content})}">
+<body>
+<div th:fragment="content">
+
+  <div class="page-head document-page-head document-register-head">
+    <div><h1 class="page-head__title">새 프로젝트 등록</h1></div>
+    <div class="document-register-head__actions">
+      <a class="button" th:href="@{/admin/projects}">취소</a>
+      <button class="button button--primary" type="submit" form="project-register-form"
+              data-submit-loading="프로젝트 등록 중">등록</button>
+    </div>
+  </div>
+
+  <p class="error-line" th:if="${error}" th:text="${error}"></p>
+
+  <form class="admin-form-card" id="project-register-form" method="post"
+        th:action="@{/admin/projects}">
+    <section aria-labelledby="project-basic-title">
+      <h2 id="project-basic-title">프로젝트 정보</h2>
+      <div class="field">
+        <label class="field__label" for="project-name">프로젝트명</label>
+        <input class="field__control" id="project-name" name="name" required placeholder="예: 법인카드 운영 개선">
+        <p class="field__help">프로젝트 목록과 선택 화면에 표시되는 이름입니다.</p>
+      </div>
+      <div class="field project-facet-option">
+        <div class="project-facet-option__head">
+          <div class="project-facet-option__copy">
+            <strong>적용 구분 사용</strong>
+            <p>기관이나 서비스별로 화면을 구분해야 할 때 설정합니다.</p>
+          </div>
+          <label class="option-switch" for="use-project-facets">
+            <input id="use-project-facets" type="checkbox" role="switch"
+                   aria-controls="project-facet-settings" aria-expanded="false" data-facet-toggle>
+            <span class="option-switch__track" aria-hidden="true"><span></span></span>
+            <span class="option-switch__label">사용</span>
+          </label>
+        </div>
+        <div class="project-facet-option__body" id="project-facet-settings" hidden>
+          <p class="field__help">코드는 추출기 색인과 연결하는 고정값이며, 표시 이름은 화면에 보이는 이름입니다.</p>
+          <div class="facet-setting-table">
+            <div class="facet-setting-table__head" aria-hidden="true">
+              <span>코드</span><span>표시 이름</span><span>관리</span>
+            </div>
+            <div class="facet-setting-list facet-setting-list--table" id="facet-setting-list">
+              <div class="facet-setting-row">
+                <label><span class="field__label">코드</span><input class="field__control num" name="facetCodes" placeholder="예: jeju" disabled></label>
+                <label><span class="field__label">표시 이름</span><input class="field__control" name="facetNames" placeholder="예: 제주" disabled></label>
+                <button class="button button--small" type="button" data-remove-facet>삭제</button>
+              </div>
+            </div>
+          </div>
+          <button class="button button--small facet-setting-add" type="button" data-add-facet="facet-setting-list">적용 구분 추가</button>
+        </div>
+      </div>
+    </section>
+    <section aria-labelledby="project-repository-title">
+      <h2 id="project-repository-title">기획 저장소 연결</h2>
+      <div class="field">
+        <label class="field__label" for="repo-url">GitLab 저장소 주소</label>
+        <input class="field__control" id="repo-url" name="repoUrl" type="url" required
+               placeholder="https://gitlab.example.com/group/project.git">
+      </div>
+      <div class="admin-field-grid">
+        <div class="field">
+          <label class="field__label" for="platform-code">플랫폼 코드</label>
+          <input class="field__control num" id="platform-code" name="platformCode" placeholder="PS"
+                 required maxlength="4" pattern="[A-Z0-9]{2,4}">
+          <p class="field__help">표준 화면ID 의 첫 마디입니다 — <code>PS</code>-WV-MRC-010-L01-S.</p>
+        </div>
+        <div class="field">
+          <label class="field__label" for="default-branch">기본 브랜치</label>
+          <input class="field__control num" id="default-branch" name="defaultBranch" value="main" required>
+        </div>
+        <div class="field">
+          <label class="field__label" for="project-token">프로젝트 접근 토큰</label>
+          <input class="field__control" id="project-token" name="token" type="password"
+                 autocomplete="off" required placeholder="토큰을 입력해 주세요">
+        </div>
+      </div>
+      <p class="field__help">이 저장소를 읽고 쓸 수 있는 프로젝트 접근 토큰이 필요합니다.</p>
+    </section>
+  </form>
+
+  <template id="facet-setting-template">
+    <div class="facet-setting-row">
+      <label><span class="field__label">코드</span><input class="field__control num" name="facetCodes"></label>
+      <label><span class="field__label">표시 이름</span><input class="field__control" name="facetNames"></label>
+      <button class="button button--small" type="button" data-remove-facet>삭제</button>
+    </div>
+  </template>
+  <script>
+    const facetToggle = document.querySelector('[data-facet-toggle]');
+    const facetSettings = document.getElementById('project-facet-settings');
+
+    function setFacetSettingsEnabled(enabled) {
+      facetSettings.hidden = !enabled;
+      facetToggle.setAttribute('aria-expanded', String(enabled));
+      facetSettings.querySelectorAll('input').forEach(input => input.disabled = !enabled);
+    }
+
+    facetToggle.addEventListener('change', function () {
+      setFacetSettingsEnabled(facetToggle.checked);
+      if (facetToggle.checked) facetSettings.querySelector('input')?.focus();
+    });
+
+    document.addEventListener('click', function (event) {
+      const add = event.target.closest('[data-add-facet]');
+      if (add) {
+        const template = document.getElementById('facet-setting-template');
+        const row = template.content.cloneNode(true);
+        document.getElementById(add.dataset.addFacet).append(row);
+        document.getElementById(add.dataset.addFacet).lastElementChild.querySelector('input')?.focus();
+      }
+      const remove = event.target.closest('[data-remove-facet]');
+      if (remove) remove.closest('.facet-setting-row').remove();
+    });
+  </script>
+
+</div>
+</body>
+</html>

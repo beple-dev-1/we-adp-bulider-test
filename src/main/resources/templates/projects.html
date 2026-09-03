@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security"
+      th:replace="~{fragments/shell :: layout('프로젝트 고르기', '카드', null, ~{:: content})}">
+<body>
+<div th:fragment="content">
+
+  <h1>프로젝트</h1>
+
+  <p class="error-line" th:if="${gone}">
+    그 프로젝트가 없다. 주소가 낡았거나 프로젝트가 지워졌다.
+  </p>
+
+  <div th:if="${#lists.isEmpty(projects)}">
+    <!-- 기획자는 프로젝트를 등록할 수 없다(관리 화면은 SUPER 전용). 사실만 알린다. -->
+    <p class="prose" sec:authorize="!hasRole('SUPER')">
+      생성된 프로젝트가 없습니다.
+    </p>
+    <p class="prose" sec:authorize="hasRole('SUPER')">
+      아직 열린 프로젝트가 없다. 클론이 끝난 프로젝트만 여기 뜬다.
+      <a th:href="@{/admin/projects}">관리 · 프로젝트</a> 에서 등록하고 클론이 끝나기를 기다린다.
+    </p>
+  </div>
+
+  <div class="stack" th:unless="${#lists.isEmpty(projects)}">
+    <a class="button" th:each="p : ${projects}"
+       th:href="@{/projects/{n}/artifacts/frds(n=${p.id})}"
+       th:text="${p.name}"></a>
+  </div>
+
+</div>
+</body>
+</html>

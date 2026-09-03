@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" href="../../src/main/resources/static/css/tokens.css">
+  <link rel="stylesheet" href="../../src/main/resources/static/css/reset.css">
+  <link rel="stylesheet" href="../../src/main/resources/static/css/typography.css">
+  <link rel="stylesheet" href="../../src/main/resources/static/css/components.css">
+  <link rel="stylesheet" href="_claude-chat-window.css">
+  <title>Claude Code 대화</title>
+</head>
+<body>
+  <main class="chat-window">
+    <header class="chat-window__head">
+      <img src="claudecode-color.png" alt="">
+      <div>
+        <h1>Claude Code</h1>
+      </div>
+      <button class="chat-window__close" type="button" aria-label="별도 창 닫기" title="별도 창 닫기">×</button>
+    </header>
+
+    <section class="chat-window__log" aria-label="대화 내용" aria-live="polite">
+      <article class="chat-message chat-message--user">
+        <strong>이영희</strong>
+        <p id="user-message">내용을 더 명확하게 정리해 줘.</p>
+      </article>
+      <article class="chat-message chat-message--ai">
+        <strong>Claude Code</strong>
+        <p id="ai-message">현재 내용을 기준으로 수정 사항을 반영했습니다.</p>
+      </article>
+    </section>
+
+    <form class="chat-window__composer" action="#">
+      <div>
+        <textarea id="popup-claude-message" aria-label="메시지" placeholder="메시지를 입력해 주세요"></textarea>
+        <button class="button button--primary" type="submit">전송</button>
+      </div>
+    </form>
+  </main>
+  <script>
+    const contexts = {
+      requirement: ['자동 저장은 별도 요구사항으로 두고 직접 임시 저장만 남겨 줘.', '직접 임시 저장과 저장 뒤 작성 계속하기만 남겼습니다.'],
+      definition: ['저장 주기를 마지막 변경 시점을 기준으로 명확하게 써 줘.', '적용 조건을 검증 가능한 문장으로 구체화했습니다.'],
+      brd: ['결재 문서 상세는 제외하고 임시 저장 문서함에서 바로 이어쓰게 해 줘.', '작업 범위를 확인해 변경 내용을 반영했습니다.'],
+      'work-mockup': ['임시 저장 버튼은 결재 요청보다 덜 강조해 줘.', '임시 저장을 보조 버튼으로 변경했습니다.']
+    };
+    const context = contexts[new URLSearchParams(location.search).get('context')] || contexts.requirement;
+    document.querySelector('#user-message').textContent = context[0];
+    document.querySelector('#ai-message').textContent = context[1];
+    document.querySelector('.chat-window__close').addEventListener('click', () => window.close());
+    document.querySelector('form').addEventListener('submit', event => event.preventDefault());
+  </script>
+</body>
+</html>

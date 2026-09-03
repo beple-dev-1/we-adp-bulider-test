@@ -1,0 +1,433 @@
+<!doctype html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{fragments/shell :: layout('프로젝트 상세', '관리', 'projects', ~{:: content})}">
+<body>
+<div th:fragment="content" th:with="p=${view.project()}">
+
+  <div class="requirement-concept">
+    <header class="rq-head">
+      <div class="rq-head__copy">
+        <span class="rq-kicker num" th:text="${p.id}"></span>
+        <h1 th:text="${p.name}"></h1>
+      </div>
+      <div class="rq-head__actions">
+        <a class="button" th:href="@{/admin/projects}">목록으로</a>
+        <span class="status-badge status-badge--error"
+              th:if="${p.state.name() == 'FAILED'}" th:text="${p.state.label()}"></span>
+        <button class="button" type="button" th:if="${p.state.name() != 'FAILED'}"
+                data-open-facet-editor aria-controls="facet-dialog"
+                th:attr="aria-expanded=${editingFacet != null}">적용 구분 관리</button>
+        <button class="button" type="button" th:if="${p.state.name() != 'FAILED'}"
+                data-open-system-editor aria-controls="system-dialog"
+                th:attr="aria-expanded=${editingSystem != null}">시스템 관리</button>
+        <form method="post" th:if="${p.state.name() == 'READY'}"
+              th:action="@{/admin/projects/{n}/repository/update(n=${p.id})}">
+          <button class="button button--primary" type="submit"
+                  data-submit-loading="저장소 업데이트 요청 중"
+                  th:disabled="${view.repositoryUpdate() != null and view.repositoryUpdate().state().name() == 'RUNNING'}">저장소 업데이트</button>
+        </form>
+        <form th:if="${p.state.name() == 'FAILED'}" method="post"
+              th:action="@{/admin/projects/{n}/retry(n=${p.id})}">
+          <button class="button button--primary" type="submit"
+                  data-submit-loading="저장소 받기 재시도 중">저장소 받기 재시도</button>
+        </form>
+      </div>
+    </header>
+
+    <p class="error-line"
+       th:if="${error != null and editingFacet == null and editingSystem == null and editingDevIssueTarget == null}"
+       th:text="${error}"></p>
+    <main>
+      <section class="rq-card" th:if="${p.state.name() == 'FAILED'}"
+               aria-labelledby="project-error-title">
+        <div class="rq-card__head"><div><span class="rq-kicker">실패 이유</span>
+          <h2 id="project-error-title">저장소 연결 중단</h2></div>
+          <button class="button" type="button" data-open-project-token
+                  aria-controls="failed-project-token-form"
+                  th:attr="aria-expanded=${editingToken != null}">기획 저장소 토큰 변경</button></div>
+        <div class="rq-card__body">
+          <p class="rq-lead" th:text="${p.failureReason}"></p>
+          <p class="rq-copy">GitLab 저장소에 접속할 수 있는지 확인한 뒤 저장소를 다시 받아 주세요.</p>
+          <dl class="project-info-list">
+            <div><dt>기획 저장소</dt><dd th:text="${p.repoUrl}"></dd></div>
+            <div><dt>기본 브랜치</dt><dd class="num" th:text="${p.defaultBranch}"></dd></div>
+            <div><dt>플랫폼 코드</dt><dd class="num" th:text="${p.platformCode}"></dd></div>
+            <div><dt>실패 단계</dt><dd>저장소 받기</dd></div>
+          </dl>
+          <form class="project-token-form" id="failed-project-token-form" data-project-token-form
+                method="post" th:attr="hidden=${editingToken == null}"
+                th:action="@{/admin/projects/{n}/token(n=${p.id})}">
+            <label class="field">
+              <span class="field__label">새 기획 저장소 토큰</span>
+              <input class="field__control" name="token" type="password" autocomplete="off" required>
+            </label>
+            <div class="project-token-form__actions">
+              <button class="button" type="button" data-close-project-token>취소</button>
+              <button class="button button--primary" type="submit"
+                      data-submit-loading="기획 저장소 토큰 저장 중">토큰 변경</button>
+            </div>
+          </form>
+        </div>
+      </section>
+      <section class="rq-card" th:if="${p.state.name() != 'FAILED'}"
+               aria-labelledby="project-information-title">
+        <div class="rq-card__head">
+          <div><span class="rq-kicker">프로젝트 정보</span>
+            <h2 id="project-information-title">저장소 및 적용 구분</h2></div>
+          <button class="button" type="button" data-open-project-token
+                  aria-controls="ready-project-token-form"
+                  th:attr="aria-expanded=${editingToken != null}">기획 저장소 토큰 변경</button>
+        </div>
+        <div class="rq-card__body">
+          <div id="project-information-view">
+            <dl class="project-info-list">
+            <div><dt>기획 저장소</dt><dd th:text="${p.repoUrl}"></dd></div>
+            <div><dt>기본 브랜치</dt><dd class="num" th:text="${p.defaultBranch}"></dd></div>
+            <div><dt>플랫폼 코드</dt><dd class="num" th:text="${p.platformCode}"></dd></div>
+            <div><dt>적용 구분</dt><dd>
+              <span class="facet-badges" th:if="${!#lists.isEmpty(view.facets())}">
+                <span class="badge badge--outline" th:each="f : ${view.facets()}"
+                      th:text="${f.name()}" th:title="'추출기 코드: ' + ${f.code()}"></span>
+              </span>
+              <span th:if="${#lists.isEmpty(view.facets())}">없음</span>
+            </dd></div>
+            <!--/*
+              ⚠ 시스템은 등록 화면에서 받지 않는다 — 그때는 클론이 없어 목록을 모른다.
+                 코드는 기획 저장소 manifest.json 이 정본이고, 클론·저장소 업데이트가 앉힌다.
+            */-->
+            <div><dt>시스템</dt><dd>
+              <span class="facet-badges" th:if="${!#lists.isEmpty(view.systems())}">
+                <span class="badge badge--outline" th:each="s : ${view.systems()}"
+                      th:text="${s.label()}" th:title="'추출기 코드: ' + ${s.systemCode()}"></span>
+              </span>
+              <span th:if="${#lists.isEmpty(view.systems())}">없음</span>
+            </dd></div>
+            <div><dt>등록일시</dt><dd class="num" th:text="${view.createdAtText()}"></dd></div>
+            <div><dt>기획 저장소 토큰</dt><dd>등록됨</dd></div>
+            </dl>
+
+            <div class="repository-update-status" role="status" th:if="${view.repositoryUpdate() != null}"
+                 th:with="u=${view.repositoryUpdate()}"
+                 th:classappend="${'repository-update-status--' + #strings.toLowerCase(u.state().name())}">
+              <span class="repository-update-status__mark" aria-hidden="true"></span>
+              <div class="repository-update-status__content">
+                <span class="repository-update-status__eyebrow">저장소 업데이트 상태</span>
+                <strong th:if="${u.state().name() == 'RUNNING'}">업데이트 진행 중</strong>
+                <strong th:if="${u.state().name() == 'SUCCEEDED' and u.changed()}">업데이트 완료</strong>
+                <strong th:if="${u.state().name() == 'SUCCEEDED' and !u.changed()}">최신 상태</strong>
+                <strong th:if="${u.state().name() == 'FAILED'}">업데이트 실패</strong>
+                <p th:if="${u.state().name() == 'RUNNING'}">원격 저장소의 변경 사항을 확인하고 있습니다.</p>
+                <p th:if="${u.state().name() == 'SUCCEEDED' and u.changed()}">원격 저장소의 변경 사항이 현재 프로젝트에 반영되었습니다.</p>
+                <p th:if="${u.state().name() == 'SUCCEEDED' and !u.changed()}">현재 프로젝트가 원격 저장소의 최신 상태와 일치합니다.</p>
+                <p th:if="${u.state().name() == 'FAILED'}" th:text="${u.failureReason()}"></p>
+              </div>
+              <div class="repository-update-status__time" th:if="${view.repositoryUpdatedAtText() != null}">
+                <span>마지막 확인</span><time class="num" th:text="${view.repositoryUpdatedAtText()}"></time>
+              </div>
+            </div>
+          </div>
+          <form class="project-token-form" id="ready-project-token-form" data-project-token-form
+                method="post" th:attr="hidden=${editingToken == null}"
+                th:action="@{/admin/projects/{n}/token(n=${p.id})}">
+            <label class="field">
+              <span class="field__label">새 기획 저장소 토큰</span>
+              <input class="field__control" name="token" type="password" autocomplete="off" required>
+            </label>
+            <div class="project-token-form__actions">
+              <button class="button" type="button" data-close-project-token>취소</button>
+              <button class="button button--primary" type="submit"
+                      data-submit-loading="기획 저장소 토큰 저장 중">토큰 변경</button>
+            </div>
+          </form>
+        </div>
+      </section>
+
+      <section class="rq-card dev-issue-target-card" th:if="${p.state.name() != 'FAILED'}"
+               aria-labelledby="dev-issue-target-title">
+        <div class="rq-card__head">
+          <div><span class="rq-kicker">개발요청 전송</span>
+            <h2 id="dev-issue-target-title">GitLab 이슈 등록</h2></div>
+          <span class="status-badge"
+                th:classappend="${devIssueTarget != null} ? 'status-badge--complete' : 'status-badge--waiting'"
+                th:text="${devIssueTarget != null} ? '설정 완료' : '설정 필요'">설정 필요</span>
+        </div>
+        <div class="rq-card__body dev-issue-target-summary">
+          <div class="dev-issue-target-summary__copy">
+            <p>완료한 개발요청을 개발팀의 GitLab 프로젝트에 이슈로 등록합니다.</p>
+            <dl th:if="${devIssueTarget != null}">
+              <div><dt>대상 프로젝트</dt><dd>
+                <span th:text="${devIssueTarget.baseUrl()}">https://gitlab.example.com</span>
+                <strong class="num" th:text="${devIssueTarget.projectPath()}">dev/card-api</strong>
+              </dd></div>
+              <div><dt>액세스 토큰</dt><dd>토큰 등록됨</dd></div>
+            </dl>
+            <p class="dev-issue-target-summary__empty" th:if="${devIssueTarget == null}">
+              아직 전송 대상을 설정하지 않았습니다. 설정 전에는 개발요청 파일만 생성되고 GitLab으로 전송되지 않습니다.
+            </p>
+          </div>
+          <button class="button" type="button" data-open-dev-issue-target
+                  aria-controls="dev-issue-target-dialog" aria-expanded="false"
+                  th:text="${devIssueTarget != null} ? '설정 변경' : '전송 설정'">전송 설정</button>
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <script>
+    document.addEventListener('click', function (event) {
+      const open = event.target.closest('[data-open-project-token]');
+      if (open) {
+        const form = open.closest('.rq-card').querySelector('[data-project-token-form]');
+        form.hidden = false;
+        open.setAttribute('aria-expanded', 'true');
+        form.querySelector('input')?.focus();
+      }
+      const close = event.target.closest('[data-close-project-token]');
+      if (close) {
+        const card = close.closest('.rq-card');
+        const form = close.closest('[data-project-token-form]');
+        const trigger = card.querySelector('[data-open-project-token]');
+        form.hidden = true;
+        trigger.setAttribute('aria-expanded', 'false');
+        trigger.focus();
+      }
+    });
+  </script>
+
+  <dialog class="dialog dialog--layer dev-issue-target-dialog" id="dev-issue-target-dialog"
+          aria-labelledby="dev-issue-target-dialog-title" aria-describedby="dev-issue-target-dialog-description"
+          th:attr="data-open-on-load=${editingDevIssueTarget != null}">
+    <form method="post" th:action="@{/admin/projects/{n}/dev-issue-target(n=${p.id})}">
+      <header class="dialog__header">
+        <div class="dialog__header-copy">
+          <h2 class="dialog__title" id="dev-issue-target-dialog-title">개발요청 전송 설정</h2>
+          <p class="dialog__description" id="dev-issue-target-dialog-description">
+            개발 이슈를 등록할 GitLab 프로젝트를 입력해 주세요. 기획 저장소와는 별도입니다.
+          </p>
+        </div>
+        <button class="dialog__close" type="button" data-close-dev-issue-target
+                aria-label="개발요청 전송 설정 닫기"></button>
+      </header>
+      <div class="dialog__body dev-issue-target-dialog__body">
+        <p class="error-line" role="alert" th:if="${error != null and editingDevIssueTarget != null}"
+           th:text="${error}"></p>
+        <div class="dev-issue-target-field-grid">
+          <div class="field">
+            <label class="field__label" for="dev-issue-base-url">GitLab 주소</label>
+            <input class="field__control" id="dev-issue-base-url" name="baseUrl" type="url"
+                   th:value="${devIssueBaseUrl != null} ? ${devIssueBaseUrl} : (${devIssueTarget != null} ? ${devIssueTarget.baseUrl()} : '')"
+                   placeholder="https://gitlab.example.com" aria-describedby="dev-issue-base-url-help" required>
+            <p class="field__help" id="dev-issue-base-url-help">GitLab 기본 주소만 입력하세요. API 경로는 Builder가 자동으로 추가합니다.</p>
+          </div>
+          <div class="field">
+            <label class="field__label" for="dev-issue-project">GitLab 프로젝트</label>
+            <input class="field__control" id="dev-issue-project" name="projectPath" type="text"
+                   th:value="${devIssueProjectPath != null} ? ${devIssueProjectPath} : (${devIssueTarget != null} ? ${devIssueTarget.projectPath()} : '')"
+                   placeholder="dev/card-api 또는 43" aria-describedby="dev-issue-project-help" required>
+            <p class="field__help" id="dev-issue-project-help">그룹 경로를 포함한 프로젝트 경로나 숫자 ID를 입력하세요.</p>
+          </div>
+          <div class="field dev-issue-target-field-grid__wide">
+            <label class="field__label" for="dev-issue-token"
+                   th:text="${devIssueTarget != null} ? '새 GitLab 액세스 토큰' : 'GitLab 액세스 토큰'">GitLab 액세스 토큰</label>
+            <input class="field__control" id="dev-issue-token" name="token" type="password"
+                   autocomplete="new-password" aria-describedby="dev-issue-token-help" required>
+            <p class="field__help" id="dev-issue-token-help"
+               th:text="${devIssueTarget != null} ? '설정을 변경하려면 이슈 생성 권한이 있는 토큰도 다시 입력해 주세요. 저장 후에는 다시 표시되지 않습니다.' : '이슈 생성 권한이 있는 토큰을 입력해 주세요. 저장 후에는 다시 표시되지 않습니다.'">
+              이슈 생성 권한이 있는 토큰을 입력해 주세요. 저장 후에는 다시 표시되지 않습니다.
+            </p>
+          </div>
+        </div>
+      </div>
+      <div class="dialog__actions">
+        <button class="button" type="button" data-close-dev-issue-target>취소</button>
+        <button class="button button--primary" type="submit"
+                data-submit-loading="전송 설정 저장 중">전송 설정 저장</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog class="dialog dialog--layer" id="facet-dialog" aria-labelledby="facet-dialog-title"
+          th:attr="data-open-on-load=${editingFacet != null}">
+    <form id="facet-form" method="post" th:action="@{/admin/projects/{n}/facets(n=${p.id})}">
+      <header class="dialog__header">
+        <div class="dialog__header-copy">
+          <h2 class="dialog__title" id="facet-dialog-title">적용 구분 관리</h2>
+        </div>
+        <button class="dialog__close" type="button" data-close-facet-editor aria-label="적용 구분 관리 닫기"></button>
+      </header>
+      <div class="dialog__body project-facet-dialog__body">
+        <p class="error-line" th:if="${error != null and editingFacet != null}" th:text="${error}"></p>
+        <div>
+          <div class="facet-setting-table">
+            <div class="facet-setting-table__head" aria-hidden="true">
+              <span>코드</span><span>표시 이름</span><span>관리</span>
+            </div>
+            <div class="facet-setting-list facet-setting-list--table" id="facet-setting-list">
+              <div class="facet-setting-row" th:each="f : ${view.facets()}">
+                <label><span class="field__label">코드</span><input class="field__control num" name="facetCodes" th:value="${f.code()}"></label>
+                <label><span class="field__label">표시 이름</span><input class="field__control" name="facetNames" th:value="${f.name()}"></label>
+                <button class="button button--small" type="button" data-remove-facet>삭제</button>
+              </div>
+              <div class="facet-setting-row" th:if="${#lists.isEmpty(view.facets())}">
+                <label><span class="field__label">코드</span><input class="field__control num" name="facetCodes"></label>
+                <label><span class="field__label">표시 이름</span><input class="field__control" name="facetNames"></label>
+                <button class="button button--small" type="button" data-remove-facet>삭제</button>
+              </div>
+            </div>
+          </div>
+          <button class="button facet-setting-add" type="button" data-add-facet="facet-setting-list">적용 구분 추가</button>
+        </div>
+      </div>
+      <div class="dialog__actions">
+        <button class="button" type="button" data-close-facet-editor>취소</button>
+        <button class="button button--primary" type="submit"
+                data-submit-loading="적용 구분 저장 중">변경 내용 저장</button>
+      </div>
+    </form>
+  </dialog>
+
+  <script>
+    (function () {
+      const dialog = document.getElementById('dev-issue-target-dialog');
+      const trigger = document.querySelector('[data-open-dev-issue-target]');
+      if (!dialog || !trigger) return;
+      function openDialog() {
+        dialog.showModal();
+        trigger.setAttribute('aria-expanded', 'true');
+        dialog.querySelector('input')?.focus();
+      }
+      document.addEventListener('click', function (event) {
+        if (event.target.closest('[data-open-dev-issue-target]')) openDialog();
+        if (event.target.closest('[data-close-dev-issue-target]')) {
+          dialog.close();
+          trigger.focus();
+        }
+      });
+      dialog.addEventListener('close', function () {
+        trigger.setAttribute('aria-expanded', 'false');
+      });
+      if (dialog.dataset.openOnLoad === 'true') openDialog();
+    })();
+  </script>
+
+  <!--/*
+    시스템 관리 — 표시 이름만 고친다.
+    ⛔ 코드 칸을 입력으로 열지 마라. 코드 목록의 정본은 기획 저장소의 manifest.json 이고,
+       사람이 지어 넣은 코드는 어느 화면의 자료와도 만나지 못한다(뒷단도 모르는 코드를 버린다).
+    ⛔ 줄 추가·삭제 버튼을 달지 마라 — 같은 까닭이다. 목록이 바뀌는 길은 저장소 업데이트뿐이다.
+  */-->
+  <dialog class="dialog dialog--layer" id="system-dialog" aria-labelledby="system-dialog-title"
+          th:attr="data-open-on-load=${editingSystem != null}">
+    <form id="system-form" method="post" th:action="@{/admin/projects/{n}/systems(n=${p.id})}">
+      <header class="dialog__header">
+        <div class="dialog__header-copy">
+          <h2 class="dialog__title" id="system-dialog-title">시스템 관리</h2>
+        </div>
+        <button class="dialog__close" type="button" data-close-system-editor aria-label="시스템 관리 닫기"></button>
+      </header>
+      <div class="dialog__body project-facet-dialog__body">
+        <p class="error-line" th:if="${error != null and editingSystem != null}" th:text="${error}"></p>
+        <div>
+          <div class="system-setting-table" th:if="${!#lists.isEmpty(view.systems())}">
+            <div class="system-setting-table__head" aria-hidden="true">
+              <span>코드</span><span>표시 이름</span>
+            </div>
+            <div class="system-setting-list system-setting-list--table" id="system-setting-list">
+              <div class="system-setting-row" th:each="s : ${view.systems()}">
+                <label><span class="field__label">코드</span>
+                  <input class="field__control num" name="systemCodes" th:value="${s.systemCode()}"
+                         readonly aria-readonly="true" tabindex="-1"></label>
+                <label><span class="field__label">표시 이름</span>
+                  <input class="field__control" name="systemNames" th:value="${s.displayName()}"
+                         placeholder="비워 두면 코드가 그대로 표시됩니다"></label>
+              </div>
+            </div>
+          </div>
+          <p class="cell__sub" th:if="${#lists.isEmpty(view.systems())}">
+            아직 읽어 온 시스템이 없습니다. 「저장소 업데이트」를 한 번 실행하면
+            기획 저장소의 manifest.json 에서 시스템 목록을 읽어 옵니다.</p>
+          <p class="cell__sub" th:if="${!#lists.isEmpty(view.systems())}">
+            코드는 기획 저장소의 manifest.json 이 정본이라 여기서 고칠 수 없습니다.</p>
+        </div>
+      </div>
+      <div class="dialog__actions">
+        <button class="button" type="button" data-close-system-editor>취소</button>
+        <button class="button button--primary" type="submit"
+                data-submit-loading="시스템 이름 저장 중">변경 내용 저장</button>
+      </div>
+    </form>
+  </dialog>
+
+  <script>
+    (function () {
+      const dialog = document.getElementById('system-dialog');
+      const trigger = document.querySelector('[data-open-system-editor]');
+      if (!dialog || !trigger) return;
+      document.addEventListener('click', function (event) {
+        if (event.target.closest('[data-open-system-editor]')) {
+          dialog.showModal();
+          trigger.setAttribute('aria-expanded', 'true');
+          dialog.querySelector('input[name="systemNames"]')?.focus();
+        }
+        if (event.target.closest('[data-close-system-editor]')) {
+          dialog.close();
+          trigger.focus();
+        }
+      });
+      dialog.addEventListener('close', function () {
+        trigger.setAttribute('aria-expanded', 'false');
+      });
+      if (dialog.dataset.openOnLoad === 'true') {
+        dialog.showModal();
+        trigger.setAttribute('aria-expanded', 'true');
+        dialog.querySelector('input[name="systemNames"]')?.focus();
+      }
+    })();
+  </script>
+
+  <template id="facet-setting-template">
+    <div class="facet-setting-row">
+      <label><span class="field__label">코드</span><input class="field__control num" name="facetCodes"></label>
+      <label><span class="field__label">표시 이름</span><input class="field__control" name="facetNames"></label>
+      <button class="button button--small" type="button" data-remove-facet>삭제</button>
+    </div>
+  </template>
+  <script>
+    document.addEventListener('click', function (event) {
+      const dialog = document.getElementById('facet-dialog');
+      const trigger = document.querySelector('[data-open-facet-editor]');
+      if (event.target.closest('[data-open-facet-editor]')) {
+        dialog.showModal();
+        trigger.setAttribute('aria-expanded', 'true');
+        dialog.querySelector('input')?.focus();
+      }
+      if (event.target.closest('[data-close-facet-editor]')) {
+        dialog.close();
+        trigger.setAttribute('aria-expanded', 'false');
+        trigger.focus();
+      }
+      const add = event.target.closest('[data-add-facet]');
+      if (add) {
+        const row = document.getElementById('facet-setting-template').content.cloneNode(true);
+        document.getElementById(add.dataset.addFacet).append(row);
+        document.getElementById(add.dataset.addFacet).lastElementChild.querySelector('input').focus();
+      }
+      const remove = event.target.closest('[data-remove-facet]');
+      if (remove) remove.closest('.facet-setting-row').remove();
+    });
+    const facetDialog = document.getElementById('facet-dialog');
+    const facetTrigger = document.querySelector('[data-open-facet-editor]');
+    facetDialog.addEventListener('close', function () {
+      facetTrigger.setAttribute('aria-expanded', 'false');
+    });
+    if (facetDialog.dataset.openOnLoad === 'true') {
+      facetDialog.showModal();
+      facetTrigger.setAttribute('aria-expanded', 'true');
+      facetDialog.querySelector('input')?.focus();
+    }
+  </script>
+
+</div>
+</body>
+</html>

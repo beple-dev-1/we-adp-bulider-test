@@ -1,0 +1,221 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Builder 디자인가이드</title>
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="../../src/main/resources/static/css/tokens.css">
+  <link rel="stylesheet" href="../../src/main/resources/static/css/reset.css">
+  <link rel="stylesheet" href="../../src/main/resources/static/css/typography.css">
+  <link rel="stylesheet" href="../../src/main/resources/static/css/components.css">
+  <link rel="stylesheet" href="../../src/main/resources/static/css/shell.css">
+  <link rel="stylesheet" href="_mock.css">
+  <link rel="stylesheet" href="../../src/main/resources/static/css/screens.css">
+  <link rel="stylesheet" href="_design-guide.css">
+</head>
+<body>
+<template id="본문">
+  <div class="design-guide" id="design-guide">
+    <main class="design-guide__main">
+      <header class="design-guide__hero">
+        <div>
+          <h1 class="page-head__title">Builder 디자인가이드</h1>
+          <p class="page-intro">실제 Builder 컴포넌트와 화면 패턴을 확인하고, 디자인 토큰 변경안을 안전하게 비교합니다.</p>
+        </div>
+        <button class="guide-edit-toggle" id="guide-edit-toggle" type="button" aria-pressed="false">
+          <span class="guide-edit-toggle__track" aria-hidden="true"></span>
+          토큰 편집
+        </button>
+      </header>
+
+      <div class="guide-notice" role="note">
+        <strong>정본 원칙</strong>
+        <span>이 화면은 제품과 같은 CSS를 사용합니다. 가이드에서만 보이는 컴포넌트 모양을 만들지 않으며, 변경안은 저장하기 전까지 현재 브라우저에만 적용됩니다.</span>
+      </div>
+
+      <nav class="guide-tabs" role="tablist" aria-label="디자인가이드 영역">
+        <button class="guide-tab" id="tab-components" type="button" role="tab" aria-selected="true" aria-controls="panel-components" data-guide-tab="components">컴포넌트</button>
+        <button class="guide-tab" id="tab-palette" type="button" role="tab" aria-selected="false" aria-controls="panel-palette" data-guide-tab="palette">색상</button>
+        <button class="guide-tab" id="tab-shell" type="button" role="tab" aria-selected="false" aria-controls="panel-shell" data-guide-tab="shell">공통 셸</button>
+        <button class="guide-tab" id="tab-shape" type="button" role="tab" aria-selected="false" aria-controls="panel-shape" data-guide-tab="shape">간격과 형태</button>
+        <button class="guide-tab" id="tab-typography" type="button" role="tab" aria-selected="false" aria-controls="panel-typography" data-guide-tab="typography">타이포그래피</button>
+        <button class="guide-tab" id="tab-patterns" type="button" role="tab" aria-selected="false" aria-controls="panel-patterns" data-guide-tab="patterns">화면 패턴</button>
+        <button class="guide-tab" id="tab-rules" type="button" role="tab" aria-selected="false" aria-controls="panel-rules" data-guide-tab="rules">사용 규칙</button>
+      </nav>
+
+      <section class="guide-section" id="panel-components" role="tabpanel" aria-labelledby="tab-components">
+        <header class="guide-section__head"><h2>컴포넌트</h2><p>제품에서 사용하는 크기·위계·상태를 한곳에서 비교합니다. 예시는 공통 CSS의 실제 컴포넌트입니다.</p></header>
+        <div class="guide-grid">
+          <article class="guide-card guide-card--wide">
+            <header class="guide-card__head"><div><h3>버튼</h3><p>행동의 중요도와 결과에 따라 강조 수준을 정합니다.</p></div><span class="badge badge--outline">공통</span></header>
+            <div class="guide-specimens">
+              <span class="guide-specimen-group"><span class="guide-specimen-label">주요 행동</span><button class="button button--primary" type="button">BRD 작업 시작</button></span>
+              <span class="guide-specimen-group"><span class="guide-specimen-label">보조 행동</span><button class="button" type="button">요구사항 검토</button></span>
+              <span class="guide-specimen-group"><span class="guide-specimen-label">작은 행동</span><button class="button button--small" type="button">화면 선택</button></span>
+              <span class="guide-specimen-group"><span class="guide-specimen-label">텍스트 행동</span><button class="button button--text" type="button">원문 보기</button></span>
+              <span class="guide-specimen-group"><span class="guide-specimen-label">위험 행동</span><button class="button button--danger-outline" type="button">정의서 폐기</button></span>
+              <span class="guide-specimen-group"><span class="guide-specimen-label">비활성</span><button class="button" type="button" disabled>요청 완료</button></span>
+            </div>
+            <div class="guide-submit-sample"><span class="guide-specimen-label">로그인·비밀번호 변경·등록 폼의 전체 너비 제출</span><button class="button button--primary" type="button">사용자 등록</button></div>
+            <p class="guide-rule"><strong>기준:</strong> 한 화면의 주요 행동은 원칙적으로 하나입니다. 버튼 문구는 대상과 결과가 드러나는 ‘목적어 + 행동’으로 씁니다.</p>
+          </article>
+
+          <article class="guide-card guide-card--wide">
+            <header class="guide-card__head"><div><h3>입력과 선택</h3><p>라벨·도움말·오류가 입력 항목과 함께 읽혀야 합니다.</p></div><span class="badge badge--outline">폼</span></header>
+            <div class="guide-field-row">
+              <div class="field"><label class="field__label" for="guide-title">문서명</label><input class="field__control" id="guide-title" value="8월 운영회의 회의록"><span class="field__help">사용자가 찾기 쉬운 이름을 입력합니다.</span></div>
+              <div class="field"><label class="field__label" for="guide-kind">문서 종류</label><select class="field__control" id="guide-kind"><option>Flow</option><option>회의록</option><option>일반문서</option></select></div>
+              <div class="field"><label class="field__label" for="guide-error">참석자</label><input class="field__control" id="guide-error" aria-invalid="true" aria-describedby="guide-error-message"><span class="field__help field__help--error" id="guide-error-message">참석자를 확인해 주세요.</span></div>
+            </div>
+            <div class="guide-choice-row">
+              <div class="guide-choice-group"><span class="guide-choice-group__label">다중 선택</span><div class="guide-choice-group__items"><label class="guide-choice"><input type="checkbox" checked> 요구사항 대상</label><label class="guide-choice"><input type="checkbox"> 참고 자료 포함</label></div></div>
+              <div class="guide-choice-group"><span class="guide-choice-group__label">단일 선택</span><div class="guide-choice-group__items"><label class="guide-choice"><input type="radio" name="guide-choice" checked> 직접 입력</label><label class="guide-choice"><input type="radio" name="guide-choice"> 파일 등록</label></div></div>
+              <div class="guide-choice-group"><span class="guide-choice-group__label">설정 전환</span><div class="guide-choice-group__items"><label class="guide-choice"><input class="guide-switch" type="checkbox" checked> 알림 받기</label></div></div>
+            </div>
+          </article>
+
+          <article class="guide-card">
+            <header class="guide-card__head"><div><h3>진행 상태</h3><p>분류 태그와 구분합니다. 작은 점과 문구를 함께 사용해 색에만 의존하지 않습니다.</p></div></header>
+            <div class="guide-status-list">
+              <span class="status-badge status-badge--waiting">처리 대기</span>
+              <span class="status-badge status-badge--progress">내용 추출 중</span>
+              <span class="status-badge status-badge--review">검토 필요</span>
+              <span class="status-badge status-badge--complete">완료</span>
+              <span class="status-badge status-badge--error">문서 처리 오류</span>
+            </div>
+            <dl class="guide-status-axis"><dt>요구사항 상태</dt><dd><span class="status-badge status-badge--review">생성 완료</span> → <span class="status-badge status-badge--complete">확정 완료</span></dd><dt>정의서 생성 요청</dt><dd><span class="status-badge status-badge--waiting">요청 전</span> → <span class="status-badge status-badge--complete">요청 완료</span></dd><dt>분류 태그</dt><dd><span class="badge badge--active">요구사항 대상</span> <span class="badge badge--outline">참고 문서</span>처럼 상태가 아닌 분류에만 일반 배지를 씁니다.</dd></dl>
+          </article>
+
+          <article class="guide-card">
+            <header class="guide-card__head"><div><h3>안내와 피드백</h3><p>무슨 일·이유·다음 행동 순서로 안내합니다.</p></div></header>
+            <div class="guide-state-grid">
+              <div class="state-panel state-panel--success"><strong>정리 내용을 저장했습니다.</strong><p>이제 문서의 처리 방향을 선택할 수 있습니다.</p></div>
+              <div class="state-panel state-panel--error"><strong>문서를 등록하지 못했습니다.</strong><p>본문을 읽지 못했습니다. 파일을 확인한 뒤 다시 등록해 주세요.</p></div>
+            </div>
+          </article>
+
+          <article class="guide-card guide-card--wide">
+            <header class="guide-card__head"><div><h3>검색·필터와 표</h3><p>표의 한 행은 한 줄로 표시합니다. 보조정보는 같은 줄에 붙이고 모바일에서는 표 컨테이너만 스크롤합니다.</p></div></header>
+            <div class="guide-filter">
+              <div class="field"><label class="field__label" for="guide-search">검색</label><input class="field__control" id="guide-search" placeholder="번호 또는 내용 검색"></div>
+              <div class="field"><label class="field__label" for="guide-status">상태</label><select class="field__control" id="guide-status"><option>전체 상태</option><option>검토 필요</option><option>완료</option></select></div>
+              <button class="button button--primary" type="button">요구사항 검색</button>
+            </div>
+            <div class="table-wrap"><table class="data-table data-table--dense"><thead><tr><th scope="col">번호</th><th scope="col">요구사항</th><th scope="col">상태</th><th scope="col">작업</th></tr></thead><tbody><tr><td class="num">REQ-043</td><td><span class="cell"><strong>상신 화면 임시 저장</strong><span class="cell__sub">8/12 회의록에서 추출</span></span></td><td><span class="status-badge status-badge--review">생성 완료</span></td><td><div class="guide-table-actions"><a class="table-action" href="#">요구사항 검토</a></div></td></tr><tr><td class="num">REQ-042</td><td>작성 내용 자동 저장</td><td><span class="status-badge status-badge--complete">확정 완료</span></td><td><a class="table-action" href="#">정의서 보기</a></td></tr></tbody></table></div>
+            <div class="list-table-foot"><span aria-hidden="true"></span><nav class="list-pagination" aria-label="예시 페이지 이동"><span class="list-page-button" aria-disabled="true" aria-label="이전 페이지">‹</span><a class="list-page-button is-current" href="#" aria-current="page">1</a><a class="list-page-button" href="#">2</a><a class="list-page-button" href="#">3</a><a class="list-page-button" href="#">4</a><a class="list-page-button" href="#">5</a><a class="list-page-button" href="#">6</a><a class="list-page-button" href="#">7</a><a class="list-page-button" href="#">8</a><a class="list-page-button" href="#">9</a><a class="list-page-button" href="#">10</a><a class="list-page-button" href="#" aria-label="다음 페이지">›</a></nav><div class="list-page-size"><label class="sr-only" for="guide-page-size">목록 크기</label><select class="field__control" id="guide-page-size"><option>10개씩</option><option>20개씩</option><option>50개씩</option><option>100개씩</option></select></div></div>
+          </article>
+
+          <article class="guide-card guide-card--wide">
+            <header class="guide-card__head"><div><h3>레이어 팝업과 확인창</h3><p>여러 입력을 수정할 때는 공통 레이어를, 되돌리기 어려운 한 가지 결정을 확인할 때는 작은 확인창을 사용합니다.</p></div><span class="badge badge--outline">공통</span></header>
+            <div class="guide-specimens"><button class="button button--primary" id="open-guide-layer-dialog" type="button">정보 변경 레이어 열기</button><button class="button" id="open-guide-dialog" type="button">폐기 확인창 열기</button></div>
+            <p class="guide-rule"><strong>기준:</strong> 제목과 닫기 버튼은 머리 영역에 고정하고, 입력 본문만 스크롤합니다. 취소와 주요 행동은 아래 행동 영역에 두며 닫기 버튼은 우측 상단에서 제목과 겹치지 않습니다.</p>
+          </article>
+          <article class="guide-card">
+            <header class="guide-card__head"><div><h3>토스트</h3><p>화면을 막지 않아도 되는 짧은 결과를 알립니다.</p></div></header>
+            <button class="button" id="show-guide-toast" type="button">저장 결과 보기</button>
+          </article>
+        </div>
+      </section>
+
+      <section class="guide-section" id="panel-palette" role="tabpanel" aria-labelledby="tab-palette" hidden>
+        <header class="guide-section__head"><h2>색상</h2><p>브랜드 장식이 아니라 배경·텍스트·경계·상태의 역할을 기준으로 사용합니다. 편집 모드를 켜면 색상 견본을 눌러 변경안을 만들 수 있습니다.</p></header>
+        <div class="guide-card token-groups">
+          <section class="token-group"><h3>주요 행동</h3><p>본문 검정과 분리한 Builder의 실행 색상입니다. 등록·저장·확정처럼 화면의 한 가지 주요 행동에 사용합니다.</p><div class="swatch-grid">
+            <button class="token-swatch" type="button" data-token="--color-action-primary-soft" data-token-label="주요 행동 약한 배경" data-preview="var(--color-action-primary-soft)"><strong>Soft</strong><span>--color-action-primary-soft</span></button>
+            <button class="token-swatch" type="button" data-token="--color-action-primary" data-token-label="주요 행동" data-preview="var(--color-action-primary)" data-preview-text="#ffffff"><strong>Primary</strong><span>--color-action-primary</span></button>
+            <button class="token-swatch" type="button" data-token="--color-action-primary-hover" data-token-label="주요 행동 호버" data-preview="var(--color-action-primary-hover)" data-preview-text="#ffffff"><strong>Hover</strong><span>--color-action-primary-hover</span></button>
+          </div></section>
+          <section class="token-group"><h3>기본 표면</h3><p>페이지와 패널의 위계, 본문 가독성을 구성합니다.</p><div class="swatch-grid">
+            <button class="token-swatch" type="button" data-token="--color-ink" data-token-label="기본 글자" data-preview="var(--color-ink)" data-preview-text="#ffffff"><strong>Ink</strong><span>--color-ink</span></button>
+            <button class="token-swatch" type="button" data-token="--color-canvas" data-token-label="기본 패널" data-preview="var(--color-canvas)"><strong>Canvas</strong><span>--color-canvas</span></button>
+            <button class="token-swatch" type="button" data-token="--color-paper" data-token-label="보조 패널" data-preview="var(--color-paper)"><strong>Paper</strong><span>--color-paper</span></button>
+            <button class="token-swatch" type="button" data-token="--color-workspace" data-token-label="작업 공간" data-preview="var(--color-workspace)"><strong>Workspace</strong><span>--color-workspace</span></button>
+          </div></section>
+          <section class="token-group"><h3>경계와 보조 정보</h3><p>정보를 과하게 분절하지 않는 중립색입니다.</p><div class="swatch-grid">
+            <button class="token-swatch" type="button" data-token="--color-line" data-token-label="경계선" data-preview="var(--color-line)"><strong>Line</strong><span>--color-line</span></button>
+            <button class="token-swatch" type="button" data-token="--color-soft" data-token-label="약한 배경" data-preview="var(--color-soft)"><strong>Soft</strong><span>--color-soft</span></button>
+            <button class="token-swatch" type="button" data-token="--color-muted" data-token-label="보조 글자" data-preview="var(--color-muted)" data-preview-text="#ffffff"><strong>Muted</strong><span>--color-muted</span></button>
+            <button class="token-swatch" type="button" data-token="--builder-sidebar-active" data-token-label="셸 활성 항목" data-preview="var(--builder-sidebar-active)" data-preview-text="#ffffff"><strong>Shell active</strong><span>--builder-sidebar-active</span></button>
+          </div></section>
+          <section class="token-group"><h3>업무 상태</h3><p>상태는 반드시 텍스트와 함께 사용합니다.</p><div class="swatch-grid">
+            <button class="token-swatch" type="button" data-token="--color-lilac" data-token-label="진행·활성" data-preview="var(--color-lilac)"><strong>Active</strong><span>--color-lilac</span></button>
+            <button class="token-swatch" type="button" data-token="--color-lime" data-token-label="완료" data-preview="var(--color-lime)"><strong>Success</strong><span>--color-lime</span></button>
+            <button class="token-swatch" type="button" data-token="--color-coral" data-token-label="주의" data-preview="var(--color-coral)"><strong>Attention</strong><span>--color-coral</span></button>
+            <button class="token-swatch" type="button" data-token="--color-error" data-token-label="오류·위험" data-preview="var(--color-error)" data-preview-text="#ffffff"><strong>Error</strong><span>--color-error</span></button>
+          </div></section>
+        </div>
+      </section>
+
+      <section class="guide-section" id="panel-shell" role="tabpanel" aria-labelledby="tab-shell" hidden>
+        <header class="guide-section__head"><h2>공통 셸</h2><p>상단바와 왼쪽 메뉴는 모든 제품 화면의 기준점입니다. 메뉴 열쇠·순서·이름은 코드 정본과 목업 사본을 함께 관리합니다.</p></header>
+        <div class="guide-grid">
+          <article class="guide-card guide-card--wide"><header class="guide-card__head"><div><h3>제품 셸 미리보기</h3><p>현재 토큰이 적용된 메뉴·상단바·콘텐츠 영역입니다.</p></div></header><div class="shell-preview">
+            <aside class="shell-preview__side"><div class="shell-preview__brand">WE-ADP Builder</div><div class="shell-preview__project">G2C 프로젝트</div><nav class="shell-preview__nav" aria-label="셸 미리보기 메뉴"><span>받은 문서</span><span>요구사항</span><span>요구사항정의서</span><span class="is-active">BRD</span><span>작업 목업</span><span>개발요청서</span></nav></aside>
+            <div class="shell-preview__body"><header class="shell-preview__top"><span class="badge badge--outline">G2C</span><button class="icon-button" type="button" aria-label="알림">●</button></header><section class="shell-preview__content"><h3>BRD</h3><p>시스템별 작업 범위와 진행 상태를 확인합니다.</p><div class="shell-preview__blocks"><div></div><div></div><div></div><div></div></div></section></div>
+          </div></article>
+          <article class="guide-card"><header class="guide-card__head"><div><h3>셸 토큰</h3><p>메뉴의 기본·호버·활성 상태입니다.</p></div></header><div class="shell-token-list">
+            <button class="shell-token" type="button" data-token="--builder-sidebar" data-token-label="왼쪽 메뉴 배경" data-token-preview="var(--builder-sidebar)" data-token-text="#ffffff"><strong>Sidebar</strong><code>--builder-sidebar</code></button>
+            <button class="shell-token" type="button" data-token="--builder-sidebar-hover" data-token-label="메뉴 호버" data-token-preview="var(--builder-sidebar-hover)" data-token-text="#ffffff"><strong>Hover</strong><code>--builder-sidebar-hover</code></button>
+            <button class="shell-token" type="button" data-token="--builder-sidebar-active" data-token-label="메뉴 활성" data-token-preview="var(--builder-sidebar-active)" data-token-text="#ffffff"><strong>Active</strong><code>--builder-sidebar-active</code></button>
+            <span class="shell-token"><strong>메뉴 너비</strong><code>232px</code></span>
+          </div></article>
+          <article class="guide-card"><header class="guide-card__head"><div><h3>셸 계약</h3><p>메뉴 변경 시 함께 맞춰야 하는 정본입니다.</p></div></header><ul class="guide-checklist"><li>ShellContract.java의 열쇠·순서·표시 이름</li><li>fragments/parts.html의 실제 메뉴</li><li>_shell.js의 정적 목업 사본</li><li>업무 콘텐츠는 고해상도에서도 가용 너비를 사용</li><li>읽기 문장은 별도 prose 너비로 제한</li><li>데스크톱·375px의 메뉴와 콘텐츠 넘침</li></ul></article>
+        </div>
+      </section>
+
+      <section class="guide-section" id="panel-shape" role="tabpanel" aria-labelledby="tab-shape" hidden>
+        <header class="guide-section__head"><h2>간격과 형태</h2><p>간격은 4px 단위 토큰을 사용하고, 라운딩은 컨트롤·메시지·패널의 책임에 맞춰 선택합니다.</p></header>
+        <article class="guide-card"><header class="guide-card__head"><div><h3>간격 스케일</h3><p>임의 값 대신 가까운 토큰을 사용합니다.</p></div></header><div class="spacing-grid">
+          <div class="spacing-sample"><i data-size="4px"></i><strong>space-1</strong><code>4px</code></div><div class="spacing-sample"><i data-size="8px"></i><strong>space-2</strong><code>8px</code></div><div class="spacing-sample"><i data-size="16px"></i><strong>space-4</strong><code>16px</code></div><div class="spacing-sample"><i data-size="32px"></i><strong>space-8</strong><code>32px</code></div>
+        </div></article>
+        <article class="guide-card"><header class="guide-card__head"><div><h3>라운딩</h3><p>같은 책임의 요소는 같은 라운딩을 사용합니다.</p></div></header><div class="radius-grid">
+          <button class="radius-sample" type="button" data-token="--radius-control" data-token-label="컨트롤 라운딩"><strong>Control</strong><code>--radius-control · 8px</code></button><button class="radius-sample" type="button" data-token="--radius-message" data-token-label="메시지 라운딩"><strong>Message</strong><code>--radius-message · 12px</code></button><button class="radius-sample" type="button" data-token="--radius-panel" data-token-label="패널 라운딩"><strong>Panel</strong><code>--radius-panel · 16px</code></button><button class="radius-sample" type="button" data-token="--radius-pill" data-token-label="알약 라운딩"><strong>Pill</strong><code>--radius-pill · 999px</code></button>
+        </div></article>
+        <article class="guide-card"><header class="guide-card__head"><div><h3>그림자와 위계</h3><p>붙어 있는 본문은 경계선, 떠 있는 요소만 그림자를 사용합니다.</p></div></header><div class="shadow-grid"><div class="shadow-sample"><strong>Flat</strong><code>border only</code></div><div class="shadow-sample" data-shadow="var(--shadow-float)"><strong>Float</strong><code>--shadow-float</code></div></div></article>
+      </section>
+
+      <section class="guide-section" id="panel-typography" role="tabpanel" aria-labelledby="tab-typography" hidden>
+        <header class="guide-section__head"><h2>타이포그래피</h2><p>글자를 작게 만들어 밀도를 높이지 않습니다. 제목·본문·보조 정보의 역할과 행간으로 위계를 만듭니다.</p></header>
+        <div class="guide-grid">
+          <article class="guide-card"><header class="guide-card__head"><div><h3>본문 글꼴</h3><p>Pretendard Variable과 시스템 대체 글꼴을 사용합니다.</p></div></header><div class="type-family-sample"><strong>Builder Sans</strong><p>기획 업무를 한곳에서 관리합니다.<br>Builder 2026 · REQ-043</p></div></article>
+          <article class="guide-card"><header class="guide-card__head"><div><h3>숫자와 식별자</h3><p>번호·시각·경로처럼 빠르게 구분해야 하는 값입니다.</p></div></header><div class="type-family-sample"><strong>Monospace</strong><p class="num">BRD-003 · 08-12 15:42<br>/projects/1/artifacts/brd</p></div></article>
+          <article class="guide-card guide-card--wide"><header class="guide-card__head"><div><h3>크기 스케일</h3><p>제품에서 실제 사용하는 대표 위계입니다.</p></div></header><div class="type-scale-list"><div class="type-scale-row"><strong>Page title</strong><span data-font-size="1.5rem">받은 문서</span><code>1.5rem / 24px</code></div><div class="type-scale-row"><strong>Section</strong><span data-font-size="1.125rem">정리 내용 확인</span><code>1.125rem / 18px</code></div><div class="type-scale-row"><strong>Body</strong><span data-font-size="0.875rem">등록 원문과 AI 정리본을 비교합니다.</span><code>0.875rem / 14px</code></div><div class="type-scale-row"><strong>Caption</strong><span data-font-size="0.75rem">마지막 수정 08-12 15:42</span><code>0.75rem / 12px</code></div></div></article>
+        </div>
+      </section>
+
+      <section class="guide-section" id="panel-patterns" role="tabpanel" aria-labelledby="tab-patterns" hidden>
+        <header class="guide-section__head"><h2>화면 패턴</h2><p>화면마다 새로 구성하지 않고, 사용자가 수행하는 업무에 맞는 표준 패턴을 선택합니다.</p></header>
+        <article class="guide-card"><div class="pattern-toolbar"><header class="guide-card__head"><div><h3>목록 화면</h3><p>제목과 주요 행동 → 목적 → 검색·필터 → 표</p></div></header><div class="pattern-viewport-switch" aria-label="목록 패턴 너비"><button class="button button--small button--active" type="button" data-pattern-width="desktop" aria-pressed="true">데스크톱</button><button class="button button--small" type="button" data-pattern-width="mobile" aria-pressed="false">375px</button></div></div><div class="pattern-preview-wrap"><div class="pattern-preview" id="pattern-list-preview"><header class="pattern-head"><h3>요구사항</h3><button class="button button--primary" type="button">요구사항 검토</button></header><p class="pattern-intro">등록 문서에서 생성한 요구사항의 확정 상태를 확인합니다.</p><div class="pattern-filter"><span class="badge badge--outline">전체 상태</span><span class="badge badge--outline">문서별</span></div><div class="pattern-table" aria-label="표 영역"></div></div></div></article>
+        <article class="guide-card"><header class="guide-card__head"><div><h3>상세 화면</h3><p>핵심 정보와 판단 근거, 보조 작업의 위치를 고정합니다.</p></div></header><div class="pattern-preview-wrap"><div class="pattern-preview"><header class="pattern-head"><h3>상신 화면 임시 저장</h3><span class="status-badge status-badge--review">생성 완료</span><button class="button button--primary" type="button">요구사항 확정</button></header><p class="pattern-intro">요구사항 내용과 출처 문서의 근거를 검토합니다.</p><div class="pattern-detail"><div class="pattern-detail__main"><div></div><div></div><div></div></div><aside class="pattern-detail__aside">AI 검토 또는 문서 정보</aside></div></div></div><ol class="pattern-anatomy"><li><strong>목록 복귀</strong>한 단계짜리 경로 표시는 두지 않고 왼쪽 메뉴나 필요한 보조 행동을 사용</li><li><strong>제목과 상태</strong>대상과 현재 업무 상태</li><li><strong>주요 행동</strong>지금 완료할 한 가지 결정</li><li><strong>핵심 정보</strong>판단에 필요한 본문</li><li><strong>근거와 이력</strong>출처·연결·변경 내역</li><li><strong>보조 작업</strong>AI 대화·메타 정보·부가 행동</li></ol></article>
+        <article class="guide-card"><header class="guide-card__head"><div><h3>패턴 선택 기준</h3><p>화면의 이름이 아니라 사용자가 해야 할 일로 선택합니다.</p></div></header><div class="table-wrap"><table class="data-table data-table--dense"><thead><tr><th scope="col">패턴</th><th scope="col">사용할 때</th><th scope="col">주요 구성</th></tr></thead><tbody><tr><td>목록</td><td>여러 건을 비교하고 대상을 고를 때</td><td>검색·필터·표</td></tr><tr><td>일반 상세</td><td>한 건의 내용과 연결을 확인할 때</td><td>핵심 정보·근거·행동</td></tr><tr><td>검토형 상세</td><td>AI 결과를 사람 판단으로 확정할 때</td><td>본문·근거·AI 대화</td></tr><tr><td>대조형 상세</td><td>원문과 정리본을 비교할 때</td><td>편집 본문·원문·문서 정보</td></tr><tr><td>작업대</td><td>여러 대상을 전환하며 편집할 때</td><td>대상 선택·캔버스·작업 패널</td></tr></tbody></table></div></article>
+      </section>
+
+      <section class="guide-section" id="panel-rules" role="tabpanel" aria-labelledby="tab-rules" hidden>
+        <header class="guide-section__head"><h2>사용 규칙</h2><p>새 화면을 만들거나 기존 화면을 바꿀 때 지키는 품질 기준입니다.</p></header>
+        <div class="guide-do-dont"><article class="guide-example guide-example--do"><h3>사용하는 방식</h3><ul><li>같은 결과의 행동은 같은 버튼 위계를 사용합니다.</li><li>상태는 구체적인 업무 용어와 함께 표시합니다.</li><li>긴 표는 표 컨테이너 안에서만 가로 스크롤합니다.</li><li>상세 화면은 표준 정보 순서를 따릅니다.</li></ul></article><article class="guide-example guide-example--dont"><h3>사용하지 않는 방식</h3><ul><li>화면마다 임의 색상과 라운딩을 추가하지 않습니다.</li><li>주요 행동 여러 개를 같은 강조로 두지 않습니다.</li><li>등록·수정·원문 대조를 작은 레이어에 넣지 않습니다.</li><li>색만으로 상태와 선택을 전달하지 않습니다.</li></ul></article></div>
+        <article class="guide-card"><header class="guide-card__head"><div><h3>접근성 확인</h3><p>완성 기준이며 선택 사항이 아닙니다.</p></div></header><ul class="guide-checklist"><li>페이지는 하나의 h1으로 시작하고 절은 h2 순서를 따릅니다.</li><li>모든 입력에 연결된 label과 필요한 도움말이 있습니다.</li><li>키보드만으로 탭·버튼·대화상자를 조작할 수 있습니다.</li><li>포커스가 가려지지 않고 현재 위치가 명확합니다.</li><li>표 머리에 scope="col"을 사용합니다.</li><li>오류는 무슨 일·이유·다음 행동 순서로 씁니다.</li></ul></article>
+        <article class="guide-card"><header class="guide-card__head"><div><h3>신규 컴포넌트 판단</h3><p>화면별 CSS가 늘어나는 것을 막는 순서입니다.</p></div></header><ol class="pattern-anatomy"><li><strong>기존 조합 확인</strong>공통 컴포넌트와 화면 패턴으로 해결 가능한지 봅니다.</li><li><strong>반복 가능성 확인</strong>두 화면 이상에서 같은 책임으로 재사용되는지 봅니다.</li><li><strong>상태 계약 정의</strong>기본·호버·포커스·비활성·오류를 함께 정합니다.</li><li><strong>가이드 등록</strong>실제 컴포넌트를 이 화면에 추가합니다.</li><li><strong>자동 검사 추가</strong>임의 변형이 다시 생기지 않도록 계약을 검사합니다.</li><li><strong>모바일 검증</strong>375px에서 내용과 행동의 우선순위를 확인합니다.</li></ol></article>
+      </section>
+    </main>
+
+    <aside class="guide-changes" aria-labelledby="guide-changes-title">
+      <header class="guide-changes__head"><h2 id="guide-changes-title">변경 내역</h2><p><span id="guide-change-count">토큰 0개 변경</span> · 현재 브라우저의 디자인 초안</p></header>
+      <div class="guide-change-actions"><button class="button button--small" id="copy-guide-prompt" type="button" disabled>AI 반영 지시문 복사</button><button class="button button--small button--primary" id="save-guide-draft" type="button" disabled>초안 저장</button><button class="button button--small" id="undo-guide-change" type="button" disabled>마지막 취소</button><button class="button button--small" id="reset-guide-changes" type="button" disabled>전체 초기화</button></div>
+      <ol class="guide-change-list" id="guide-change-list"><li class="guide-change-empty">아직 변경한 토큰이 없습니다. 토큰 편집을 켜고 색상·셸·라운딩 견본을 선택하면 변경안을 비교할 수 있습니다.</li></ol>
+    </aside>
+  </div>
+
+  <dialog class="dialog dialog--layer" id="guide-layer-dialog" aria-labelledby="guide-layer-dialog-title"><form method="dialog"><header class="dialog__header"><div class="dialog__header-copy"><h2 class="dialog__title" id="guide-layer-dialog-title">표시 정보 변경</h2></div><button class="dialog__close" value="cancel" aria-label="표시 정보 변경 닫기"></button></header><div class="dialog__body"><div class="facet-setting-list"><div class="facet-setting-row"><label><span class="field__label">코드</span><input class="field__control num" value="primary"></label><label><span class="field__label">표시 이름</span><input class="field__control" value="기본"></label><button class="button button--small" type="button">삭제</button></div><div class="facet-setting-row"><label><span class="field__label">코드</span><input class="field__control num" value="secondary"></label><label><span class="field__label">표시 이름</span><input class="field__control" value="보조"></label><button class="button button--small" type="button">삭제</button></div></div><button class="button facet-setting-add" type="button">항목 추가</button></div><div class="dialog__actions"><button class="button" value="cancel">취소</button><button class="button button--primary" value="save">변경 내용 저장</button></div></form></dialog>
+
+  <dialog class="dialog" id="guide-example-dialog" aria-labelledby="guide-example-dialog-title"><form method="dialog"><div class="dialog__body"><h2 id="guide-example-dialog-title">정의서를 폐기하시겠습니까?</h2><p>번호와 변경 이력은 유지됩니다. 폐기 사유를 입력해 주세요.</p><div class="field"><label class="field__label" for="guide-retire-reason">폐기 사유</label><textarea class="field__control compact-textarea" id="guide-retire-reason" rows="4" required></textarea></div></div><div class="dialog__actions"><button class="button" value="cancel" formnovalidate>취소</button><button class="button button--danger" value="retire">정의서 폐기</button></div></form></dialog>
+
+  <dialog class="dialog" id="token-editor" aria-labelledby="token-editor-title"><form method="dialog" id="token-editor-form"><div class="dialog__body token-editor__body"><div><h2 id="token-editor-title">디자인 토큰 변경</h2><p class="token-editor__path" id="token-editor-path"></p></div><div class="token-editor__control"><input id="token-editor-color" type="color" aria-label="토큰 색상"><input class="field__control" id="token-editor-value" aria-label="토큰 값" required></div><p class="field__help">변경안은 디자인가이드에 즉시 적용됩니다. 제품 CSS 파일은 자동으로 수정하지 않습니다.</p></div><div class="dialog__actions"><button class="button" value="cancel" formnovalidate>취소</button><button class="button button--primary" id="apply-token-change" value="apply">변경안 적용</button></div></form></dialog>
+
+  <div class="toast" id="guide-toast" role="status" hidden>디자인가이드 초안을 저장했습니다.</div>
+</template>
+<script src="_shell.js"></script>
+<script>틀({제목:'Builder 디자인가이드',모양:'꽉',프로젝트이름:'G2C',프로젝트번호:1,프로젝트들:['G2C','서울페이'],사람:'이영희',안읽은알림:0});</script>
+<script src="_design-guide.js"></script>
+</body>
+</html>

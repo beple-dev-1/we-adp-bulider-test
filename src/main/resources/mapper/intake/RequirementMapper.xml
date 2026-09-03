@@ -1,0 +1,183 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<!--
+    받은 문서 하나를 대표하는 상위 업무 요구. 최신 표 설명은 V16__one_requirement_per_document.sql 이 정본이다.
+
+    ⚠ 표 이름 앞의 `builder.` 를 지우지 마라. 이 저장소의 표는 public 이 아니라 builder 스키마에 산다.
+      MyBatis 는 Hibernate 의 default_schema 를 안 물려받는다 — 지우면 「표가 없다」로 죽는다.
+
+    일반 검토에서 빼는 것은 review_state = 'EXCLUDED' 다. 물리 삭제는 정의서로 넘어가기 전
+    재분석 준비에만 허용한다. 삭제해도 project.requirement_seq 는 되돌리지 않는다.
+-->
+<mapper namespace="com.bizplay.builder.intake.RequirementMapper">
+
+    <!--
+        setter 가 없는 값 묶음이라 생성자로 담는다.
+        ⛔ 인자 순서를 바꾸지 마라 — Requirement 의 생성자와 자리로 맞춘다.
+           id·project_id·intake_id 는 셋 다 일곱 자리 글자라 뒤바뀌어도 컴파일도 되고 예외도 안 난다.
+        ⚠ number 는 integer 라 자바에서 primitive int 다 — 별칭은 `_int` 다(`int` 는 래퍼다).
+        ⚠ ReviewState 는 Requirement 안의 중첩 열거라 `$` 로 적는다. 점으로 적으면 부팅 때 죽는다.
+    -->
+    <resultMap id="requirement" type="com.bizplay.builder.intake.Requirement">
+        <constructor>
+            <idArg column="id"           javaType="java.lang.String"/>
+            <arg   column="project_id"   javaType="java.lang.String"/>
+            <arg   column="intake_id"    javaType="java.lang.String"/>
+            <arg   column="number"       javaType="_int"/>
+            <arg   column="title"        javaType="java.lang.String"/>
+            <arg   column="body"         javaType="java.lang.String"/>
+            <arg   column="screen_hints" javaType="java.lang.String"/>
+            <arg   column="review_state"
+                   javaType="com.bizplay.builder.intake.Requirement$ReviewState"/>
+            <arg   column="excluded_reason" javaType="java.lang.String"/>
+            <arg   column="created_at"   javaType="java.time.Instant"/>
+            <arg   column="updated_at"   javaType="java.time.Instant"/>
+        </constructor>
+    </resultMap>
+
+    <!--
+        ⛔ record 를 resultType 으로 두고 이름 자동 매핑에 기대지 마라 — 그것은 컴파일 옵션
+           (-parameters)이 켜져 있어야 도는데, 꺼지면 「생성자를 못 찾겠다」로 부팅 때가 아니라
+           **그 화면을 열 때** 죽는다. 생성자 자리로 맞추면 옵션과 무관하다.
+        ⚠ count(*) 는 bigint 로 오므로 _long 이 아니라 _int 로 받으려면 자바 쪽도 int 여야 한다 —
+          MyBatis 가 좁혀 담는다. 한 접수의 요구사항이 21억을 넘을 일은 없다.
+    -->
+    <resultMap id="intakeRequirementCount"
+               type="com.bizplay.builder.intake.RequirementMapper$IntakeRequirementCount">
+        <constructor>
+            <idArg column="intake_id" javaType="java.lang.String"/>
+            <arg   column="total"     javaType="_int"/>
+            <arg   column="confirmed" javaType="_int"/>
+        </constructor>
+    </resultMap>
+
+    <!--
+        ⚠ number 는 PostgreSQL 예약어가 아니지만 SQL 표준의 비예약어라 헷갈리기 쉽다 —
+          여기서는 그대로 쓴다(V7 이 그 이름으로 만들었다).
+    -->
+    <sql id="columns">
+        id, project_id, intake_id, number, title, body, screen_hints, review_state,
+        excluded_reason, created_at, updated_at
+    </sql>
+
+    <!--
+        ⭐ 번호를 집는 유일한 문이다. update ... returning 이 그 줄을 잠그므로
+           ① 지운 번호가 되살아나지 않고 ② 동시 실행이 같은 번호를 못 집는다.
+        ⛔ select max(number) + 1 로 바꾸지 마라 — 둘 다 깨진다.
+    -->
+    <select id="allocateNumber" parameterType="java.lang.String" resultType="_int">
+        update builder.adk_builder_project
+           set requirement_seq = requirement_seq + 1
+         where id = #{projectId}
+        returning requirement_seq
+    </select>
+
+    <!--
+        ⚠ created_at 을 넣지 않는다 — DB 의 default now() 가 채운다.
+        ⚠ id 는 넣는다. DB 에도 default 가 있지만 채번은 IdSequence 가 한다.
+        ⚠ screen_hints 는 널이 올 수 있어 jdbcType 을 박는다 — 안 박으면 MyBatis 가 종류를
+          못 정해 PostgreSQL 이 setNull 을 거절한다.
+    -->
+    <insert id="insert" parameterType="com.bizplay.builder.intake.Requirement">
+        insert into builder.adk_builder_requirement
+               (id, project_id, intake_id, number, title, body, screen_hints, review_state)
+        values (#{id}, #{projectId}, #{intakeId}, #{number}, #{title}, #{body},
+                #{screenHints,jdbcType=VARCHAR}, #{reviewState})
+    </insert>
+
+    <!-- ⚠ 번호 오름차순이다. 문자열이 아니라 숫자로 정렬한다 — REQ-10 이 REQ-9 뒤에 서야 한다. -->
+    <select id="selectByIntakeId" parameterType="java.lang.String" resultMap="requirement">
+        select <include refid="columns"/>
+          from builder.adk_builder_requirement
+         where intake_id = #{intakeId}
+         order by number
+    </select>
+
+    <select id="countAllByIntakeId" parameterType="java.lang.String" resultType="_int">
+        select count(*)
+          from builder.adk_builder_requirement
+         where intake_id = #{intakeId}
+    </select>
+
+    <!--
+        재분석 준비 전용 삭제다. ⛔ 프로젝트의 requirement_seq 는 건드리지 않는다 — 번호는 재사용하지 않는다.
+        요구사항정의서가 구현되면 정의서 연결이 없는 행만 지우도록 NOT EXISTS 조건을 반드시 추가한다.
+    -->
+    <delete id="deleteForReanalysis" parameterType="java.lang.String">
+        delete from builder.adk_builder_requirement
+         where intake_id = #{intakeId}
+    </delete>
+
+    <!--
+        요구사항 목록 화면이 쓴다. ⚠ 제외한 것도 담는다 — 목록에서 사라지면
+        추적 매트릭스의 빈 줄과 어긋난다(ia 설계). 거르개가 가리는 것이고 조회가 빼는 것이 아니다.
+    -->
+    <select id="selectByProjectId" parameterType="java.lang.String" resultMap="requirement">
+        select <include refid="columns"/>
+          from builder.adk_builder_requirement
+         where project_id = #{projectId}
+         order by number
+    </select>
+
+    <select id="selectById" parameterType="java.lang.String" resultMap="requirement">
+        select <include refid="columns"/>
+          from builder.adk_builder_requirement
+         where id = #{id}
+    </select>
+
+    <!--
+        확정·제외를 찍는다. ⭐ 상태와 사유를 **한 문장에서** 같이 쓴다 —
+        갈라 쓰면 그 사이에 CHECK 를 어기는 순간이 생겨 저장이 통째로 거절된다.
+        ⚠ 제외가 아닌 것으로 갈 때 사유를 널로 되돌리는 것도 이 한 문장이 한다.
+    -->
+    <update id="updateReviewState">
+        update builder.adk_builder_requirement
+           set review_state    = #{reviewState},
+               excluded_reason = #{excludedReason,jdbcType=VARCHAR}
+         where id = #{id}
+    </update>
+
+    <!--
+        사람이 내용을 고친다. ⚠ review_state 는 안 건드린다 — 내용을 고친 것이 판단은 아니다.
+        ⚠ updated_at 은 DB 시계로 찍는다. 자바 시계로 넘기면 서버와 DB 가 어긋날 때 이력이 거짓말한다.
+    -->
+    <update id="updateContent">
+        update builder.adk_builder_requirement
+           set title      = #{title},
+               body       = #{body},
+               updated_at = now()
+         where id = #{id}
+    </update>
+
+    <!--
+        그 접수에 아직 판단 안 한 것이 몇 건인가. ⭐ 0 이면 접수가 완료로 넘어간다.
+        ⛔ 자바로 다 읽어와 세는 식으로 바꾸지 마라 — 되굴림 판정마다 43줄을 끌어오게 된다.
+    -->
+    <select id="countUndecidedByIntakeId" parameterType="java.lang.String" resultType="_int">
+        select count(*)
+          from builder.adk_builder_requirement
+         where intake_id = #{intakeId}
+           and review_state = 'DRAFTED'
+    </select>
+
+    <!--
+        ⛔ 빈 목록으로 부르면 `in ()` 이 되어 SQL 이 깨진다. 부르는 쪽이 먼저 비었나를 본다.
+        ⚠ 제외한 것은 안 센다 — 사람이 「몇 건 나왔나」로 읽는 숫자다.
+        ⚠ 0건인 접수는 여기 안 나온다. 부르는 쪽이 없는 것을 0 으로 읽는다.
+    -->
+    <select id="countByIntakeIdIn" resultMap="intakeRequirementCount">
+        select intake_id                                            as intake_id,
+               count(*)                                             as total,
+               count(*) filter (where review_state = 'CONFIRMED')   as confirmed
+          from builder.adk_builder_requirement
+         where review_state &lt;&gt; 'EXCLUDED'
+           and intake_id in
+        <foreach item="intakeId" collection="intakeIds" open="(" separator="," close=")">
+            #{intakeId}
+        </foreach>
+         group by intake_id
+    </select>
+
+</mapper>

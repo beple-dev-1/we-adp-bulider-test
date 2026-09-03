@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<!--
+    솔루션 목업이 실물과 다르다고 짚어 둔 표시. 표의 뜻은 V13__mockup_mismatch.sql 의 COMMENT 가 정본이다.
+
+    ⚠ 표 이름 앞의 `builder.` 를 지우지 마라. 이 저장소의 표는 public 이 아니라 builder 스키마에 산다.
+      MyBatis 는 Hibernate 의 default_schema 를 안 물려받는다 — 지우면 「표가 없다」로 죽는다.
+
+    ⛔ delete 를 만들지 마라. 「아니었다」도 기록이다.
+-->
+<mapper namespace="com.bizplay.builder.solution.MockupMismatchMapper">
+
+    <!--
+        ⛔ record 를 resultType 으로 두고 이름 자동 매핑에 기대지 마라 — 컴파일 옵션(-parameters)에
+           기대는 길이라 빌드 설정 하나에 조용히 깨진다. 다른 매퍼와 같은 방식으로 생성자에 담는다.
+        ⛔ 인자 순서를 바꾸지 마라 — MockupMismatch 의 생성자와 자리로 맞춘다.
+           id·project_id·reporter_id 는 셋 다 일곱 자리 글자라 뒤바뀌어도 컴파일도 되고 예외도 안 난다.
+    -->
+    <resultMap id="mismatch" type="com.bizplay.builder.solution.MockupMismatch">
+        <constructor>
+            <idArg column="id"            javaType="java.lang.String"/>
+            <arg   column="project_id"    javaType="java.lang.String"/>
+            <arg   column="screen_id"     javaType="java.lang.String"/>
+            <arg   column="reason"        javaType="java.lang.String"/>
+            <arg   column="reporter_id"   javaType="java.lang.String"/>
+            <arg   column="reporter_name" javaType="java.lang.String"/>
+            <arg   column="created_at"    javaType="java.time.Instant"/>
+        </constructor>
+    </resultMap>
+
+    <insert id="insert">
+        insert into builder.adk_builder_mockup_mismatch (project_id, screen_id, reason, reporter_id)
+        values (#{projectId}, #{screenId}, #{reason}, #{reporterId})
+    </insert>
+
+    <!--
+        ⚠ 사람 이름은 계정 표에서 붙여 온다. 표시 줄에 이름을 베껴 담지 않는다 —
+          사람이 이름을 바꾸면 옛 표시만 옛 이름으로 남는다.
+    -->
+    <select id="selectByProjectId" resultMap="mismatch">
+        select m.id, m.project_id, m.screen_id, m.reason, m.reporter_id,
+               a.name as reporter_name, m.created_at
+          from builder.adk_builder_mockup_mismatch m
+          join builder.adk_builder_account a on a.id = m.reporter_id
+         where m.project_id = #{projectId}
+         order by m.created_at desc, m.id desc
+    </select>
+
+</mapper>

@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <link rel="stylesheet" href="../../src/main/resources/static/css/tokens.css">
+  <link rel="stylesheet" href="../../src/main/resources/static/css/reset.css">
+  <link rel="stylesheet" href="../../src/main/resources/static/css/typography.css">
+  <link rel="stylesheet" href="../../src/main/resources/static/css/components.css">
+  <link rel="stylesheet" href="../../src/main/resources/static/css/shell.css">
+  <link rel="stylesheet" href="_mock.css">
+  <link rel="stylesheet" href="../../src/main/resources/static/css/screens.css">
+  <link rel="stylesheet" href="_frd-interview.css">
+  <title>FRD AI 인터뷰 결과 확인</title>
+</head>
+<body>
+<template id="본문">
+<main class="fi-page fi-page--result">
+  <header class="fi-head">
+    <div class="fi-head__copy"><span class="rq-kicker num">FRD-006</span><h1>결재 문서 임시 저장</h1><p>수정하거나 추가할 프론트 화면과 백엔드 작업을 확인합니다.</p></div>
+    <div class="fi-head__actions"><button class="button" type="button">다시 인터뷰하기</button><a class="button button--primary" href="05a-frd-workbench.html">FRD 작업하기</a></div>
+  </header>
+  <nav class="fi-steps" aria-label="FRD 작업 만들기 진행 단계">
+    <div class="fi-step is-done"><i>✓</i><span>요구사항 입력</span></div>
+    <div class="fi-step is-done"><i>✓</i><span>AI 인터뷰</span></div>
+    <div class="fi-step is-current" aria-current="step"><i>3</i><span>개발 범위 확인</span></div>
+  </nav>
+  <div class="fi-result-layout fi-result-board">
+    <aside class="fi-scope-context" aria-labelledby="scope-context-title">
+      <section class="fi-card">
+        <header class="fi-card__head"><div><h2 id="scope-context-title">인터뷰 정리</h2><p>확인한 요구사항과 범위 판단 기준입니다.</p></div></header>
+        <div class="fi-card__body fi-scope-context__body">
+          <section class="fi-scope-summary"><div class="fi-scope-section-head"><h3>요구사항 요약</h3><span>최종 분석</span></div><p>결재 문서를 작성 중 임시 저장하고, 작성자가 나중에 이어서 작성할 수 있도록 합니다.</p><details class="fi-scope-source"><summary>입력한 요구사항 보기</summary><p>결재 문서를 작성하다가 임시 저장하고 나중에 이어서 작성할 수 있어야 한다.</p></details></section>
+          <section class="fi-scope-section"><div class="fi-scope-section-head"><h3>확인된 요구사항</h3><span>2개</span></div><ol class="fi-scope-item-list"><li><div class="fi-scope-item-list__badges"><span class="badge fi-requirement-nature">개발</span><span class="badge badge--outline">화면</span></div><strong>작성 중인 결재 문서를 임시 저장한다.</strong><p>작성 화면에 임시 저장 버튼과 저장 결과 안내를 추가합니다.</p></li><li><div class="fi-scope-item-list__badges"><span class="badge fi-requirement-nature">개발</span><span class="badge badge--outline">화면</span></div><strong>임시 저장한 문서를 다시 열어 작성한다.</strong><p>작성자 본인의 임시 문서만 조회하고 수정합니다.</p></li></ol></section>
+          <section class="fi-scope-section"><div class="fi-scope-section-head"><h3>완료 기준</h3><span>2개</span></div><ul class="fi-scope-check-list"><li>저장 후 마지막 저장 시각이 표시된다.</li><li>임시 문서를 다시 열면 저장한 내용이 복원된다.</li></ul></section>
+          <section class="fi-scope-section"><div class="fi-scope-section-head"><h3>확인 필요</h3><span>없음</span></div><p class="fi-scope-clear"><i aria-hidden="true">✓</i> 남은 확인 사항이 없습니다.</p></section>
+        </div>
+      </section>
+    </aside>
+    <section class="fi-card fi-result-scope">
+      <header class="fi-card__head"><div><h2>수정·추가 범위</h2><p>인터뷰 내용을 기준으로 실제 개발 대상을 확인합니다.</p></div><dl class="fi-scope-counts"><div><dt>프론트</dt><dd>2개 화면</dd></div><div><dt>백엔드</dt><dd>3개 항목</dd></div></dl></header>
+      <div class="fi-card__body fi-work-stack">
+        <section class="fi-work-section fi-work-section--front">
+          <header class="fi-work-section__head"><h3>프론트 화면</h3><button class="button button--small" id="open-analysis-screen" type="button">화면 추가</button></header>
+          <ul class="fi-screen-list">
+            <li class="fi-screen-row"><div class="fi-screen-thumbnail"><div class="fi-screen-thumbnail__sample" aria-hidden="true"><i></i><b></b><b></b><b></b></div><span>현재 화면</span></div><div class="fi-screen-row__content"><div class="fi-screen-row__top"><strong>결재 문서 작성</strong><form class="fi-screen-remove-form" onsubmit="return confirm('이 화면을 작업 대상에서 제외할까요?');"><button class="button button--small button--text fi-screen-remove" type="submit">작업 대상에서 제외</button></form></div><div class="fi-screen-row__badges"><span class="badge badge--outline">기존 화면</span><span class="badge fi-selection-source fi-selection-source--ai">AI 선택</span></div><small class="num">webview · wv-appr-write</small><p>임시 저장 버튼, 저장 완료 시각, 저장 실패 안내를 추가합니다.</p></div></li>
+            <li class="fi-screen-row"><div class="fi-screen-thumbnail"><div class="fi-screen-thumbnail__sample" aria-hidden="true"><i></i><b></b><b></b><b></b></div><span>현재 화면</span></div><div class="fi-screen-row__content"><div class="fi-screen-row__top"><strong>임시 저장 문서함</strong><form class="fi-screen-remove-form" onsubmit="return confirm('이 화면을 작업 대상에서 제외할까요?');"><button class="button button--small button--text fi-screen-remove" type="submit">작업 대상에서 제외</button></form></div><div class="fi-screen-row__badges"><span class="badge badge--outline">기존 화면</span><span class="badge fi-selection-source fi-selection-source--user">사용자 선택</span></div><small class="num">webview · wv-appr-draft-list</small></div></li>
+          </ul>
+        </section>
+        <section class="fi-work-section fi-work-section--back">
+          <header class="fi-work-section__head"><h3>예상 백엔드 작업</h3></header>
+          <ul class="fi-back-list">
+            <li class="fi-back-row"><div class="fi-back-row__top"><strong>임시 저장 API</strong><span class="badge badge--outline">API</span></div><p>임시 저장·조회·수정·삭제 API를 제공합니다.</p></li>
+            <li class="fi-back-row"><div class="fi-back-row__top"><strong>임시 문서 데이터</strong><span class="badge badge--outline">데이터</span></div><p>작성자, 문서 내용, 상태, 마지막 저장 시각을 보관합니다.</p></li>
+            <li class="fi-back-row"><div class="fi-back-row__top"><strong>작성자 권한</strong><span class="badge badge--outline">권한</span></div><p>본인이 작성한 임시 문서만 조회·수정하도록 검사합니다.</p></li>
+          </ul>
+        </section>
+      </div>
+    </section>
+  </div>
+  <dialog class="dialog dialog--layer fi-screen-dialog" id="analysis-screen-dialog" aria-labelledby="analysis-screen-title">
+    <header class="dialog__header"><div class="dialog__header-copy"><h2 class="dialog__title" id="analysis-screen-title">프론트 화면 추가</h2><p class="dialog__description" id="screen-add-description">추가할 화면의 작업 유형을 선택해 주세요.</p></div><button class="dialog__close" id="close-analysis-screen" type="button" aria-label="화면 추가 레이어 닫기"></button></header>
+    <div class="dialog__body">
+      <div class="fi-screen-add-tabs" role="tablist" aria-label="프론트 화면 추가 유형">
+        <button class="fi-screen-add-tab is-active" id="existing-screen-tab" type="button" role="tab" aria-selected="true" aria-controls="existing-screen-panel" data-screen-add-mode="existing"><i>1</i><span><strong>기존 화면 추가</strong><small>현재 운영 화면을 수정합니다.</small></span></button>
+        <button class="fi-screen-add-tab" id="new-screen-tab" type="button" role="tab" aria-selected="false" aria-controls="new-screen-panel" data-screen-add-mode="new"><i>2</i><span><strong>신규 화면 개발</strong><small>기준 화면에서 새 화면을 만듭니다.</small></span></button>
+      </div>
+      <section class="fi-screen-add-panel" id="existing-screen-panel" role="tabpanel" aria-labelledby="existing-screen-tab">
+        <header class="fi-screen-add-panel__head"><h3>현재 운영 화면 선택</h3><p>수정할 화면을 선택하면 프론트 개발 범위에 바로 추가됩니다.</p></header>
+        <div class="fi-existing-screen-tools">
+          <label class="sr-only" for="existing-screen-search">화면 검색</label><input class="field__control" id="existing-screen-search" type="search" placeholder="화면명 또는 화면 ID 검색">
+          <label class="sr-only" for="existing-screen-system">시스템 선택</label><select class="field__control" id="existing-screen-system"><option>전체 시스템</option><option>webview</option><option>backoffice</option></select>
+        </div>
+        <div class="fi-existing-screen-summary"><span>검색 결과 3개</span><small>이미 추가한 화면은 다시 선택할 수 없습니다.</small></div>
+        <ul class="fi-existing-screen-list">
+          <li class="fi-existing-screen-item is-added">
+            <div class="fi-existing-screen-thumb"><div class="fi-screen-thumbnail__sample" aria-hidden="true"><i></i><b></b><b></b><b></b></div><span>현재 화면</span></div>
+            <div class="fi-existing-screen-copy"><div><strong>결재 문서 작성</strong><span class="badge badge--outline">webview</span></div><small class="num">wv-appr-write</small><p>결재선과 문서 내용을 입력하고 결재를 요청하는 화면</p></div>
+            <button class="button" type="button" disabled>추가됨</button>
+          </li>
+          <li class="fi-existing-screen-item">
+            <div class="fi-existing-screen-thumb"><div class="fi-screen-thumbnail__sample" aria-hidden="true"><i></i><b></b><b></b><b></b></div><span>현재 화면</span></div>
+            <div class="fi-existing-screen-copy"><div><strong>결재 문서 상세</strong><span class="badge badge--outline">webview</span></div><small class="num">wv-appr-detail</small><p>결재 문서 내용과 처리 이력을 확인하는 화면</p></div>
+            <button class="button" type="button">기존 화면 추가</button>
+          </li>
+          <li class="fi-existing-screen-item">
+            <div class="fi-existing-screen-thumb"><div class="fi-screen-thumbnail__sample" aria-hidden="true"><i></i><b></b><b></b><b></b></div><span>현재 화면</span></div>
+            <div class="fi-existing-screen-copy"><div><strong>결재 문서함</strong><span class="badge badge--outline">webview</span></div><small class="num">wv-appr-list</small><p>작성하거나 수신한 결재 문서를 조회하는 화면</p></div>
+            <button class="button" type="button">기존 화면 추가</button>
+          </li>
+        </ul>
+      </section>
+      <section class="fi-screen-add-panel" id="new-screen-panel" role="tabpanel" aria-labelledby="new-screen-tab" hidden>
+        <header class="fi-screen-add-panel__head"><h3>신규 화면 정보</h3><p>구성이 가장 비슷한 현재 운영 화면을 기준으로 선택해 주세요.</p></header>
+        <form class="fi-new-screen-form">
+          <label class="field fi-new-screen-form__base" for="new-base-screen"><span class="field__label">기준 화면</span><select class="field__control" id="new-base-screen" required><option>결재 문서함 · wv-appr-list</option><option>결재 문서 작성 · wv-appr-write</option></select><small class="field__hint">레이아웃과 공통 요소를 참고할 화면입니다.</small></label>
+          <label class="field" for="new-screen-name"><span class="field__label">새 화면명</span><input class="field__control" id="new-screen-name" type="text" value="임시 저장 문서함" required></label>
+          <label class="field" for="new-screen-id"><span class="field__label">새 화면 ID</span><input class="field__control num" id="new-screen-id" type="text" value="wv-appr-draft-list" required></label>
+          <div class="fi-new-screen-form__actions"><p>추가한 화면은 사용자 선택 · 신규 화면으로 표시됩니다.</p><button class="button button--primary" type="button">신규 화면 추가</button></div>
+        </form>
+      </section>
+    </div>
+  </dialog>
+</main>
+</template>
+<script src="_shell.js"></script>
+<script>
+틀({제목:'FRD 분석 결과 확인',모양:'산출물',지금:'frds',프로젝트이름:'G2C',프로젝트번호:1,프로젝트들:['G2C','서울페이'],사람:'이영희',안읽은알림:2});
+const d=document.getElementById('analysis-screen-dialog');
+const tabs=[...document.querySelectorAll('[data-screen-add-mode]')];
+const panels={existing:document.getElementById('existing-screen-panel'),new:document.getElementById('new-screen-panel')};
+const description=document.getElementById('screen-add-description');
+function screenMode(mode){tabs.forEach(tab=>{const active=tab.dataset.screenAddMode===mode;tab.classList.toggle('is-active',active);tab.setAttribute('aria-selected',String(active));});Object.entries(panels).forEach(([key,panel])=>panel.hidden=key!==mode);description.textContent=mode==='new'?'기준 화면을 바탕으로 개발할 새 화면 정보를 입력해 주세요.':'현재 운영 화면에서 수정할 화면을 선택해 주세요.';}
+tabs.forEach(tab=>tab.addEventListener('click',()=>screenMode(tab.dataset.screenAddMode)));
+document.getElementById('open-analysis-screen').addEventListener('click',()=>d.showModal());document.getElementById('close-analysis-screen').addEventListener('click',()=>d.close());
+screenMode(location.hash==='#new'?'new':'existing');
+if(location.hash==='#existing'||location.hash==='#new')d.showModal();
+</script>
+</body>
+</html>

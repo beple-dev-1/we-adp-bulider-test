@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{fragments/shell :: layout(${title}, ${shape}, ${current}, ~{:: content})}">
+<body><div th:fragment="content">
+  <header class="page-head list-page-head">
+    <div><h1 class="page-head__title">IA</h1>
+      <p class="page-intro">시스템별 IA를 DB에서 관리하고, 확정할 때 기획 저장소에 게시합니다.</p></div>
+  </header>
+
+  <p class="source-error" th:if="${error}" th:text="${error}"></p>
+  <p class="source-success" th:if="${message}" th:text="${message}"></p>
+
+  <section class="state-panel list-empty-state" role="status" th:if="${#lists.isEmpty(systems)}">
+    <span class="list-empty-state__icon" aria-hidden="true">
+      <svg viewBox="0 0 32 32" fill="none"><path d="M6.5 7.5h19v17h-19z"/><path d="M6.5 19.5h5l2.2 3h4.6l2.2-3h5"/><path d="M11 12h10M11 15.5h7"/></svg>
+    </span>
+    <strong>조회된 내용이 없습니다.</strong>
+  </section>
+
+  <div class="table-wrap table-wrap--tall" th:unless="${#lists.isEmpty(systems)}">
+      <table class="data-table data-table--dense">
+        <thead><tr>
+          <th scope="col">시스템</th>
+          <th scope="col">최종 수정자</th>
+          <th scope="col">최종 수정일</th>
+        </tr></thead>
+        <tbody>
+          <tr th:each="item : ${systems}">
+            <td>
+              <span class="cell">
+                <a class="artifact-list-link"
+                   th:href="@{/projects/{p}/artifacts/menu-tree/{s}(p=${projectId},s=${item.systemCode})}"
+                   th:text="${item.systemLabel}"></a>
+                <span class="cell__sub" th:text="${item.systemCode}"></span>
+              </span>
+            </td>
+            <td th:text="${item.lastModifiedBy} ?: '—'"></td>
+            <td class="num nowrap"
+                th:text="${item.lastModifiedAt == null ? '—' : #temporals.format(item.lastModifiedAt, 'yyyy-MM-dd HH:mm')}"></td>
+          </tr>
+        </tbody>
+      </table>
+  </div>
+</div></body></html>

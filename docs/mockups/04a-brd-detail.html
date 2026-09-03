@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <link rel="stylesheet" href="../../src/main/resources/static/css/tokens.css">
+  <link rel="stylesheet" href="../../src/main/resources/static/css/reset.css">
+  <link rel="stylesheet" href="../../src/main/resources/static/css/typography.css">
+  <link rel="stylesheet" href="../../src/main/resources/static/css/components.css">
+  <link rel="stylesheet" href="../../src/main/resources/static/css/shell.css">
+  <link rel="stylesheet" href="_mock.css">
+  <link rel="stylesheet" href="../../src/main/resources/static/css/screens.css">
+  <link rel="stylesheet" href="_requirement-concepts.css">
+  <link rel="stylesheet" href="_brd-concepts.css">
+  <title>BRD 상세</title>
+</head>
+<body>
+<template id="본문">
+  <div class="brd-concept">
+    <header class="rq-head">
+      <div class="rq-head__copy">
+        <span class="rq-kicker num">BRD-003</span>
+        <h1>전자결재 · 웹뷰</h1>
+      </div>
+      <div class="rq-head__actions">
+        <span class="status-badge status-badge--waiting" id="brd-status">작업 대기</span>
+        <button class="button button--primary" id="start-brd" type="button">작업 시작</button>
+      </div>
+    </header>
+
+    <dl class="rq-meta rq-meta--five">
+      <div><dt>BRD</dt><dd class="num">BRD-003</dd></div>
+      <div><dt>적용 구분</dt><dd><span class="badge badge--outline">익산</span></dd></div>
+      <div><dt>포함 정의서</dt><dd>14건</dd></div>
+      <div><dt>변경 화면</dt><dd>8개</dd></div>
+      <div><dt>확인 필요</dt><dd>2건</dd></div>
+    </dl>
+
+    <main class="bd-summary">
+      <section aria-labelledby="changed-screens-title">
+        <div class="bd-heading"><h2 id="changed-screens-title">변경 대상 화면</h2><span class="badge badge--outline">8개</span></div>
+        <div class="bd-screen-stack">
+          <article class="rq-card bd-screen">
+            <header class="bd-screen__head"><div><span class="rq-kicker num">wv-appr-write</span><h2>결재 문서 작성</h2></div><span class="status-badge status-badge--complete">확정</span></header>
+            <div class="bd-screen__body"><section><h3>연결된 정의서</h3><ul><li><span class="num">RD-014</span> 결재 문서 임시 저장</li><li><span class="num">RD-031</span> 자동 저장 주기</li></ul></section><section><h3>변경 내용</h3><ul><li>상단에 임시 저장 버튼을 추가합니다.</li><li>본문 아래에 자동 저장 상태와 저장 시각을 표시합니다.</li></ul></section></div>
+            <div class="facet-conflict" role="note"><strong>다른 적용 구분에서도 변경하는 화면입니다.</strong><span>적용 구분이 제주인 <a href="04a-brd-detail.html" class="num">BRD-007</a>에서도 같은 화면 ID를 변경 대상으로 지정했습니다. 공통 화면에 미치는 영향을 함께 확인해 주세요.</span></div>
+          </article>
+          <article class="rq-card bd-screen">
+            <header class="bd-screen__head"><div><span class="rq-kicker num">wv-appr-draft-list</span><h2>임시 저장 문서함</h2></div><span class="status-badge status-badge--complete">확정</span></header>
+            <div class="bd-screen__body"><section><h3>연결된 정의서</h3><ul><li><span class="num">RD-033</span> 임시 저장 문서 이어쓰기</li></ul></section><section><h3>변경 내용</h3><ul><li>저장한 문서를 목록으로 보여줍니다.</li><li>문서를 선택하면 작성 화면에서 이어씁니다.</li></ul></section></div>
+          </article>
+          <article class="rq-card bd-screen">
+            <header class="bd-screen__head"><div><span class="rq-kicker num">wv-appr-detail</span><h2>결재 문서 상세</h2></div><span class="status-badge status-badge--review">확인 필요</span></header>
+            <div class="bd-screen__body"><section><h3>연결된 정의서</h3><ul><li><span class="num">RD-033</span> 임시 저장 문서 이어쓰기</li></ul></section><section><h3>확인할 내용</h3><p>이 화면을 작업 범위에서 제외하고 임시 저장 문서함에서 바로 이어쓰게 할지 확인합니다.</p></section></div>
+          </article>
+        </div>
+        <div class="bd-more"><p>그 외 화면 5개가 작업 범위에 포함되어 있습니다.</p><button class="button button--small" type="button">전체 화면 보기</button></div>
+      </section>
+
+      <div class="bd-scope-grid">
+        <section class="rq-card"><div class="rq-card__head"><h2>포함 요구사항정의서</h2><span class="badge badge--outline">14건</span></div><div class="rq-card__body"><ul class="bd-compact-list"><li><span class="num">RD-014</span> 결재 문서 임시 저장</li><li><span class="num">RD-031</span> 작성 내용 자동 저장 주기</li><li><span class="num">RD-033</span> 임시 저장 문서 이어쓰기</li></ul><button class="button button--small bd-card-action" type="button">전체 정의서 보기</button></div></section>
+        <section class="rq-card"><div class="rq-card__head"><h2>화면 외 구현 요건</h2><span class="badge badge--outline">2건</span></div><div class="rq-card__body"><ul class="bd-compact-list"><li>자동 저장 데이터 보관</li><li>중복 저장 방지</li></ul></div></section>
+        <section class="rq-card"><div class="rq-card__head"><h2>메뉴구조 변경</h2><span class="badge badge--outline">1건</span></div><div class="rq-card__body"><p class="rq-copy">전자결재 아래에 임시 저장 문서함을 추가합니다.</p></div></section>
+      </div>
+    </main>
+  </div>
+</template>
+<script src="_shell.js"></script>
+<script>
+  틀({제목:'BRD 상세',모양:'산출물',지금:'brd',프로젝트이름:'G2C',프로젝트번호:1,프로젝트들:['G2C','서울페이'],사람:'이영희',안읽은알림:2});
+  document.getElementById('start-brd').addEventListener('click', event => {
+    const status = document.getElementById('brd-status');
+    status.textContent = '작업중';
+    status.classList.replace('status-badge--waiting', 'status-badge--progress');
+    event.currentTarget.textContent = '작업 시작 완료';
+    event.currentTarget.disabled = true;
+  });
+</script>
+<script src="_claude-window.js"></script>
+<script src="_brd-concepts.js"></script>
+</body>
+</html>

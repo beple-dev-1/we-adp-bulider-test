@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.bizplay.builder.frd.FrdScreenMarkerMapper">
+
+    <resultMap id="screenMarker" type="com.bizplay.builder.frd.FrdScreenMarker">
+        <constructor>
+            <idArg column="id" javaType="java.lang.String"/>
+            <arg column="frd_screen_id" javaType="java.lang.String"/>
+            <arg column="marker_no" javaType="java.lang.Integer"/>
+            <arg column="author_account_id" javaType="java.lang.String"/>
+            <arg column="author_name" javaType="java.lang.String"/>
+            <arg column="selector" javaType="java.lang.String"/>
+            <arg column="element_label" javaType="java.lang.String"/>
+            <arg column="relative_x" javaType="java.lang.Double"/>
+            <arg column="relative_y" javaType="java.lang.Double"/>
+            <arg column="document_x" javaType="java.lang.Double"/>
+            <arg column="document_y" javaType="java.lang.Double"/>
+            <arg column="description" javaType="java.lang.String"/>
+            <arg column="created_at" javaType="java.time.Instant"/>
+            <arg column="updated_at" javaType="java.time.Instant"/>
+        </constructor>
+    </resultMap>
+
+    <sql id="columns">
+        id, frd_screen_id, marker_no, author_account_id, author_name,
+        selector, element_label, relative_x, relative_y, document_x, document_y,
+        description, created_at, updated_at
+    </sql>
+
+    <insert id="insert" parameterType="com.bizplay.builder.frd.FrdScreenMarker">
+        insert into builder.adk_builder_frd_screen_marker
+               (<include refid="columns"/>)
+        values (#{id}, #{frdScreenId}, #{markerNo}, #{authorAccountId}, #{authorName},
+                #{selector}, #{elementLabel}, #{relativeX}, #{relativeY}, #{documentX}, #{documentY},
+                #{description}, #{createdAt}, #{updatedAt})
+    </insert>
+
+    <select id="selectById" parameterType="java.lang.String" resultMap="screenMarker">
+        select <include refid="columns"/>
+          from builder.adk_builder_frd_screen_marker
+         where id = #{id}
+    </select>
+
+    <select id="selectByScreenId" parameterType="java.lang.String" resultMap="screenMarker">
+        select <include refid="columns"/>
+          from builder.adk_builder_frd_screen_marker
+         where frd_screen_id = #{frdScreenId}
+         order by marker_no
+    </select>
+
+    <select id="selectNextMarkerNo" parameterType="java.lang.String" resultType="int">
+        select coalesce(max(marker_no), 0) + 1
+          from builder.adk_builder_frd_screen_marker
+         where frd_screen_id = #{frdScreenId}
+    </select>
+
+    <update id="updateDescription">
+        update builder.adk_builder_frd_screen_marker
+           set description = #{description}, updated_at = #{updatedAt}
+         where id = #{id}
+    </update>
+
+    <delete id="deleteById" parameterType="java.lang.String">
+        delete from builder.adk_builder_frd_screen_marker where id = #{id}
+    </delete>
+</mapper>

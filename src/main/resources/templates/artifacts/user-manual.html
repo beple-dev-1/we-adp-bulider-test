@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<body>
+<dialog th:fragment="layer" class="dialog dialog--layer feature-spec-dialog user-manual-dialog"
+        id="user-manual-dialog" aria-modal="true" aria-labelledby="user-manual-dialog-title"
+        aria-describedby="user-manual-dialog-description"
+        th:attr="data-user-manual-poll=${running}">
+  <div class="feature-spec-dialog__frame">
+    <header class="dialog__header feature-spec-dialog__header">
+      <div class="dialog__header-copy">
+        <span class="dialog__kicker">사용자 매뉴얼</span>
+        <h2 class="dialog__title" id="user-manual-dialog-title" tabindex="-1" th:text="${screenTitle}">화면명</h2>
+        <p class="dialog__description" id="user-manual-dialog-description"
+           th:text="${systemLabel} + ' · ' + ${managementNumber}">시스템 · 관리번호</p>
+      </div>
+      <button class="dialog__close" type="button" data-user-manual-close aria-label="사용자 매뉴얼 닫기"></button>
+    </header>
+
+    <div class="dialog__body feature-spec-dialog__body user-manual-dialog__body">
+      <div class="artifact-generation-layout" th:if="${running and !hasManual}">
+        <section class="artifact-generation" aria-live="polite">
+          <p class="artifact-generation__label"><span class="artifact-generation__dot" aria-hidden="true"></span>산출물 준비 중</p>
+          <h3>사용자 매뉴얼을 작성하고 있습니다</h3>
+          <p class="artifact-generation__description">운영 화면과 화면 명세를 확인해 사용 순서와 항목 설명을 정리하고 있습니다.</p>
+          <div class="artifact-generation__track" aria-hidden="true"></div>
+          <p class="artifact-generation__note">완료되면 이 레이어가 자동으로 갱신됩니다.</p>
+        </section>
+        <div class="artifact-generation-paper" aria-hidden="true">
+          <div class="artifact-generation-paper__head">
+            <i class="artifact-generation-paper__kind"></i><i class="artifact-generation-paper__title"></i>
+            <div class="artifact-generation-paper__meta"><div><i></i><i></i></div><div><i></i><i></i></div><div><i></i><i></i></div><div><i></i><i></i></div></div>
+          </div>
+          <div class="artifact-generation-paper__section"><i class="artifact-generation-paper__section-title"></i><i class="artifact-generation-paper__section-rule"></i><i class="artifact-generation-paper__section-line"></i><i class="artifact-generation-paper__section-line artifact-generation-paper__section-line--medium"></i></div>
+          <div class="artifact-generation-paper__section"><i class="artifact-generation-paper__section-title"></i><i class="artifact-generation-paper__section-rule"></i><i class="artifact-generation-paper__section-line"></i><i class="artifact-generation-paper__section-line artifact-generation-paper__section-line--short"></i></div>
+        </div>
+      </div>
+
+      <section class="artifact-generation artifact-generation--refreshing"
+               th:if="${running and hasManual}" aria-live="polite">
+        <p class="artifact-generation__label"><span class="artifact-generation__dot" aria-hidden="true"></span>산출물 업데이트 중</p>
+        <h3>사용자 매뉴얼을 업데이트하고 있습니다</h3>
+        <p class="artifact-generation__description">완료되기 전까지 아래에서 마지막 정상 매뉴얼을 계속 확인할 수 있습니다.</p>
+        <div class="artifact-generation__track" aria-hidden="true"></div>
+        <p class="artifact-generation__note">완료되면 아래 문서가 최신 내용으로 자동 갱신됩니다.</p>
+      </section>
+
+      <section class="state-panel state-panel--error" th:if="${failed and !hasManual}" role="alert">
+        <h3>매뉴얼을 만들지 못했습니다</h3>
+        <p th:text="${failedMessage}"></p>
+      </section>
+      <section class="state-panel state-panel--attention" th:if="${failed and hasManual}" role="alert">
+        <h3>새 매뉴얼을 만들지 못했습니다</h3>
+        <p th:text="${failedMessage} + ' 아래에는 마지막으로 정상 생성된 매뉴얼을 표시합니다.'"></p>
+      </section>
+      <section class="state-panel state-panel--attention" th:if="${outdated and !running and !failed}">
+        <h3>운영 화면이 매뉴얼보다 새롭습니다</h3>
+        <p>화면 변경 내용을 반영하려면 매뉴얼을 다시 만들어 주세요.</p>
+      </section>
+      <section class="state-panel" th:if="${missing}">
+        <h3>아직 만든 매뉴얼이 없습니다</h3>
+        <p>운영 화면과 화면 명세를 바탕으로 이 화면의 사용자 매뉴얼을 만들 수 있습니다.</p>
+      </section>
+
+      <article class="user-manual-official" th:if="${hasManual}">
+        <iframe class="user-manual-dialog__preview" sandbox="allow-same-origin"
+                th:title="${screenTitle} + ' 사용자 매뉴얼'"
+                th:src="@{/projects/{p}/artifacts/user-manual/preview/{sys}/{s}(p=${projectId},sys=${layerSystemCode},s=${layerScreenId})}"></iframe>
+      </article>
+    </div>
+
+    <footer class="dialog__actions feature-spec-dialog__actions user-manual-dialog__actions">
+      <button class="button" type="button" data-user-manual-close>닫기</button>
+    </footer>
+  </div>
+</dialog>
+</body>
+</html>

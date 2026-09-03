@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{fragments/shell :: layout('설정된 프로젝트 없음', '카드', null, ~{:: content})}">
+<body>
+<div th:fragment="content">
+  <section class="setup-screen project-empty-screen" aria-labelledby="project-empty-title">
+    <header class="setup-header">
+      <a class="setup-brand" th:href="@{/projects}">WE-ADP <span>Builder</span></a>
+      <span class="project-empty-user"
+            th:text="|${#authentication.principal.name} 기획자|">이영희 기획자</span>
+    </header>
+
+    <div class="setup-intro">
+      <p>로그인 완료</p>
+      <h1 id="project-empty-title">설정된 프로젝트가 없습니다</h1>
+      <span>현재 계정으로 열 수 있는 프로젝트가 없어 Builder 업무 화면으로 이동할 수 없습니다.</span>
+    </div>
+
+    <section class="state-panel state-panel--info project-empty-state" role="status"
+             aria-labelledby="project-empty-title">
+      <span class="project-empty-state__icon" aria-hidden="true">!</span>
+      <div>
+        <strong>관리자에게 프로젝트 설정을 요청해 주세요.</strong>
+        <p>프로젝트 설정이 완료된 뒤 다시 로그인하면 작업을 시작할 수 있습니다.</p>
+      </div>
+    </section>
+
+    <form class="setup-form project-empty-action" method="post" th:action="@{/logout}">
+      <button type="submit">로그인 화면으로 돌아가기</button>
+    </form>
+  </section>
+</div>
+</body>
+</html>

@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<body>
+<dialog th:fragment="layer" class="dialog dialog--layer feature-spec-dialog screen-design-dialog"
+        id="screen-design-dialog" aria-modal="true" aria-labelledby="screen-design-dialog-title"
+        aria-describedby="screen-design-dialog-description"
+        th:attr="data-screen-design-poll=${polling},data-screen-design-status-url=@{/projects/{p}/artifacts/screen-designs/{sys}/{s}/status(p=${projectId},sys=${layerSystemCode},s=${layerScreenId})}">
+  <div class="feature-spec-dialog__frame screen-design-dialog__frame">
+    <header class="dialog__header feature-spec-dialog__header">
+      <div class="dialog__header-copy">
+        <span class="dialog__kicker">화면설계서</span>
+        <h2 class="dialog__title" id="screen-design-dialog-title" tabindex="-1"
+            th:text="${screenTitle}">화면명</h2>
+        <p class="dialog__description" id="screen-design-dialog-description"
+           th:text="${systemLabel} + ' · ' + ${managementNumber}">시스템 · 관리번호</p>
+      </div>
+      <button class="dialog__close" type="button" data-screen-design-close
+              aria-label="화면설계서 닫기"></button>
+    </header>
+
+    <div class="dialog__body feature-spec-dialog__body screen-design-dialog__body">
+      <div class="artifact-generation-layout" th:if="${documentState.name() == 'PREPARING'}">
+        <section class="artifact-generation" aria-live="polite">
+          <p class="artifact-generation__label"><span class="artifact-generation__dot" aria-hidden="true"></span>산출물 준비 중</p>
+          <h3>화면설계서를 작성하고 있습니다</h3>
+          <p class="artifact-generation__description">화면 구성과 이동 정보를 확인해 제출용 문서로 정리하고 있습니다.</p>
+          <div class="artifact-generation__track" aria-hidden="true"></div>
+          <p class="artifact-generation__note">완료되면 이 레이어가 자동으로 갱신됩니다.</p>
+        </section>
+        <div class="artifact-generation-paper" aria-hidden="true">
+          <div class="artifact-generation-paper__head">
+            <i class="artifact-generation-paper__kind"></i><i class="artifact-generation-paper__title"></i>
+            <div class="artifact-generation-paper__meta"><div><i></i><i></i></div><div><i></i><i></i></div><div><i></i><i></i></div><div><i></i><i></i></div></div>
+          </div>
+          <div class="artifact-generation-paper__section"><i class="artifact-generation-paper__section-title"></i><i class="artifact-generation-paper__section-rule"></i><i class="artifact-generation-paper__section-line"></i><i class="artifact-generation-paper__section-line artifact-generation-paper__section-line--medium"></i></div>
+          <div class="artifact-generation-paper__section"><i class="artifact-generation-paper__section-title"></i><i class="artifact-generation-paper__section-rule"></i><i class="artifact-generation-paper__section-line"></i><i class="artifact-generation-paper__section-line artifact-generation-paper__section-line--short"></i></div>
+        </div>
+      </div>
+
+      <section class="artifact-generation artifact-generation--refreshing"
+               th:if="${documentState.name() == 'REFRESHING'}" aria-live="polite">
+        <p class="artifact-generation__label"><span class="artifact-generation__dot" aria-hidden="true"></span>산출물 업데이트 중</p>
+        <h3>화면설계서를 업데이트하고 있습니다</h3>
+        <p class="artifact-generation__description">완료되기 전까지 아래에서 마지막 정상 개정본을 계속 확인할 수 있습니다.</p>
+        <div class="artifact-generation__track" aria-hidden="true"></div>
+        <p class="artifact-generation__note">완료되면 아래 문서가 최신 내용으로 자동 갱신됩니다.</p>
+      </section>
+
+      <section class="state-panel state-panel--error" th:if="${documentState.name() == 'FAILED_EMPTY'}" role="alert">
+        <h3>화면설계서를 만들지 못했습니다</h3>
+        <p th:text="${failureMessage}"></p>
+      </section>
+
+      <section class="state-panel state-panel--attention" th:if="${documentState.name() == 'FAILED_STALE'}" role="alert">
+        <h3>새 화면설계서를 만들지 못했습니다</h3>
+        <p th:text="${failureMessage} + ' 아래에는 마지막으로 정상 생성된 개정본을 표시합니다.'"></p>
+      </section>
+
+      <section class="screen-design-preview" th:if="${hasDocument}" aria-label="화면설계서 내용">
+        <article class="screen-design-paper official-document">
+          <header class="official-document__head">
+            <p class="official-document__kind">화면설계서</p>
+            <p class="official-document__title" th:text="${screenTitle}">화면명</p>
+            <dl class="official-document__meta">
+              <div><dt>시스템</dt><dd th:text="${systemLabel}">시스템</dd></div>
+              <div><dt>화면 ID</dt><dd class="num" th:text="${layerScreenId}">SCREEN-001</dd></div>
+              <div><dt>개정</dt><dd th:text="${document.revisionNo} + '차'">1차</dd></div>
+              <div><dt>작성일</dt><dd th:text="${#temporals.format(document.createdAt, 'yyyy-MM-dd')}">2026-08-28</dd></div>
+            </dl>
+          </header>
+
+          <div class="official-document__body screen-design-paper__body">
+            <section class="screen-design-overview" aria-labelledby="screen-design-overview-title">
+              <h3 id="screen-design-overview-title">1. 화면 개요</h3>
+              <dl class="screen-design-document__definitions">
+                <dt>화면 목적</dt><dd th:text="${screenDesignContent.purpose}"></dd>
+                <dt>IA 메뉴 경로</dt><dd th:text="${#strings.isEmpty(screenDesignContent.menuPath)} ? '—' : ${screenDesignContent.menuPath}"></dd>
+                <dt>적용 구분</dt><dd th:text="${#strings.isEmpty(screenDesignContent.applicationScope)} ? '—' : ${screenDesignContent.applicationScope}"></dd>
+                <dt>화면 최종 수정</dt><dd class="num" th:text="${sourceDate}"></dd>
+              </dl>
+            </section>
+
+            <section class="screen-design-captures" th:if="${captures != null and !#lists.isEmpty(captures)}"
+                     aria-labelledby="screen-design-captures-title">
+              <h3 id="screen-design-captures-title">2. 화면 구성</h3>
+              <figure th:each="capture, status : ${captures}">
+                <h4 th:text="'2.' + ${status.count} + ' ' + ${capture.label}"></h4>
+                <div class="screen-design-capture-canvas">
+                  <img th:src="${capture.imageUrl}" th:alt="${capture.label}">
+                </div>
+                <figcaption>번호 표시는 아래 화면 요소 명세의 번호와 일치합니다.</figcaption>
+              </figure>
+            </section>
+
+            <div th:utext="${documentBody}"></div>
+          </div>
+
+          <footer class="official-document__foot">
+            <span>화면 HTML · 화면 명세 · IA 기준</span>
+            <span th:text="${'화면설계서 ' + document.revisionNo + '차 · ' + #temporals.format(document.createdAt, 'yyyy-MM-dd')}">화면설계서 1차 · 2026-08-28</span>
+          </footer>
+        </article>
+      </section>
+    </div>
+
+    <footer class="dialog__actions feature-spec-dialog__actions screen-design-dialog__actions">
+      <button class="button" type="button" data-screen-design-close>닫기</button>
+    </footer>
+  </div>
+</dialog>
+</body>
+</html>

@@ -1,0 +1,298 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <link rel="stylesheet" href="../../src/main/resources/static/css/tokens.css">
+  <link rel="stylesheet" href="../../src/main/resources/static/css/reset.css">
+  <link rel="stylesheet" href="../../src/main/resources/static/css/typography.css">
+  <link rel="stylesheet" href="../../src/main/resources/static/css/components.css">
+  <link rel="stylesheet" href="../../src/main/resources/static/css/shell.css">
+  <link rel="stylesheet" href="_mock.css">
+  <link rel="stylesheet" href="../../src/main/resources/static/css/screens.css">
+  <title>SRT 상세 레이어 시안</title>
+  <style>
+    .srt-sample-dialog[open] {
+      display: grid;
+      grid-template-rows: auto minmax(0, 1fr) auto;
+    }
+
+    .srt-sample-dialog > .dialog__body {
+      padding-block: 0;
+      overflow-y: auto;
+      overscroll-behavior: contain;
+      scrollbar-color: #aaa8a4 transparent;
+      scrollbar-gutter: stable;
+      scrollbar-width: thin;
+    }
+
+    .srt-sample-dialog > .dialog__body::-webkit-scrollbar { width: 10px; }
+    .srt-sample-dialog > .dialog__body::-webkit-scrollbar-thumb {
+      border: 3px solid transparent;
+      border-radius: var(--radius-pill);
+      background: #aaa8a4;
+      background-clip: padding-box;
+    }
+
+    .srt-sample-source,
+    .srt-sample-analysis { padding-block: 24px; }
+
+    .srt-sample-analysis { border-top: 1px solid var(--color-line); }
+
+    .srt-sample-section-head {
+      margin-bottom: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: var(--space-3);
+    }
+
+    .srt-sample-section-head h3 {
+      margin: 0;
+      font-size: .875rem;
+      font-weight: 700;
+      line-height: 1.4;
+    }
+
+    .srt-sample-section-head span {
+      color: var(--color-muted);
+      font-size: .72rem;
+    }
+
+    .srt-sample-request {
+      margin: 0;
+      overflow-wrap: anywhere;
+      white-space: pre-line;
+      font-size: .875rem;
+      line-height: 1.78;
+    }
+
+    .srt-sample-file {
+      min-height: 58px;
+      margin-top: 20px;
+      padding: 10px 12px;
+      display: grid;
+      grid-template-columns: 36px minmax(0, 1fr) auto;
+      align-items: center;
+      gap: 11px;
+      border: 1px solid var(--color-line);
+      border-radius: var(--radius-control);
+      color: inherit;
+      background: var(--color-paper);
+      text-decoration: none;
+    }
+
+    .srt-sample-file__icon {
+      width: 36px;
+      height: 36px;
+      display: grid;
+      place-items: center;
+      border-radius: 7px;
+      color: var(--color-action-primary);
+      background: var(--color-action-primary-soft);
+    }
+
+    .srt-sample-file__icon svg {
+      width: 18px;
+      height: 18px;
+      fill: none;
+      stroke: currentColor;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      stroke-width: 1.8;
+    }
+
+    .srt-sample-file__copy { min-width: 0; }
+    .srt-sample-file__copy strong,
+    .srt-sample-file__copy small { display: block; }
+    .srt-sample-file__copy strong {
+      overflow: hidden;
+      font-size: .8125rem;
+      font-weight: 650;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .srt-sample-file__copy small {
+      margin-top: 2px;
+      color: var(--color-muted);
+      font-size: .72rem;
+    }
+    .srt-sample-file__action {
+      color: var(--color-action-primary);
+      font-size: .75rem;
+      font-weight: 700;
+    }
+
+    .srt-sample-analysis__lead {
+      margin: 0;
+      padding: 14px 16px;
+      border-left: 3px solid var(--color-action-primary);
+      color: #3f3550;
+      background: #faf8fd;
+      font-size: .8125rem;
+      line-height: 1.7;
+    }
+
+    .srt-sample-analysis-grid {
+      margin-top: 20px;
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 28px;
+    }
+
+    .srt-sample-analysis-group h4 {
+      margin: 0 0 10px;
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      color: var(--color-muted);
+      font-size: .75rem;
+      font-weight: 700;
+    }
+
+    .srt-sample-analysis-group h4 span {
+      min-width: 20px;
+      height: 20px;
+      padding-inline: 6px;
+      display: inline-grid;
+      place-items: center;
+      border-radius: var(--radius-pill);
+      color: #4f367d;
+      background: var(--color-action-primary-soft);
+      font-size: .68rem;
+    }
+
+    .srt-sample-analysis-group ul {
+      margin: 0;
+      padding: 0;
+      display: grid;
+      gap: 8px;
+      list-style: none;
+    }
+
+    .srt-sample-analysis-group li {
+      position: relative;
+      padding-left: 16px;
+      font-size: .8125rem;
+      line-height: 1.6;
+    }
+
+    .srt-sample-analysis-group li::before {
+      content: "";
+      position: absolute;
+      top: .67em;
+      left: 1px;
+      width: 5px;
+      height: 5px;
+      border-radius: 50%;
+      background: var(--color-action-primary);
+    }
+
+    .srt-sample-dialog .dialog__actions .button { min-width: 88px; }
+    .srt-sample-dialog .dialog__actions .button--primary { min-width: 148px; }
+
+    @media (max-width: 720px) {
+      .srt-sample-dialog > .dialog__body { padding: 0 18px; }
+      .srt-sample-dialog .dialog__actions { padding: 12px 18px; }
+      .srt-sample-source,
+      .srt-sample-analysis { padding-block: 20px; }
+      .srt-sample-analysis-grid { grid-template-columns: 1fr; gap: 20px; }
+      .srt-sample-file { grid-template-columns: 36px minmax(0, 1fr); }
+      .srt-sample-file__action { display: none; }
+      .srt-sample-dialog .dialog__actions .button--primary { grid-column: auto; }
+    }
+  </style>
+</head>
+<body>
+<template id="본문">
+  <div class="page-head list-page-head">
+    <div>
+      <h1 class="page-head__title">SRT</h1>
+      <p class="page-intro">간단한 개발 요청을 등록하고 개발요청서로 전환합니다.</p>
+    </div>
+    <button class="button button--primary" type="button">SRT 등록</button>
+  </div>
+
+  <div class="summary-strip"><span>전체 <strong>12</strong>건</span><span>생성 대기 <strong>4</strong>건</span><span>완료 <strong>8</strong>건</span></div>
+
+  <form class="filter-bar" action="#" role="search">
+    <div class="field"><label class="field__label" for="sample-owner">담당자</label><select class="field__control" id="sample-owner"><option>담당자 전체</option></select></div>
+    <div class="field"><label class="field__label" for="sample-status">상태</label><select class="field__control" id="sample-status"><option>상태 전체</option></select></div>
+    <div class="field"><label class="field__label" for="sample-search">SRT 검색</label><input class="field__control" id="sample-search" type="search" placeholder="SRT 번호 또는 제목"></div>
+  </form>
+
+  <div class="table-wrap" tabindex="0" aria-label="SRT 목록 표">
+    <table class="data-table">
+      <thead><tr><th scope="col">SRT</th><th scope="col">제목</th><th scope="col">등록 방식</th><th scope="col">상태</th><th scope="col">담당자</th><th scope="col">생성일시</th></tr></thead>
+      <tbody><tr><td class="num">SRT-012</td><td>탐나는전 카드 가맹점 신청 사업자등록증 첨부 파일 확인 요청</td><td>플로우 등록</td><td><span class="status-badge status-badge--waiting">생성 대기</span></td><td>이서</td><td class="num">2026-09-01 20:00</td></tr></tbody>
+    </table>
+  </div>
+
+  <dialog class="dialog dialog--layer srt-sample-dialog" id="srt-sample-dialog" aria-modal="true" aria-labelledby="srt-sample-title" aria-describedby="srt-sample-description">
+    <header class="dialog__header">
+      <div class="dialog__header-copy">
+        <span class="dialog__kicker num">SRT-012</span>
+        <h2 class="dialog__title" id="srt-sample-title">탐나는전 카드 가맹점 신청 사업자등록증 첨부 파일 확인 요청</h2>
+        <p class="dialog__description" id="srt-sample-description">플로우 등록 · 이서 · 2026-09-01 20:00</p>
+      </div>
+      <button class="dialog__close" id="close-srt-sample" type="button" aria-label="SRT 상세 레이어 닫기"></button>
+    </header>
+
+    <div class="dialog__body">
+      <section class="srt-sample-source" aria-labelledby="srt-source-title">
+        <div class="srt-sample-section-head"><h3 id="srt-source-title">요청 내용</h3><span>플로우 원문</span></div>
+        <p class="srt-sample-request">배찬종 부장님, 안녕하세요.
+
+카드 가맹점 신청 시 첨부 가능한 사업자등록증 파일 형식이 jpg, jpeg, png, pdf로만 알고 있는데 아래 신규 신청 가맹점 조회 시 사업자등록증을 다운로드 받으면 mp4 파일로 저장되고 있어 사유 파악 부탁드립니다.
+
+직가맹ID : 26082800898007
+사업자번호 : 4291302965
+가맹점명 : 주식맛집</p>
+
+        <a class="srt-sample-file" href="#" download>
+          <span class="srt-sample-file__icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><path d="M14 2v6h6M8 15h8M8 18h5"/></svg></span>
+          <span class="srt-sample-file__copy"><strong>첨부파일 1</strong><small>파일 형식 미확인 · 3.7 MB</small></span>
+          <span class="srt-sample-file__action">다운로드</span>
+        </a>
+      </section>
+
+      <section class="srt-sample-analysis" aria-labelledby="srt-analysis-title">
+        <div class="srt-sample-section-head"><h3 id="srt-analysis-title">AI 분석</h3><span>요청 정리 완료</span></div>
+        <p class="srt-sample-analysis__lead">첨부파일의 응답 형식이 허용된 이미지·PDF가 아닌 MP4로 저장되는 문제입니다. 다운로드 응답과 파일 메타정보를 함께 확인하는 개발 요청으로 정리했습니다.</p>
+
+        <div class="srt-sample-analysis-grid">
+          <section class="srt-sample-analysis-group" aria-labelledby="requirements-title">
+            <h4 id="requirements-title">정리된 요구사항 <span>2</span></h4>
+            <ul>
+              <li>가맹점 신청의 사업자등록증 다운로드 응답 형식을 확인합니다.</li>
+              <li>허용 형식이 아닌 MP4로 저장되는 원인을 수정합니다.</li>
+            </ul>
+          </section>
+          <section class="srt-sample-analysis-group" aria-labelledby="conditions-title">
+            <h4 id="conditions-title">완료 조건 <span>2</span></h4>
+            <ul>
+              <li>원본 파일 형식과 이름으로 정상 다운로드됩니다.</li>
+              <li>허용되지 않은 형식은 저장 전에 오류로 안내됩니다.</li>
+            </ul>
+          </section>
+        </div>
+      </section>
+    </div>
+
+    <div class="dialog__actions">
+      <p class="dialog__action-note">개발요청서 생성 전까지 삭제할 수 있습니다.</p>
+      <button class="button button--danger-outline" type="button">삭제</button>
+      <button class="button button--primary" type="button">개발요청서 생성</button>
+    </div>
+  </dialog>
+</template>
+<script src="_shell.js"></script>
+<script>
+틀({제목:'SRT 상세 레이어 시안',모양:'산출물',지금:'srts',프로젝트이름:'G2C',프로젝트번호:1,프로젝트들:['G2C','서울페이'],사람:'이영희',안읽은알림:2});
+const 상세레이어=document.getElementById('srt-sample-dialog');
+상세레이어.showModal();
+document.activeElement?.blur();
+document.getElementById('close-srt-sample').addEventListener('click',()=>상세레이어.close());
+</script>
+</body>
+</html>

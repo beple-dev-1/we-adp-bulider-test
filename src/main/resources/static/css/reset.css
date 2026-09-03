@@ -1,0 +1,13 @@
+*, *::before, *::after { box-sizing: border-box; }
+html { color: var(--color-ink); background: var(--color-paper); font-family: var(--font-sans); }
+body { min-width: 320px; margin: 0; }
+button, input, textarea, select { color: inherit; font: inherit; }
+button, a { -webkit-tap-highlight-color: transparent; }
+img, svg { display: block; max-width: 100%; }
+[hidden] { display: none !important; }
+:focus-visible { outline: 3px solid var(--color-lilac); outline-offset: 2px; }
+.skip-link { position: fixed; z-index: 1000; top: var(--space-2); left: var(--space-2); padding: var(--space-2) var(--space-3); transform: translateY(-160%); border-radius: var(--radius-control); background: var(--color-ink); color: var(--color-canvas); }
+.skip-link:focus { transform: translateY(0); }
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { scroll-behavior: auto !important; transition-duration: 0.01ms !important; animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; }
+}

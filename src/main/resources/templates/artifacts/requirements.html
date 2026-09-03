@@ -1,0 +1,162 @@
+<!doctype html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{fragments/shell :: layout(${title}, ${shape}, ${current}, ~{:: content})}">
+<body>
+<div th:fragment="content">
+
+  <!--/*
+    목업 docs/mockups/02-requirements.html 이 정본이다.
+    ⛔ 「정의서 생성 요청」 열과 거르개는 잠긴 자리다 (2026-08-16 병주 확정) —
+       요구사항정의서는 계획 3 이라 만드는 기계가 없다. 값을 찍는 길을 만들지 마라.
+    ⚠ 「제외」는 목업에 없던 것이다. 목업에 제외 개념이 아예 없어서 더했다 —
+       안 더하면 전체와 상태별 합이 어긋나는데 그 까닭이 화면에 안 적힌다.
+  */-->
+
+  <div class="page-head"><h1 class="page-head__title">요구사항</h1></div>
+  <p class="page-intro">받은 문서와 기획 저장소를 참고해 AI가 생성한 요구사항을 확인하고, 확정과 정의서 생성 요청을 관리합니다.</p>
+
+  <div class="summary-strip" aria-label="요구사항 현황" th:if="${totalCount > 0}">
+    <span>전체 <strong class="num" th:text="${totalCount}"></strong></span>
+    <span>생성 완료 <strong class="num" th:text="${draftedCount}"></strong></span>
+    <span>확정 완료 <strong class="num" th:text="${confirmedCount}"></strong></span>
+    <span>제외 <strong class="num" th:text="${excludedCount}"></strong></span>
+    <span>정의서 생성 요청 <strong class="num">0</strong></span>
+  </div>
+
+  <form class="filter-bar" th:if="${totalCount > 0}"
+        th:classappend="${hasFacets} ? 'filter-bar--five' : 'filter-bar--four'"
+        method="get" role="search"
+        th:action="@{/projects/{p}/artifacts/requirements(p=${projectId})}">
+    <div class="field">
+      <label class="field__label" for="req-search">요구 내용 검색</label>
+      <input class="field__control" id="req-search" name="query" type="search"
+             placeholder="번호 또는 요구 내용을 입력하세요" th:value="${query}">
+    </div>
+    <div class="field">
+      <label class="field__label" for="req-source">출처 문서</label>
+      <select class="field__control" id="req-source" name="sourceIntakeId">
+        <option value="">전체</option>
+        <option th:each="source : ${sourceDocuments}" th:value="${source.key}"
+                th:text="${source.value}" th:selected="${source.key == sourceFilter}"></option>
+      </select>
+    </div>
+    <div class="field">
+      <label class="field__label" for="req-status">요구사항 상태</label>
+      <select class="field__control" id="req-status" name="reviewState">
+        <option value="">전체</option>
+        <option th:each="state : ${reviewStates}" th:value="${state.label()}"
+                th:text="${state.label()}" th:selected="${state.label() == reviewStateFilter}"></option>
+      </select>
+    </div>
+    <!--/* ⛔ 잠긴 칸이다. name 을 주지 않는다 — 주면 안 걸리는 조건이 주소에 붙는다. */-->
+    <div class="field">
+      <label class="field__label" for="req-definition-request">정의서 생성 요청</label>
+      <select class="field__control" id="req-definition-request" disabled
+              title="요구사항정의서는 다음 단계에서 열립니다.">
+        <option>요청 전</option>
+      </select>
+    </div>
+    <div class="field" th:if="${hasFacets}">
+      <label class="field__label" for="req-facet">적용 구분</label>
+      <select class="field__control" id="req-facet" name="facet">
+        <option value="">전체</option>
+        <option th:each="name : ${availableFacets}" th:value="${name}" th:text="${name}"
+                th:selected="${name == facetFilter}"></option>
+      </select>
+    </div>
+  </form>
+
+  <section class="state-panel list-empty-state" role="status" th:if="${matchedCount == 0}">
+    <span class="list-empty-state__icon" aria-hidden="true">
+      <svg viewBox="0 0 32 32" fill="none"><path d="M6.5 7.5h19v17h-19z"/><path d="M6.5 19.5h5l2.2 3h4.6l2.2-3h5"/><path d="M11 12h10M11 15.5h7"/></svg>
+    </span>
+    <strong>조회된 내용이 없습니다.</strong>
+  </section>
+
+  <div class="table-wrap table-wrap--tall" th:if="${matchedCount > 0}">
+    <table class="data-table data-table--dense requirements-table">
+      <thead>
+        <tr>
+          <th scope="col">번호</th>
+          <th scope="col">요구 사항</th>
+          <th scope="col">출처 문서</th>
+          <th scope="col" th:if="${hasFacets}">적용 구분</th>
+          <th scope="col">요구사항 상태</th>
+          <th scope="col">정의서 생성 요청</th>
+          <th scope="col">요구사항정의서</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr th:each="row : ${rows}">
+          <td class="num nowrap" th:text="${row.code}"></td>
+          <td>
+            <span class="cell">
+              <a class="document-link"
+                 th:href="@{/projects/{p}/artifacts/requirements/{r}(p=${projectId},r=${row.id})}"
+                 th:text="${row.title}"></a>
+              <!--/* ⚠ 뺀 까닭을 목록에서 바로 읽는다 — 상세로 들어가야 알 수 있으면 안 읽는다 */-->
+              <span class="cell__sub" th:if="${row.excludedReason != null}"
+                    th:text="${row.excludedReason}"></span>
+            </span>
+          </td>
+          <td>
+            <a class="document-link"
+               th:href="@{/projects/{p}/artifacts/received-docs/{i}(p=${projectId},i=${row.sourceIntakeId})}"
+               th:text="${row.sourceTitle}"></a>
+          </td>
+          <td th:if="${hasFacets}">
+            <span class="facet-badges">
+              <span class="badge badge--outline" th:each="facet : ${row.facets}" th:text="${facet}"></span>
+            </span>
+          </td>
+          <!--/*
+            ⛔ 제외에 진행 단계 색을 주지 마라 (screen-shell 「상태를 어떤 말로 쓰나」) —
+               제외는 걸음이 아니라 사람이 고른 갈래다. 색을 주면 실패나 완료로 읽힌다.
+          */-->
+          <td>
+            <span th:if="${row.reviewState.name() == 'DRAFTED'}"
+                  class="status-badge status-badge--review">생성 완료</span>
+            <span th:if="${row.reviewState.name() == 'CONFIRMED'}"
+                  class="status-badge status-badge--complete">확정 완료</span>
+            <span th:if="${row.reviewState.name() == 'EXCLUDED'}"
+                  class="badge badge--outline">제외</span>
+          </td>
+          <td><span class="status-badge status-badge--waiting">요청 전</span></td>
+          <td class="cell__sub">미생성</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="list-table-foot" th:if="${matchedCount > 0}">
+    <span aria-hidden="true"></span>
+    <nav class="list-pagination" aria-label="요구사항 페이지 이동">
+      <span th:if="${page == 1}" class="list-page-button" aria-disabled="true" aria-label="이전 페이지">&lsaquo;</span>
+      <a th:unless="${page == 1}" class="list-page-button" aria-label="이전 페이지" th:text="'‹'"
+         th:href="@{/projects/{p}/artifacts/requirements(p=${projectId},query=${query},sourceIntakeId=${sourceFilter},reviewState=${reviewStateFilter},facet=${facetFilter},pageSize=${pageSize},page=${page - 1})}"></a>
+      <a th:each="number : ${pageNumbers}" class="list-page-button"
+         th:classappend="${number == page} ? 'is-current' : ''"
+         th:attr="aria-current=${number == page} ? 'page' : null"
+         th:text="${number}"
+         th:href="@{/projects/{p}/artifacts/requirements(p=${projectId},query=${query},sourceIntakeId=${sourceFilter},reviewState=${reviewStateFilter},facet=${facetFilter},pageSize=${pageSize},page=${number})}"></a>
+      <span th:if="${page == pageCount}" class="list-page-button" aria-disabled="true" aria-label="다음 페이지">&rsaquo;</span>
+      <a th:unless="${page == pageCount}" class="list-page-button" aria-label="다음 페이지" th:text="'›'"
+         th:href="@{/projects/{p}/artifacts/requirements(p=${projectId},query=${query},sourceIntakeId=${sourceFilter},reviewState=${reviewStateFilter},facet=${facetFilter},pageSize=${pageSize},page=${page + 1})}"></a>
+    </nav>
+    <form class="list-page-size" method="get"
+          th:action="@{/projects/{p}/artifacts/requirements(p=${projectId})}">
+      <input type="hidden" name="query" th:value="${query}">
+      <input type="hidden" name="sourceIntakeId" th:value="${sourceFilter}">
+      <input type="hidden" name="reviewState" th:value="${reviewStateFilter}">
+      <input type="hidden" name="facet" th:value="${facetFilter}">
+      <label class="sr-only" for="requirements-page-size">목록 크기</label>
+      <select class="field__control" id="requirements-page-size" name="pageSize" onchange="this.form.submit()">
+        <option th:each="option : ${pageSizes}" th:value="${option}" th:text="${option} + '개씩'"
+                th:selected="${option == pageSize}"></option>
+      </select>
+    </form>
+  </div>
+
+</div>
+</body>
+</html>

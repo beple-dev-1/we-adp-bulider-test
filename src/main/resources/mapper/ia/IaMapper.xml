@@ -1,0 +1,187 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.bizplay.builder.ia.IaMapper">
+
+    <resultMap id="structure" type="com.bizplay.builder.ia.IaStructure">
+        <constructor>
+            <idArg column="id" javaType="java.lang.String"/>
+            <arg column="project_id" javaType="java.lang.String"/>
+            <arg column="system_code" javaType="java.lang.String"/>
+            <arg column="state" javaType="com.bizplay.builder.ia.IaStructure$State"/>
+            <arg column="current_revision" javaType="_int"/>
+            <arg column="version" javaType="_int"/>
+            <arg column="imported_hash" javaType="java.lang.String"/>
+            <arg column="imported_at" javaType="java.time.Instant"/>
+            <arg column="confirmed_at" javaType="java.time.Instant"/>
+            <arg column="confirmed_by" javaType="java.lang.String"/>
+            <arg column="published_commit" javaType="java.lang.String"/>
+            <arg column="publish_failure" javaType="java.lang.String"/>
+            <arg column="updated_at" javaType="java.time.Instant"/>
+            <arg column="updated_by" javaType="java.lang.String"/>
+        </constructor>
+    </resultMap>
+
+    <resultMap id="row" type="com.bizplay.builder.ia.IaRow">
+        <constructor>
+            <idArg column="id" javaType="java.lang.String"/>
+            <arg column="structure_id" javaType="java.lang.String"/>
+            <arg column="row_order" javaType="_int"/>
+            <arg column="path_key" javaType="java.lang.String"/>
+            <arg column="depth1" javaType="java.lang.String"/>
+            <arg column="depth2" javaType="java.lang.String"/>
+            <arg column="depth3" javaType="java.lang.String"/>
+            <arg column="depth4" javaType="java.lang.String"/>
+            <arg column="depth5" javaType="java.lang.String"/>
+            <arg column="depth6" javaType="java.lang.String"/>
+            <arg column="depth7" javaType="java.lang.String"/>
+            <arg column="user_type" javaType="java.lang.String"/>
+            <arg column="menu_type" javaType="java.lang.String"/>
+            <arg column="screen_type" javaType="java.lang.String"/>
+            <arg column="screen_id" javaType="java.lang.String"/>
+            <arg column="updated_at" javaType="java.time.Instant"/>
+            <arg column="updated_by" javaType="java.lang.String"/>
+        </constructor>
+    </resultMap>
+
+    <resultMap id="screenProfile" type="com.bizplay.builder.ia.IaScreenProfile">
+        <constructor>
+            <arg column="structure_id" javaType="java.lang.String"/>
+            <arg column="screen_id" javaType="java.lang.String"/>
+            <arg column="screen_kind" javaType="com.bizplay.builder.ia.IaScreenProfile$ScreenKind"/>
+            <arg column="screen_type" javaType="com.bizplay.builder.ia.IaScreenProfile$ScreenType"/>
+            <arg column="type_source" javaType="com.bizplay.builder.ia.IaScreenProfile$TypeSource"/>
+        </constructor>
+    </resultMap>
+
+    <sql id="structureColumns">id, project_id, system_code, state, current_revision, version,
+        imported_hash, imported_at, confirmed_at, confirmed_by, published_commit, publish_failure,
+        updated_at, updated_by</sql>
+    <sql id="rowColumns">id, structure_id, row_order, path_key, depth1, depth2, depth3, depth4, depth5, depth6, depth7,
+        user_type, menu_type, screen_type, screen_id, updated_at, updated_by</sql>
+
+    <select id="selectStructure" resultMap="structure">
+        select <include refid="structureColumns"/> from builder.adk_builder_ia_structure
+         where project_id = #{projectId} and system_code = #{systemCode}
+    </select>
+    <select id="selectStructureById" resultMap="structure">
+        select <include refid="structureColumns"/> from builder.adk_builder_ia_structure where id = #{id}
+    </select>
+    <select id="selectStructuresByProject" resultMap="structure">
+        select <include refid="structureColumns"/> from builder.adk_builder_ia_structure
+         where project_id = #{projectId} order by system_code
+    </select>
+    <select id="selectRows" resultMap="row">
+        select <include refid="rowColumns"/> from builder.adk_builder_ia_row
+         where structure_id = #{structureId} order by row_order, id
+    </select>
+    <select id="selectRow" resultMap="row">
+        select <include refid="rowColumns"/> from builder.adk_builder_ia_row where id = #{rowId}
+    </select>
+    <select id="selectScreenProfiles" resultMap="screenProfile">
+        select structure_id, screen_id, screen_kind, screen_type, type_source
+          from builder.adk_builder_ia_screen_profile
+         where structure_id = #{structureId}
+         order by screen_id
+    </select>
+    <select id="selectNextRowOrder" resultType="_int">
+        select coalesce(max(row_order), 0) + 10 from builder.adk_builder_ia_row where structure_id = #{structureId}
+    </select>
+
+    <select id="selectScreenLinks" resultType="com.bizplay.builder.ia.IaScreenLink">
+        select s.system_code as systemCode, r.screen_id as screenId,
+               concat_ws(' &gt; ', r.depth1, r.depth2, r.depth3, r.depth4, r.depth5, r.depth6, r.depth7) as path,
+               s.current_revision as revision, s.state
+          from builder.adk_builder_ia_structure s
+          join builder.adk_builder_ia_row r on r.structure_id = s.id
+         where s.project_id = #{projectId} and r.screen_id is not null
+         order by s.system_code, r.row_order
+    </select>
+
+    <insert id="insertStructure">
+        insert into builder.adk_builder_ia_structure
+               (id, project_id, system_code, state, current_revision, version, imported_hash,
+                imported_at, updated_at, updated_by)
+        values (#{id}, #{projectId}, #{systemCode}, #{state}, #{currentRevision}, #{version},
+                #{importedHash}, now(), now(), #{updatedBy,jdbcType=VARCHAR})
+    </insert>
+    <insert id="insertRow">
+        insert into builder.adk_builder_ia_row
+               (id, structure_id, row_order, path_key, depth1, depth2, depth3, depth4, depth5, depth6, depth7,
+                user_type, menu_type, screen_type, screen_id, updated_by)
+        values (#{id}, #{structureId}, #{rowOrder}, #{pathKey}, #{depth1},
+                #{depth2,jdbcType=VARCHAR}, #{depth3,jdbcType=VARCHAR}, #{depth4,jdbcType=VARCHAR},
+                #{depth5,jdbcType=VARCHAR}, #{depth6,jdbcType=VARCHAR}, #{depth7,jdbcType=VARCHAR},
+                #{userType,jdbcType=VARCHAR}, #{menuType,jdbcType=VARCHAR},
+                #{screenType,jdbcType=VARCHAR}, #{screenId,jdbcType=VARCHAR}, #{updatedBy,jdbcType=VARCHAR})
+    </insert>
+    <insert id="insertScreenProfile">
+        insert into builder.adk_builder_ia_screen_profile
+               (structure_id, screen_id, screen_kind, screen_type, type_source)
+        values (#{structureId}, #{screenId}, #{screenKind}, #{screenType}, #{typeSource,jdbcType=VARCHAR})
+    </insert>
+    <update id="updateRow">
+        update builder.adk_builder_ia_row
+           set row_order = #{rowOrder}, path_key = #{pathKey}, depth1 = #{depth1}, depth2 = #{depth2,jdbcType=VARCHAR},
+               depth3 = #{depth3,jdbcType=VARCHAR}, depth4 = #{depth4,jdbcType=VARCHAR},
+               depth5 = #{depth5,jdbcType=VARCHAR}, depth6 = #{depth6,jdbcType=VARCHAR},
+               depth7 = #{depth7,jdbcType=VARCHAR}, user_type = #{userType,jdbcType=VARCHAR},
+               menu_type = #{menuType,jdbcType=VARCHAR}, screen_type = #{screenType,jdbcType=VARCHAR},
+               screen_id = #{screenId,jdbcType=VARCHAR}, updated_at = now(),
+               updated_by = #{updatedBy,jdbcType=VARCHAR}
+         where id = #{id}
+    </update>
+    <update id="offsetRowOrders">
+        update builder.adk_builder_ia_row
+           set row_order = row_order + #{offset}
+         where structure_id = #{structureId}
+    </update>
+    <update id="updateRowOrders">
+        update builder.adk_builder_ia_row
+           set row_order = case id
+               <foreach collection="orders" item="order">
+                   when #{order.rowId} then #{order.rowOrder}
+               </foreach>
+               end,
+               updated_at = now(), updated_by = #{updatedBy}
+         where structure_id = #{structureId}
+    </update>
+    <delete id="deleteRow">delete from builder.adk_builder_ia_row where id = #{rowId}</delete>
+    <delete id="deleteStructure">
+        delete from builder.adk_builder_ia_structure
+         where id = #{structureId} and version = #{expectedVersion}
+    </delete>
+    <update id="bumpVersion">
+        update builder.adk_builder_ia_structure
+           set version = version + 1, state = 'DRAFT', publish_failure = null,
+               updated_at = now(), updated_by = #{updatedBy,jdbcType=VARCHAR}
+         where id = #{structureId} and version = #{expectedVersion}
+    </update>
+
+    <insert id="insertRevision">
+        insert into builder.adk_builder_ia_revision
+               (id, structure_id, revision, snapshot_content, snapshot_hash, state, created_by)
+        values (#{id}, #{structureId}, #{revision}, #{snapshotContent}, #{snapshotHash}, #{state}, #{createdBy})
+    </insert>
+    <update id="updateStructurePublishing">
+        update builder.adk_builder_ia_structure
+           set current_revision = #{revision}, state = 'DRAFT', confirmed_at = now(),
+               confirmed_by = #{confirmedBy}, updated_at = now()
+         where id = #{structureId}
+    </update>
+    <update id="updateRevisionSuccess">
+        update builder.adk_builder_ia_revision set state = 'PUBLISHED', published_commit = #{commit},
+               published_at = now(), failure = null where id = #{revisionId}
+    </update>
+    <update id="updateStructureSuccess">
+        update builder.adk_builder_ia_structure set state = 'CONFIRMED', published_commit = #{commit},
+               publish_failure = null, updated_at = now() where id = #{structureId}
+    </update>
+    <update id="updateRevisionFailure">
+        update builder.adk_builder_ia_revision set state = 'FAILED', failure = #{failure} where id = #{revisionId}
+    </update>
+    <update id="updateStructureFailure">
+        update builder.adk_builder_ia_structure set state = 'PUBLISH_FAILED', publish_failure = #{failure},
+               updated_at = now() where id = #{structureId}
+    </update>
+</mapper>

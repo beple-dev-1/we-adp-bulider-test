@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.bizplay.builder.businesslanguage.BusinessDocumentRevisionMapper">
+    <sql id="columns">
+        project_id as projectId, kind, revision_no as revisionNo, content,
+        source_refs as sourceRefs, change_type as changeType,
+        created_at as createdAt, created_by as createdBy
+    </sql>
+
+    <select id="selectAll" resultType="com.bizplay.builder.businesslanguage.BusinessDocumentRevision">
+        select <include refid="columns"/>
+          from builder.adk_builder_business_document_revision
+         where project_id = #{projectId}
+           and kind = #{kind}
+         order by revision_no desc
+    </select>
+
+    <select id="selectOne" resultType="com.bizplay.builder.businesslanguage.BusinessDocumentRevision">
+        select <include refid="columns"/>
+          from builder.adk_builder_business_document_revision
+         where project_id = #{projectId}
+           and kind = #{kind}
+           and revision_no = #{revisionNo}
+    </select>
+
+    <select id="nextRevisionNo" resultType="int">
+        select coalesce(max(revision_no), 0) + 1
+          from builder.adk_builder_business_document_revision
+         where project_id = #{projectId}
+           and kind = #{kind}
+    </select>
+
+    <insert id="insert">
+        insert into builder.adk_builder_business_document_revision
+            (project_id, kind, revision_no, content, source_refs, change_type, created_at, created_by)
+        values (#{projectId}, #{kind}, #{revisionNo}, #{content},
+                #{sourceRefs, jdbcType=VARCHAR}, #{changeType}, now(), #{createdBy, jdbcType=VARCHAR})
+    </insert>
+</mapper>

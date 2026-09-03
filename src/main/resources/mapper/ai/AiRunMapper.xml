@@ -1,0 +1,128 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<!--
+    AI 실행 한 건 — 끝 다섯 갈래 중 하나로 끝난다. 표의 뜻은 V5__ai_run.sql 의 COMMENT 가 정본이다.
+
+    ⚠ 표 이름 앞의 `builder.` 를 지우지 마라. 이 저장소의 표는 public 이 아니라 builder 스키마에 산다.
+      MyBatis 는 Hibernate 의 default_schema 를 안 물려받는다 — 지우면 「표가 없다」로 죽는다.
+
+    ⛔ 상태를 바꾸는 UPDATE 는 아래 updateToFinished 하나뿐이고, 그것은 늘 조건부다
+      (`where state = 'RUNNING'`). 무조건 덮어쓰는 짝을 여기에 더하지 마라 — 자연 종료한 일꾼이
+      이미 닫힌 성공을 덮으면 파일은 되돌아갔는데 화면은 「결과가 떴다」가 된다.
+-->
+<mapper namespace="com.bizplay.builder.ai.AiRunMapper">
+
+    <!--
+        setter 가 없는 값 묶음이라 생성자로 담는다.
+        ⛔ 인자 순서를 바꾸지 마라 — AiRun 의 생성자와 자리로 맞춘다.
+           project_id 와 account_id 는 둘 다 일곱 자리 글자라, 뒤바뀌어도 컴파일도 되고 예외도 안 난다.
+           엉뚱한 프로젝트를 가리키는 것으로만 드러난다.
+        ⚠ CheckerResult 는 AiRun 안의 중첩 열거라 `$` 로 적는다. 점으로 적으면 부팅 때 죽는다.
+    -->
+    <resultMap id="aiRun" type="com.bizplay.builder.ai.AiRun">
+        <constructor>
+            <idArg column="id"                  javaType="java.lang.String"/>
+            <arg   column="project_id"          javaType="java.lang.String"/>
+            <arg   column="account_id"          javaType="java.lang.String"/>
+            <arg   column="work_key"            javaType="java.lang.String"/>
+            <arg   column="run_kind"            javaType="com.bizplay.builder.ai.AiRunKind"/>
+            <arg   column="state"               javaType="com.bizplay.builder.ai.AiRunState"/>
+            <arg   column="checker_result"      javaType="com.bizplay.builder.ai.AiRun$CheckerResult"/>
+            <arg   column="instruction"         javaType="java.lang.String"/>
+            <arg   column="work_dir"            javaType="java.lang.String"/>
+            <arg   column="developer_log"       javaType="java.lang.String"/>
+            <arg   column="cancel_requested_at" javaType="java.time.Instant"/>
+            <arg   column="started_at"          javaType="java.time.Instant"/>
+            <arg   column="finished_at"         javaType="java.time.Instant"/>
+        </constructor>
+    </resultMap>
+
+    <sql id="columns">
+        id, project_id, account_id, work_key, run_kind, state, checker_result,
+        instruction, work_dir, developer_log, cancel_requested_at, started_at, finished_at
+    </sql>
+
+    <select id="selectById" parameterType="java.lang.String" resultMap="aiRun">
+        select <include refid="columns"/>
+          from builder.adk_builder_ai_run
+         where id = #{id}
+    </select>
+
+    <!-- 재기동 청소가 'RUNNING' 을 넣어 부른다. -->
+    <select id="selectByState" parameterType="com.bizplay.builder.ai.AiRunState" resultMap="aiRun">
+        select <include refid="columns"/>
+          from builder.adk_builder_ai_run
+         where state = #{state}
+         order by id
+    </select>
+
+    <!--
+        ⚠ started_at 을 넣지 않는다 — DB 의 default now() 가 채운다.
+        ⚠ id 는 넣는다. DB 에도 default 가 있지만 채번은 IdSequence 가 한다.
+        ⚠ instruction·developer_log 는 null 로 올 수 있어 jdbcType 을 박아 둔다 — MyBatis 는 값이 null 이면
+          자바 타입으로 종류를 못 정해 기본값(OTHER)으로 setNull 을 부르고, PostgreSQL 이 그것을 거절한다.
+    -->
+    <insert id="insert" parameterType="com.bizplay.builder.ai.AiRun">
+        insert into builder.adk_builder_ai_run
+               (id, project_id, account_id, work_key, run_kind, state, checker_result,
+                instruction, work_dir)
+        values (#{id}, #{projectId}, #{accountId}, #{workKey}, #{runKind}, #{state}, #{checkerResult},
+                #{instruction,jdbcType=VARCHAR}, #{workDir})
+    </insert>
+
+    <!--
+        끝처리 한 자리. 「누가 이겼나」를 DB 가 심판한다.
+
+        ⛔ `where state = 'RUNNING'` 을 지우지 마라 — 이것이 「남이 이미 닫았으면 못 바꾼다」의 전부다.
+        ⛔ CASE 를 자바의 if 로 끌어내지 마라 — 취소 열을 먼저 읽고 값을 골라 넘기면 읽는 시점과 쓰는 시점
+           사이에 취소가 들어와 사람이 그만두라 한 실행이 「성공」으로 뜬다.
+        ⛔ synchronized 나 @Version 으로 바꾸지 마라 — 앞엣것은 재기동 청소라는 셋째 쓰기를 못 막고,
+           뒤엣것은 이 저장소에 낙관적 잠금 선례가 0이라 새 개념이 는다.
+
+        ⚠ 태그가 <update> 가 아니라 <select> 인 것은 `returning` 때문이다. 돌려받는 것이 있는 문을
+          executeUpdate 로 쏘면 드라이버가 거절한다. 메서드 이름은 SQL 종류를 따라 update 로 둔다.
+        ⚠ flushCache/useCache — 이것은 쓰는 문이다. MyBatis 의 select 캐시에 걸리면 한 트랜잭션에서
+          두 번 부를 때 둘째가 SQL 을 안 쏘고 첫째의 답을 되준다. 그러면 「진 쪽」이 이겼다고 믿는다.
+    -->
+    <select id="updateToFinished" resultType="com.bizplay.builder.ai.AiRunState"
+            flushCache="true" useCache="false">
+        update builder.adk_builder_ai_run
+           set state          = case when cancel_requested_at is not null
+                                     then 'CANCELLED'
+                                     else #{state}
+                                end,
+               developer_log  = #{developerLog,jdbcType=VARCHAR},
+               checker_result = #{checkerResult},
+               finished_at    = now()
+         where id    = #{runId}
+           and state = 'RUNNING'
+        returning state
+    </select>
+
+    <!--
+        ⚠ 상태를 안 건드린다. 되돌리기와 「죽은 것 확인」은 일꾼 스레드가 한다 —
+          취소가 직접 닫으면 한 실행의 파일을 만지는 스레드가 둘이 된다.
+        ⚠ `cancel_requested_at is null` 이 있어 두 번 눌러도 처음 누른 때가 남는다.
+    -->
+    <update id="updateCancelRequested" parameterType="java.lang.String">
+        update builder.adk_builder_ai_run
+           set cancel_requested_at = now()
+         where id                  = #{runId}
+           and state               = 'RUNNING'
+           and cancel_requested_at is null
+    </update>
+
+    <!--
+        ⚠ 일꾼은 다른 트랜잭션·다른 스레드다. 취소는 또 다른 트랜잭션이 찍으므로 여기서 DB 를 직접 본다.
+          캐시에 걸리면 프로세스를 띄우기 「직전」에 본 답을 「직후」에 그대로 되줘서 그 틈이 안 닫힌다.
+    -->
+    <select id="selectCancelRequested" parameterType="java.lang.String" resultType="java.lang.Boolean"
+            flushCache="true" useCache="false">
+        select cancel_requested_at is not null
+          from builder.adk_builder_ai_run
+         where id = #{runId}
+    </select>
+
+</mapper>

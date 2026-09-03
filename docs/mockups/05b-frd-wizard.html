@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <link rel="stylesheet" href="../../src/main/resources/static/css/tokens.css">
+  <link rel="stylesheet" href="../../src/main/resources/static/css/reset.css">
+  <link rel="stylesheet" href="../../src/main/resources/static/css/typography.css">
+  <link rel="stylesheet" href="../../src/main/resources/static/css/components.css">
+  <link rel="stylesheet" href="../../src/main/resources/static/css/shell.css">
+  <link rel="stylesheet" href="_mock.css">
+  <link rel="stylesheet" href="../../src/main/resources/static/css/screens.css">
+  <link rel="stylesheet" href="_requirement-concepts.css">
+  <link rel="stylesheet" href="_frd-concepts.css">
+  <title>FRD 작업 만들기</title>
+</head>
+<body>
+<template id="본문">
+  <div class="page-head"><h1 class="page-head__title">FRD 작업 만들기</h1></div>
+  <p class="page-intro">요구사항을 넣으면 AI 가 고칠 화면을 짚어 줍니다.</p>
+
+  <section class="rq-card" id="wizard-step-1">
+    <div class="rq-card__head"><h2>요구사항</h2></div>
+    <div class="field">
+      <label class="field__label" for="frd-source">요구사항 내용</label>
+      <textarea class="field__control" id="frd-source" rows="8"
+                placeholder="예) 결재 상신 화면에서 작성 중인 문서를 임시 저장할 수 있어야 한다."></textarea>
+    </div>
+    <div class="dialog__actions">
+      <button class="button" type="button" disabled title="다음 판입니다">요구사항에서 가져오기</button>
+      <button class="button" type="button" disabled title="다음 판입니다">BRD 에서 가져오기</button>
+      <button class="button button--primary" type="button" id="frd-analyze">분석하기</button>
+    </div>
+  </section>
+
+  <section class="rq-card" id="wizard-step-2" hidden>
+    <div class="rq-card__head"><h2>걸리는 화면</h2><span class="badge badge--outline">3장</span></div>
+    <dl class="rq-meta rq-meta--three">
+      <div><dt>업무명</dt><dd>전자결재 상신 임시저장 지원</dd></div>
+      <div><dt>시스템</dt><dd>웹뷰</dd></div>
+      <div><dt>생성 방식</dt><dd>직접 등록</dd></div>
+    </dl>
+    <ul class="wm-screen-list" id="frd-picked">
+      <li><label><input type="checkbox" checked>
+        <span><small class="num">wv-appr-write</small><strong>결재 문서 작성</strong></span></label>
+        <p class="cell__sub">상단 행동 영역에 임시저장 버튼이 없습니다</p></li>
+      <li><label><input type="checkbox" checked>
+        <span><small class="num">wv-appr-draft-list</small><strong>임시 저장 문서함</strong></span></label>
+        <p class="cell__sub">메뉴에는 있으나 목록이 비어 있는 상태만 있습니다</p></li>
+      <li><label><input type="checkbox">
+        <span><small class="num">wv-appr-detail</small><strong>결재 문서 상세</strong></span></label>
+        <p class="cell__sub">임시저장 문서를 여는 경로가 없습니다</p></li>
+    </ul>
+    <div class="dialog__actions">
+      <button class="button" type="button">화면 직접 고르기</button>
+      <button class="button" type="button">새 화면 만들기</button>
+      <button class="button" type="button">화면 없는 요건입니다</button>
+      <button class="button button--primary" type="button">FRD 작업 열기</button>
+    </div>
+  </section>
+</template>
+<script src="_shell.js"></script>
+<script>틀({제목:'FRD 작업 만들기',모양:'산출물',지금:'frds',프로젝트이름:'G2C',프로젝트번호:1,프로젝트들:['G2C','서울페이'],사람:'이영희',안읽은알림:2});</script>
+<script src="_frd-concepts.js"></script>
+</body>
+</html>

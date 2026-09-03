@@ -1,0 +1,543 @@
+<!doctype html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{fragments/shell :: layout(${title}, ${shape}, ${current}, ~{:: content})}">
+<body>
+<fieldset th:fragment="content" class="frd-canvas-page frd-owner-scope" data-frd-canvas-root
+     th:disabled="${!assignedUser}"
+     th:attr="data-frd-id=${frd.id()},
+              data-layout-key='frd-canvas:v4:' + ${projectId} + ':' + ${frd.id()},
+              data-canvas-editable=${canvasEditable},
+              data-events-url=@{/projects/{p}/artifacts/frds/{f}/chat/events(p=${projectId},f=${frd.id()})},
+              data-chat-url=@{/projects/{p}/artifacts/frds/{f}/canvas/chat(p=${projectId},f=${frd.id()})},
+              data-chat-status-url=@{/projects/{p}/artifacts/frds/{f}/canvas/chat/messages(p=${projectId},f=${frd.id()})},
+              data-compare-url=@{/projects/{p}/artifacts/frds/{f}/canvas/compare(p=${projectId},f=${frd.id()},facet=${activeFacet})},
+              data-comparison-screen-row-id=${comparisonScreenRowId}">
+  <link rel="stylesheet" th:href="@{/css/frd-canvas.css}">
+  <link rel="stylesheet" th:href="@{/css/frd-canvas-safety.css}">
+
+  <p class="rq-note" role="status" th:if="${!assignedUser}">담당자만 FRD 작업을 수정할 수 있습니다.</p>
+
+  <header class="rq-head">
+    <div class="rq-head__copy">
+      <span class="rq-kicker num" th:text="${frd.label()}">FRD-003</span>
+      <h1 th:text="${frd.businessLabel()}">결재 문서 임시 저장</h1>
+    </div>
+    <div class="rq-head__actions">
+      <a class="button rq-head__list-action" th:href="@{/projects/{p}/artifacts/frds(p=${projectId},query=${listQuery},state=${listState},owner=${listOwner},system=${listSystem},page=${listPage},pageSize=${listPageSize})}">목록으로</a>
+      <a class="button rq-head__content-action" th:href="@{/projects/{p}/artifacts/frds/{f}(p=${projectId},f=${frd.id()},overview='summary',query=${listQuery},state=${listState},owner=${listOwner},system=${listSystem},page=${listPage},pageSize=${listPageSize})}">FRD 내용 보기</a>
+      <form class="rq-head__complete-action" method="post" th:action="@{/projects/{p}/artifacts/frds/{f}/complete(p=${projectId},f=${frd.id()})}"
+            onsubmit="return confirm('수정한 내용을 커밋하고 FRD 작업을 완료할까요? 완료 후에는 검토 필요 상태로 전환됩니다.')">
+        <input th:if="${confirmedCloneHead != null and !confirmedCloneHead.isBlank()}" type="hidden"
+               name="confirmedCloneHead" th:value="${confirmedCloneHead}">
+        <button class="button button--primary" id="complete-frd-work" type="submit"
+                data-submit-loading="FRD 작업을 완료하고 개발요청서를 만드는 중"
+                th:disabled="${!completionStatus.canComplete()}" th:title="${completionStatus.message()}"
+                th:attr="data-work-modified=${completionStatus.modified()},
+                         data-completion-status-url=@{/projects/{p}/artifacts/frds/{f}/completion-status(p=${projectId},f=${frd.id()})}">FRD 작업 완료</button>
+      </form>
+      <details class="pop rq-head__overflow" th:if="${frd.canDelete() or !resetDisabled}">
+        <summary class="icon-button rq-head__more" aria-label="기타 작업" title="기타 작업"><span aria-hidden="true">⋮</span></summary>
+        <div class="pop__body rq-head__overflow-menu">
+          <form method="post" th:action="@{/projects/{p}/artifacts/frds/{f}/reset(p=${projectId},f=${frd.id()})}"
+                onsubmit="return confirm('작업 중인 모든 화면 변경이 삭제됩니다. 원본 저장소 기준으로 다시 시작할까요?')">
+            <button type="submit" th:disabled="${resetDisabled}">작업공간 초기화</button>
+          </form>
+          <hr th:if="${frd.canDelete()}">
+          <button class="rq-head__delete-action" type="button" th:if="${frd.canDelete()}"
+                  data-frd-delete-open>FRD 작업 삭제</button>
+        </div>
+      </details>
+    </div>
+  </header>
+
+  <div th:if="${frd.canDelete()}" th:replace="~{fragments/frd-delete-dialog :: dialog}"></div>
+
+  <p class="error-line" role="alert" th:if="${error}" th:text="${error}"></p>
+
+  <dl class="rq-meta">
+    <div><dt>적용 대상</dt><dd class="rq-meta__badges"><span class="badge badge--outline" th:if="${allFacets}">전체</span><span class="badge badge--outline" th:if="${!allFacets}" th:each="facet : ${facets}" th:text="${facet.name()}">익산</span><span th:if="${#lists.isEmpty(facets)}">—</span></dd></div>
+    <div><dt>담당자</dt><dd th:text="${ownerName}">이영희</dd></div>
+    <div><dt>요구사항</dt><dd class="rq-meta__requirement"><a class="fc-requirement-link"
+      th:href="@{/projects/{p}/artifacts/frds/{f}(p=${projectId},f=${frd.id()},overview='requirement',query=${listQuery},state=${listState},owner=${listOwner},system=${listSystem},page=${listPage},pageSize=${listPageSize})}"
+      title="요구사항 전체 보기"><span th:text="${frd.sourceText()}">상신 임시저장 지원</span><small>보기</small></a></dd></div>
+    <div><dt>생성일</dt><dd class="num"
+      th:text="${frd.createdAt() == null ? '—' : #temporals.format(frd.createdAt(), 'yyyy-MM-dd')}">2026-08-10</dd></div>
+  </dl>
+
+  <main class="wm-work-layout fc-workspace">
+    <aside class="rq-card wm-screen-sidebar fc-navigator" aria-labelledby="fc-nav-title">
+      <div class="rq-card__head">
+        <div>
+          <h2 id="fc-nav-title">작업 대상</h2>
+        </div>
+        <div class="wm-panel-icon-actions">
+          <form method="get" th:action="@{/projects/{p}/artifacts/frds/{f}(p=${projectId},f=${frd.id()})}">
+            <input type="hidden" name="query" th:value="${listQuery}">
+            <input type="hidden" name="state" th:value="${listState}">
+            <input type="hidden" name="owner" th:value="${listOwner}">
+            <input type="hidden" name="system" th:value="${listSystem}">
+            <input type="hidden" name="page" th:value="${listPage}">
+            <input type="hidden" name="pageSize" th:value="${listPageSize}">
+            <input type="hidden" name="addScreen" value="true">
+            <button class="icon-button wm-panel-icon-button" type="submit"
+                    aria-label="FRD 화면 추가" th:disabled="${!canvasEditable}"
+                    th:title="${canvasEditable ? 'FRD 화면 추가' : '완료된 FRD에서는 화면을 추가할 수 없습니다.'}">+</button>
+          </form>
+        </div>
+      </div>
+      <nav class="wm-canvas-view-switch" aria-label="캔버스 보기 방식">
+        <a data-detail-view-link
+           th:href="@{/projects/{p}/artifacts/frds/{f}(p=${projectId},f=${frd.id()},facet=${activeFacet},query=${listQuery},state=${listState},owner=${listOwner},system=${listSystem},page=${listPage},pageSize=${listPageSize})}"
+           aria-pressed="false">상세 화면</a>
+        <a class="is-active" th:href="@{/projects/{p}/artifacts/frds/{f}/canvas(p=${projectId},f=${frd.id()},facet=${activeFacet},query=${listQuery},state=${listState},owner=${listOwner},system=${listSystem},page=${listPage},pageSize=${listPageSize})}"
+           aria-pressed="true">전체 맵</a>
+      </nav>
+      <nav class="wm-screen-list fc-nav-list" aria-label="FRD 화면">
+        <div class="wm-screen-list-row" th:each="node : ${canvas.nodes()}" th:if="${node.workTarget()}">
+          <button class="wm-screen-list-row__link fc-nav-item" type="button"
+                  th:attr="data-focus-screen=${node.screenId()}">
+            <span class="wm-screen-list-row__label">
+              <span class="wm-screen-origin"
+                    th:text="${node.newScreen() ? '신규 화면' : '기존 화면'}">기존 화면</span>
+              <span class="wm-screen-name">
+                <strong th:text="${node.screenName()}">결재 문서 작성</strong>
+                <i class="wm-screen-modified-dot" th:if="${node.modified()}"
+                   role="img" aria-label="수정 있음" title="수정 있음"></i>
+              </span>
+              <small class="wm-screen-meta">
+                <span th:text="${node.systemCode() == null or node.systemCode().isBlank() ? '시스템 확인 필요' : systemLabels.label(node.systemCode())}">웹뷰</span>
+                <span aria-hidden="true"> · </span>
+                <span class="num" th:text="${node.managementNumberLabel()}">PS-WV-MRC-010-L01-S</span>
+              </small>
+              <small class="num wm-screen-id" th:text="${node.screenId()}">wv-appr-write</small>
+            </span>
+          </button>
+          <span data-screen-status th:if="${node.aiDraftEligible()}"
+                th:class="${node.stateName() == 'FAILED' ? 'status-badge status-badge--error' : 'status-badge status-badge--progress'}"
+                th:hidden="${node.stateName() != 'GENERATING' and node.stateName() != 'FAILED'}"
+                th:title="${node.stateLabel()}" th:attr="aria-label=${node.stateLabel()}"
+                th:text="${node.stateLabel()}">AI 초안 만드는 중</span>
+          <span class="status-badge status-badge--waiting fc-ia-status-badge" th:if="${node.iaStatusLabel() != null}"
+                th:text="${node.iaStatusLabel() == '미정' ? '화면 연결 미정' : '화면 연결 ' + node.iaStatusLabel()}"
+                th:title="${node.iaPlacementLabel()}">화면 연결 제안</span>
+        </div>
+      </nav>
+    </aside>
+
+    <section class="wm-stage fc-stage" aria-labelledby="fc-stage-title">
+      <header class="wm-stage-head fc-toolbar">
+        <div class="fc-toolbar__title">
+          <div class="fc-toolbar__title-line">
+            <h2 id="fc-stage-title">전체 화면</h2>
+            <div class="fc-scope-summary" aria-label="캔버스 화면 구성">
+              <span class="is-work"><b th:text="${canvasWorkTargetCount}">2</b> 작업 대상</span>
+              <span><b th:text="${canvasRelatedScreenCount}">8</b> 관련 화면</span>
+            </div>
+          </div>
+          <p>작업 대상을 중심으로 연결된 기존 화면을 확인합니다.</p>
+        </div>
+        <div class="wm-stage-actions fc-toolbar__actions">
+          <form class="wm-canvas-facet-tool" method="get" th:if="${!#lists.isEmpty(splitFacetOptions)}"
+                th:action="@{/projects/{p}/artifacts/frds/{f}/canvas(p=${projectId},f=${frd.id()})}">
+            <label class="sr-only" for="canvas-facet">기관 화면</label>
+            <select class="field__control" id="canvas-facet" name="facet" data-canvas-facet-select>
+              <option th:each="facetItem : ${splitFacetOptions}"
+                      th:value="${facetItem}" th:text="${facetItem}"
+                      th:selected="${facetItem == activeFacet}">익산</option>
+            </select>
+            <input type="hidden" name="scope" th:value="${canvas.projectScope() ? 'project' : 'frd'}">
+            <input type="hidden" name="query" th:value="${listQuery}">
+            <input type="hidden" name="state" th:value="${listState}">
+            <input type="hidden" name="owner" th:value="${listOwner}">
+            <input type="hidden" name="system" th:value="${listSystem}">
+            <input type="hidden" name="page" th:value="${listPage}">
+            <input type="hidden" name="pageSize" th:value="${listPageSize}">
+          </form>
+          <div class="wm-stage-action-group wm-stage-action-group--view" role="group" aria-label="캔버스 보기">
+          <div class="wm-zoom fc-zoom" role="group" aria-label="캔버스 확대 및 축소">
+            <button type="button" data-canvas-zoom-out aria-label="축소">−</button>
+            <button type="button" data-canvas-zoom-reset aria-label="배율 초기화"><output data-canvas-zoom-value>70%</output></button>
+            <button type="button" data-canvas-zoom-in aria-label="확대">+</button>
+          </div>
+          <button class="icon-button wm-panel-icon-button wm-focus-toggle" type="button" data-canvas-workspace-focus
+                  aria-label="전체 화면 확대" aria-pressed="false" title="전체 화면 확대">
+            <svg class="wm-focus-toggle__expand" viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M8 3H3v5M16 3h5v5M8 21H3v-5M16 21h5v-5"/>
+            </svg>
+            <svg class="wm-focus-toggle__restore" viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M9 3v6H3M15 3v6h6M9 21v-6H3M15 21v-6h6"/>
+            </svg>
+          </button>
+          <button class="icon-button wm-panel-icon-button" type="button" data-canvas-fit
+                  aria-label="전체 화면 포커스" title="전체 화면 포커스">
+            <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+              <circle cx="12" cy="12" r="3"></circle>
+              <path d="M12 2v4M12 18v4M2 12h4M18 12h4"></path>
+            </svg>
+          </button>
+          <button class="icon-button wm-panel-icon-button fc-toolbar-auto-layout" type="button"
+                  data-canvas-auto-layout aria-label="화면 자동 정렬"
+                  title="작업 대상을 중심으로 연결 관계에 따라 자동 정렬">
+            <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+              <rect x="9" y="2.5" width="6" height="5" rx="1"></rect>
+              <rect x="2.5" y="16.5" width="6" height="5" rx="1"></rect>
+              <rect x="15.5" y="16.5" width="6" height="5" rx="1"></rect>
+              <path d="M12 7.5v4M5.5 13.5h13M5.5 13.5v3M18.5 13.5v3"></path>
+            </svg>
+          </button>
+          <button class="icon-button wm-panel-icon-button fc-toolbar-related-toggle" type="button"
+                  data-canvas-related-toggle aria-label="관련 화면 숨기기"
+                  aria-pressed="true" title="관련 화면 숨기기">
+            <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M2.5 12s3.5-6 9.5-6 9.5 6 9.5 6-3.5 6-9.5 6-9.5-6-9.5-6z"></path>
+              <circle cx="12" cy="12" r="2.5"></circle>
+              <path class="fc-related-toggle__slash" d="M4 4l16 16"></path>
+            </svg>
+          </button>
+          </div>
+          <div class="wm-stage-action-group" role="group" aria-label="화면 검토 도구">
+            <button class="icon-button wm-panel-icon-button fc-toolbar-compare" type="button"
+                    data-canvas-compare disabled aria-label="변경 내용 비교"
+                    title="비교할 작업 대상 화면을 하나 선택해 주세요.">
+              <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+                <rect x="3" y="4" width="8" height="16" rx="1.5"></rect>
+                <rect x="13" y="4" width="8" height="16" rx="1.5"></rect>
+                <path d="M7 8h1M7 12h1M16 8h1M16 12h1"></path>
+              </svg>
+            </button>
+          </div>
+          <div class="wm-stage-action-group" role="group" aria-label="작업 대상 관리">
+            <button class="icon-button wm-panel-icon-button fc-toolbar-duplicate" type="button"
+                    data-canvas-duplicate disabled aria-label="새 화면으로 복제"
+                    title="복제할 작업 대상 화면을 하나 선택해 주세요.">
+              <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+                <rect x="8" y="8" width="11" height="11" rx="2"></rect>
+                <path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"></path>
+              </svg>
+            </button>
+            <button class="icon-button wm-panel-icon-button fc-toolbar-relation" type="button"
+                    data-canvas-relation disabled aria-label="화면 연결"
+                    title="연결할 화면을 두 개 선택해 주세요.">
+              <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M9.5 14.5 14.5 9.5"></path>
+                <path d="M7.2 16.8 5.8 18.2a3.4 3.4 0 0 1-4.8-4.8l3.3-3.3a3.4 3.4 0 0 1 4.8 0"></path>
+                <path d="m16.8 7.2 1.4-1.4A3.4 3.4 0 0 1 23 10.6l-3.3 3.3a3.4 3.4 0 0 1-4.8 0"></path>
+              </svg>
+            </button>
+            <form class="fc-toolbar-delete-form" method="post"
+                  th:action="@{/projects/{p}/artifacts/frds/{f}/canvas/screens/delete(p=${projectId},f=${frd.id()})}"
+                  onsubmit="return confirm('선택한 신규 화면을 삭제할까요? 이 화면의 작업 내용은 되돌릴 수 없습니다.');">
+              <input type="hidden" name="screenRowId" data-canvas-delete-id>
+              <button class="icon-button wm-panel-icon-button fc-toolbar-delete" type="submit"
+                      data-canvas-delete disabled aria-label="신규 화면 삭제"
+                      title="삭제할 신규 화면을 하나 선택해 주세요.">
+                <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M4 7h16M9 7V4h6v3M7 7l1 13h8l1-13M10 11v5M14 11v5"></path>
+                </svg>
+              </button>
+            </form>
+          </div>
+          <div class="wm-stage-action-group" role="group" aria-label="AI 작업 도구">
+            <button class="icon-button wm-ai-chat-trigger fc-map-ai-trigger" type="button" data-canvas-chat-open
+                    th:disabled="${!canvasEditable}" aria-label="FRD 맵 AI"
+                    th:title="${canvasEditable ? 'FRD 맵 AI' : '완료된 FRD에서는 맵 AI를 사용할 수 없습니다.'}"
+                    aria-controls="frd-map-chat" aria-expanded="false">
+              <img th:src="@{/images/claudecode-color.png}" alt="">
+            </button>
+          </div>
+        </div>
+      </header>
+
+      <div class="fc-canvas" data-canvas tabindex="0" aria-label="FRD 전체 화면 캔버스">
+        <div class="fc-canvas-transition" data-canvas-transition role="status" aria-live="polite" hidden>
+          <span class="fc-loading-spinner" aria-hidden="true"></span>
+          <span>상세 화면을 불러오는 중입니다.</span>
+        </div>
+        <div class="fc-world" data-canvas-world>
+          <svg class="fc-connectors" data-canvas-connectors aria-label="화면 이동 관계">
+            <defs>
+              <marker id="fc-arrow-current" class="fc-arrow-marker is-current" viewBox="0 0 14 14"
+                      refX="12.5" refY="7" markerWidth="18" markerHeight="18"
+                      markerUnits="userSpaceOnUse" orient="auto" overflow="visible">
+                <path d="M1.5 1.5 12.5 7 1.5 12.5 4.5 7Z"></path>
+              </marker>
+              <marker id="fc-arrow-context" class="fc-arrow-marker is-context" viewBox="0 0 14 14"
+                      refX="12.5" refY="7" markerWidth="18" markerHeight="18"
+                      markerUnits="userSpaceOnUse" orient="auto" overflow="visible">
+                <path d="M1.5 1.5 12.5 7 1.5 12.5 4.5 7Z"></path>
+              </marker>
+              <marker id="fc-arrow-added" class="fc-arrow-marker is-added" viewBox="0 0 14 14"
+                      refX="12.5" refY="7" markerWidth="18" markerHeight="18"
+                      markerUnits="userSpaceOnUse" orient="auto" overflow="visible">
+                <path d="M1.5 1.5 12.5 7 1.5 12.5 4.5 7Z"></path>
+              </marker>
+              <marker id="fc-arrow-removed" class="fc-arrow-marker is-removed" viewBox="0 0 14 14"
+                      refX="12.5" refY="7" markerWidth="18" markerHeight="18"
+                      markerUnits="userSpaceOnUse" orient="auto" overflow="visible">
+                <path d="M1.5 1.5 12.5 7 1.5 12.5 4.5 7Z"></path>
+              </marker>
+            </defs>
+          </svg>
+
+          <article class="fc-screen-node" th:each="node : ${canvas.nodes()}" tabindex="0"
+                   th:classappend="${node.workTarget()} ? 'is-work-target' : 'is-related'"
+                   th:attr="data-canvas-node=${node.screenId()}, data-screen-row-id=${node.frdScreenId()},
+                            data-screen-name=${node.screenName()}, data-screen-type=${node.screenType()},
+                            data-screen-system=${node.systemCode()}, data-screen-state=${node.stateName()},
+                            data-work-target=${node.workTarget()}, data-new-screen=${node.newScreen()}">
+            <header class="fc-node-head" data-node-drag-handle>
+              <button class="fc-node-select" type="button" th:if="${node.workTarget()}"
+                      th:attr="aria-label=${node.screenName() + ' 작업 대상으로 선택'}"
+                      aria-pressed="false">
+                <span aria-hidden="true"></span>
+              </button>
+              <form class="fc-node-promote-form" method="post" th:unless="${node.workTarget()}"
+                    th:action="@{/projects/{p}/artifacts/frds/{f}/canvas/screens/promote(p=${projectId},f=${frd.id()})}">
+                <input type="hidden" name="screenId" th:value="${node.screenId()}">
+                <input type="hidden" name="screenName" th:value="${node.screenName()}">
+                <input type="hidden" name="screenType" th:value="${node.screenType()}">
+                <input type="hidden" name="systemCode" th:value="${node.systemCode()}">
+                <input type="hidden" name="scope" th:value="${canvas.projectScope() ? 'project' : 'frd'}">
+                <input type="hidden" name="facet" th:value="${activeFacet}">
+                <button class="fc-node-readonly" type="submit" th:disabled="${!canvasEditable}"
+                        th:attr="aria-label=${node.screenName() + ' 잠금 해제하고 수정 화면에 추가'},
+                                 title=${canvasEditable ? '잠금 해제하고 수정 화면에 추가' : '수정 중인 FRD에서만 잠금을 해제할 수 있습니다.'}">
+                  <span class="sr-only">잠금 해제하고 수정 화면에 추가</span>
+                </button>
+              </form>
+              <div><small class="num" th:text="${node.screenId()}">wv-appr-write</small><strong th:text="${node.screenName()}">결재 문서 작성</strong></div>
+              <div class="fc-node-badges">
+                <form class="fc-node-relock-form" method="post"
+                      th:if="${node.workTarget() and !node.newScreen()}"
+                      th:action="@{/projects/{p}/artifacts/frds/{f}/canvas/screens/{s}/exclude(p=${projectId},f=${frd.id()},s=${node.frdScreenId()})}"
+                      onsubmit="return confirm('다시 잠그면 이 화면의 작업 중 변경 내용이 삭제되고 원본 화면으로 돌아갑니다. 수정 화면에서 제외하고 다시 잠글까요?');">
+                  <button class="icon-button fc-node-relock" type="submit"
+                          th:disabled="${!canvasEditable or node.stateName() == 'GENERATING'}"
+                          th:attr="aria-label=${node.screenName() + ' 다시 잠그기'},
+                                   title=${!canvasEditable ? '수정 중인 FRD에서만 다시 잠글 수 있습니다.' : (node.stateName() == 'GENERATING' ? 'AI 초안을 만드는 중인 화면은 다시 잠글 수 없습니다.' : '수정 화면에서 제외하고 다시 잠그기')}">
+                    <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+                      <rect x="5" y="10" width="14" height="10" rx="2"></rect>
+                      <path d="M8 10V7a4 4 0 0 1 7.5-2"></path>
+                    </svg>
+                  </button>
+                </form>
+                <span class="fc-system-badge"
+                      th:text="${node.systemCode() == null or node.systemCode().isBlank() ? '시스템 확인 필요' : systemLabels.label(node.systemCode())}">백오피스</span>
+                <span class="fc-work-target-badge" th:if="${node.workTarget()}">작업 대상</span>
+                <span class="status-badge status-badge--waiting fc-ia-status-badge"
+                      th:if="${node.iaStatusLabel() != null}"
+                      th:text="${node.iaStatusLabel() == '미정' ? '화면 연결 미정' : '화면 연결 ' + node.iaStatusLabel()}"
+                      th:title="${node.iaPlacementLabel()}">화면 연결 제안</span>
+                <span class="badge badge--outline"
+                      th:if="${node.screenKindLabel() != null and node.screenKindLabel() != '화면'}"
+                      th:text="${node.screenKindLabel()}">팝업</span>
+                <span data-screen-status th:if="${node.aiDraftEligible()}"
+                      th:class="${node.stateName() == 'FAILED' ? 'status-badge status-badge--error' : 'status-badge status-badge--progress'}"
+                      th:hidden="${node.stateName() != 'GENERATING' and node.stateName() != 'FAILED'}"
+                      th:title="${node.stateLabel()}" th:attr="aria-label=${node.stateLabel()}"
+                      th:text="${node.stateLabel()}">AI 초안 만드는 중</span>
+                <span class="status-badge status-badge--waiting" th:unless="${node.workTarget()}">관련 화면</span>
+              </div>
+            </header>
+            <div class="fc-screen-preview">
+              <iframe loading="lazy" tabindex="-1" aria-hidden="true"
+                      th:if="${node.frdScreenId() != null and node.stateName() == 'GENERATED'}"
+                       th:attr="data-preview-src=@{/projects/{p}/artifacts/frds/{f}/screens/{s}/preview(p=${projectId},f=${frd.id()},s=${node.frdScreenId()},facet=${activeFacet})}"></iframe>
+              <iframe loading="lazy" tabindex="-1" aria-hidden="true"
+                      th:if="${(node.frdScreenId() == null or node.stateName() != 'GENERATED') and node.previewPath() != null}"
+                      th:attr="data-preview-src=@{/projects/{p}/artifacts/solution-mockups/files/{path}(p=${projectId},path=${node.previewPath()})} + ${previewSkinQuery}"></iframe>
+              <div class="fc-screen-preview__empty"
+                   th:if="${node.previewPath() == null and (node.frdScreenId() == null or node.stateName() != 'GENERATED')}"
+                   th:text="${node.workTarget() ? (node.stateName() == 'GENERATING' ? 'AI 초안 만드는 중' : (node.stateName() == 'FAILED' ? 'AI 초안 생성 실패' : 'AI 초안 생성 전')) : '미리보기가 없습니다'}">미리보기가 없습니다</div>
+            </div>
+            <footer>
+              <span th:text="${node.workTarget()} ? (${#lists.size(node.changes())} + '건 변경') : ${node.systemCode()}">변경 3건</span>
+               <a th:if="${node.workTarget()}" th:href="@{/projects/{p}/artifacts/frds/{f}(p=${projectId},f=${frd.id()},screen=${node.screenId()},facet=${activeFacet},query=${listQuery},state=${listState},owner=${listOwner},system=${listSystem},page=${listPage},pageSize=${listPageSize})}">상세 작업 열기 →</a>
+              <span th:unless="${node.workTarget()}">자물쇠를 눌러 수정 화면에 추가</span>
+            </footer>
+          </article>
+
+          <ul hidden data-canvas-relations>
+            <li th:each="relation : ${canvas.relations()}"
+                th:attr="data-source=${relation.sourceScreenId()}, data-target=${relation.targetScreenId()},
+                         data-state=${relation.state().name()}, data-kind=${relation.kind()},
+                         data-anchor=${relation.anchor()}, data-label=${relation.label()}"></li>
+          </ul>
+          <ul hidden data-canvas-elements>
+            <th:block th:each="node : ${canvas.nodes()}" th:if="${node.workTarget()}">
+              <li th:each="element : ${node.clickableElements()}"
+                  th:attr="data-screen=${node.screenId()}, data-anchor=${element.anchor()},
+                           data-label=${element.label()}, data-kind=${element.kind()}"></li>
+            </th:block>
+          </ul>
+        </div>
+      </div>
+      <p class="fc-canvas-help"><span><i></i>현재 연결</span><span><i class="is-added"></i>이번 FRD에서 추가</span><span><i class="is-removed"></i>이번 FRD에서 제거</span><b>빈 공간을 드래그해 이동하고, 화면 머리를 드래그해 배치합니다.</b></p>
+    </section>
+  </main>
+
+  <dialog class="dialog dialog--layer fc-compare-dialog" data-canvas-compare-dialog
+          aria-labelledby="fc-compare-dialog-title" aria-describedby="fc-compare-dialog-description">
+    <section class="fc-compare-layer">
+      <header class="dialog__header dialog__header--with-meta">
+        <div class="dialog__header-copy">
+          <span class="dialog__kicker">화면 검토</span>
+          <h2 class="dialog__title" id="fc-compare-dialog-title">화면 변경 비교</h2>
+          <p class="dialog__description" id="fc-compare-dialog-description"><strong data-canvas-compare-name>선택 화면</strong>의 기준 화면과 FRD 수정안을 비교합니다.</p>
+        </div>
+        <span class="dialog__meta num" data-canvas-compare-id></span>
+        <button class="dialog__close" type="button" data-canvas-compare-close aria-label="화면 변경 비교 닫기"></button>
+      </header>
+      <div class="dialog__body fc-compare-layer__body">
+        <iframe data-canvas-compare-frame title="화면 변경 비교"></iframe>
+      </div>
+    </section>
+  </dialog>
+
+  <dialog class="dialog dialog--layer fc-duplicate-dialog" data-canvas-duplicate-dialog
+          aria-labelledby="fc-duplicate-title" aria-describedby="fc-duplicate-description">
+    <form method="post"
+          th:action="@{/projects/{p}/artifacts/frds/{f}/canvas/screens/duplicate(p=${projectId},f=${frd.id()})}">
+      <header class="dialog__header">
+        <div class="dialog__header-copy">
+          <h2 class="dialog__title" id="fc-duplicate-title">새 화면으로 복제</h2>
+          <p class="dialog__description" id="fc-duplicate-description">선택한 화면의 현재 구성을 바탕으로 연결이 없는 신규 화면을 만듭니다.</p>
+        </div>
+        <button class="dialog__close" type="button" data-canvas-duplicate-close
+                aria-label="화면 복제 레이어 닫기"></button>
+      </header>
+      <div class="dialog__body fc-duplicate-dialog__body">
+        <div class="fc-duplicate-source">
+          <span>복제할 화면</span>
+          <strong data-canvas-duplicate-source-name>화면명</strong>
+          <small class="num" data-canvas-duplicate-source-id>screen-id</small>
+        </div>
+        <input type="hidden" name="sourceScreenRowId" data-canvas-duplicate-source-row>
+        <label class="field" for="fc-duplicate-name">
+          <span class="field__label">새 화면명</span>
+          <input class="field__control" id="fc-duplicate-name" name="screenName"
+                 type="text" maxlength="255" required data-canvas-duplicate-name>
+        </label>
+        <p class="fc-duplicate-note">화면 유형은 원본과 동일하게 복제합니다.</p>
+        <p class="fc-duplicate-note">화면 연결 정보는 복제하지 않습니다. 필요한 연결은 전체 맵에서 새로 지정해 주세요.</p>
+        <p class="fc-duplicate-note">원본 화면의 대화와 변경 이력은 복사하지 않습니다.</p>
+        <div class="fc-duplicate-actions">
+          <button class="button" type="button" data-canvas-duplicate-cancel>취소</button>
+          <button class="button button--primary" type="submit">새 화면으로 복제</button>
+        </div>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog class="dialog dialog--layer fc-relation-dialog" data-canvas-relation-dialog
+          aria-labelledby="fc-relation-title" aria-describedby="fc-relation-description">
+    <form method="post"
+          th:action="@{/projects/{p}/artifacts/frds/{f}/canvas/relations/save(p=${projectId},f=${frd.id()})}">
+      <header class="dialog__header">
+        <div class="dialog__header-copy">
+          <h2 class="dialog__title" id="fc-relation-title" data-canvas-relation-title>화면 연결</h2>
+          <p class="dialog__description" id="fc-relation-description">클릭 요소와 이동 방향을 정해 두 화면의 이동 관계를 관리합니다.</p>
+        </div>
+        <button class="dialog__close" type="button" data-canvas-relation-close
+                aria-label="화면 연결 레이어 닫기"></button>
+      </header>
+      <div class="dialog__body fc-relation-dialog__body">
+        <input type="hidden" name="originalSourceScreenId" data-relation-original-source>
+        <input type="hidden" name="originalTargetScreenId" data-relation-original-target>
+        <input type="hidden" name="originalAnchor" data-relation-original-anchor>
+        <input type="hidden" name="sourceScreenId" data-relation-source>
+        <input type="hidden" name="targetScreenId" data-relation-target>
+        <div class="fc-relation-summary" aria-label="연결할 화면">
+          <div><span>시작 화면</span><strong data-relation-source-name>조회 목록</strong><small class="num" data-relation-source-id>screen-list</small></div>
+          <i aria-hidden="true">→</i>
+          <div><span>이동 화면</span><strong data-relation-target-name>가맹점 상세</strong><small class="num" data-relation-target-id>screen-detail</small></div>
+        </div>
+        <label class="field" for="fc-relation-direction">
+          <span class="field__label">이동 방향</span>
+          <select class="field__control" id="fc-relation-direction" required data-relation-direction></select>
+        </label>
+        <label class="field" for="fc-relation-anchor">
+          <span class="field__label">클릭 요소</span>
+          <select class="field__control" id="fc-relation-anchor" name="anchor" required data-relation-anchor>
+            <option value="">클릭 요소를 선택하세요</option>
+          </select>
+          <span class="field__help" data-relation-anchor-help>시작 화면에 정의된 요소만 연결할 수 있습니다.</span>
+        </label>
+        <div class="fc-relation-auto-label">
+          <span>연결 라벨</span>
+          <strong data-relation-label-preview>가맹점 상세 열기</strong>
+          <small>이동 화면명을 기준으로 자동 생성합니다.</small>
+        </div>
+      </div>
+      <div class="dialog__actions fc-relation-actions">
+          <button class="button button--danger-outline" type="submit" hidden formnovalidate
+                  data-canvas-relation-delete
+                  th:formaction="@{/projects/{p}/artifacts/frds/{f}/canvas/relations/delete(p=${projectId},f=${frd.id()})}">연결 삭제</button>
+          <span></span>
+          <button class="button" type="button" data-canvas-relation-cancel>취소</button>
+          <button class="button button--primary" type="submit" data-submit-loading="화면 연결 저장 중">연결 저장</button>
+      </div>
+    </form>
+  </dialog>
+
+  <section class="wm-ai-chat" id="frd-map-chat" role="dialog" aria-labelledby="frd-map-chat-title" hidden>
+    <header class="wm-ai-chat__head">
+      <img th:src="@{/images/claudecode-color.png}" alt="">
+      <div class="wm-ai-chat__identity">
+        <strong id="frd-map-chat-title">Claude Code</strong>
+        <span><b th:text="${frd.label()}">FRD-003</b> 전체 화면 대화</span>
+        <span th:if="${claudeIdentity != null}">계정 <b th:text="${claudeIdentity.email()}">planner@example.com</b><th:block
+              th:if="${claudeIdentity.organizationName() != null}"
+              th:text="${' · ' + claudeIdentity.organizationName()}"> · 기획팀</th:block></span>
+      </div>
+      <div class="wm-ai-chat__actions">
+        <button class="wm-ai-chat__expand" type="button" data-canvas-chat-expand
+                aria-label="대화창 확대" title="대화창 확대" aria-pressed="false">
+          <svg class="fc-chat-expand-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M14 5h5v5M19 5l-7 7M10 19H5v-5M5 19l7-7"/></svg>
+          <svg class="fc-chat-restore-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M19 10h-5V5M14 10l7-7M5 14h5v5M10 14l-7 7"/></svg>
+        </button>
+        <button class="wm-ai-chat__close" type="button" data-canvas-chat-close aria-label="대화창 닫기">×</button>
+      </div>
+    </header>
+    <div class="wm-ai-chat__selection" data-canvas-selection hidden>
+      <div>
+        <small>작업 화면</small>
+        <strong data-canvas-selection-label></strong>
+        <span class="num" data-canvas-selection-names></span>
+      </div>
+      <button type="button" data-canvas-selection-clear aria-label="선택 화면 해제" title="선택 화면 해제">×</button>
+    </div>
+    <div class="wm-ai-chat__log" data-canvas-chat-log aria-live="polite">
+      <article class="wm-ai-chat-message wm-ai-chat-message--ai"><strong>Claude Code</strong><p>화면을 여러 개 선택하거나 캔버스 전체를 기준으로 작업을 요청해 주세요. 화면 생성·복사·수정과 연결 변경을 함께 처리할 수 있습니다.</p></article>
+    </div>
+    <form class="wm-ai-chat__composer" method="post" data-canvas-chat-form
+          th:action="@{/projects/{p}/artifacts/frds/{f}/canvas/chat(p=${projectId},f=${frd.id()})}">
+      <label class="sr-only" for="frd-map-chat-message">FRD 전체 화면 작업 요청</label>
+      <div class="wm-ai-chat__message-field">
+        <textarea id="frd-map-chat-message" maxlength="4000"
+                  placeholder="화면을 선택한 뒤 질문하거나 수정·신규 화면을 요청해 주세요"
+                  title="Enter 전송 · Alt+Enter 줄바꿈"></textarea>
+        <div class="wm-ai-chat__message-tools">
+          <div class="wm-ai-chat__suggestion-control">
+            <button class="wm-ai-chat__reference-button wm-ai-chat__suggestion-button" type="button"
+                    data-canvas-suggestion-toggle aria-expanded="false" disabled
+                    title="검토할 화면을 먼저 선택해 주세요">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m12 3 1.4 4.1L17.5 8.5l-4.1 1.4L12 14l-1.4-4.1-4.1-1.4 4.1-1.4L12 3ZM18.5 14l.8 2.2 2.2.8-2.2.8-.8 2.2-.8-2.2-2.2-.8 2.2-.8.8-2.2Z"/></svg>
+              AI 제안
+            </button>
+            <div class="wm-ai-chat__suggestion-menu" data-canvas-suggestion-menu role="menu" hidden>
+              <button type="button" role="menuitem" data-canvas-suggestion="선택한 화면이 디자인 규칙과 공통 컴포넌트를 올바르게 사용했는지 검토하고, 수정 전에 개선점을 제안해 주세요.">디자인 규칙 검토</button>
+              <button type="button" role="menuitem" data-canvas-suggestion="선택한 화면의 접근성·문구·조작 흐름을 검토하고 우선순위가 높은 개선점을 제안해 주세요.">사용성 개선 제안</button>
+              <button type="button" role="menuitem" data-canvas-suggestion="선택한 화면과 관련 화면의 이동 관계를 검토하고 누락되거나 어색한 흐름을 제안해 주세요.">화면 연결 검토</button>
+            </div>
+          </div>
+          <small class="wm-ai-chat__drop-hint">선택 화면을 기준으로 검토합니다</small>
+        </div>
+      </div>
+      <button class="button button--primary" type="submit">전송</button>
+    </form>
+  </section>
+  <script defer th:src="@{/js/frd-canvas.js}"></script>
+</fieldset>
+</body>
+</html>

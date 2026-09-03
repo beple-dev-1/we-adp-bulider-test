@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <link rel="stylesheet" href="../../src/main/resources/static/css/tokens.css">
+  <link rel="stylesheet" href="../../src/main/resources/static/css/reset.css">
+  <link rel="stylesheet" href="../../src/main/resources/static/css/typography.css">
+  <link rel="stylesheet" href="../../src/main/resources/static/css/components.css">
+  <link rel="stylesheet" href="../../src/main/resources/static/css/shell.css">
+  <link rel="stylesheet" href="_mock.css">
+  <link rel="stylesheet" href="../../src/main/resources/static/css/screens.css">
+  <title>솔루션 목업</title>
+</head>
+<body>
+<!--
+  2026-08-16 개정 셋 (계획 7 · 병주 확정)
+  ⛔ SOL-W-014 꼴을 되살리지 마라 — artifacts.md 가 「빌더가 자기 이름을 따로 짓지 않는다」로
+     금지했다(2026-08-13). 화면ID 는 기획 레포의 것(wv-card-list 꼴)을 그대로 쓴다.
+  화면 버전은 메뉴구조도와 별개다. 산정 기준은 추가 논의 대상이며 현재는 Git 변경 순서를 임시 표시한다.
+  ⚠ 「⚑ 실물과 다름」은 사람이 찍는 표시다. 진행 단계 색이 아니라 갈래 표시라 테두리 배지다.
+-->
+<template id="본문">
+  <div class="list-loading-region" data-list-loading-region>
+    <div class="page-loading-overlay list-loading-overlay" data-list-loading-overlay role="status" aria-label="조회 결과 처리 중" hidden>
+      <span class="page-loading-indicator">
+        <span class="page-loading-spinner" aria-hidden="true"></span>
+      </span>
+    </div>
+
+  <div class="page-head list-page-head">
+    <div>
+      <h1 class="page-head__title">솔루션 목업</h1>
+      <p class="page-intro">기획 저장소에서 추출한 운영 화면을 확인합니다. 작업 목업의 기준이 되는 화면입니다.</p>
+    </div>
+  </div>
+
+  <div class="summary-strip solution-summary-strip" aria-label="솔루션 목업 현황">
+    <span>전체 <strong class="num">274</strong></span>
+    <span>백오피스 <strong class="num">243</strong></span>
+    <span>웹뷰 <strong class="num">18</strong></span>
+    <span>온라인PG <strong class="num">13</strong></span>
+    <span>실물과 다름 <strong class="num">2</strong></span>
+  </div>
+
+  <form class="filter-bar filter-bar--solution" action="#" role="search" data-list-loading-trigger onsubmit="return false">
+    <div class="field"><label class="field__label" for="solution-system">시스템</label><select class="field__control" id="solution-system"><option>전체</option><option>백오피스</option><option>웹뷰</option><option>온라인PG</option></select></div>
+    <div class="field"><label class="field__label" for="solution-facet">적용 구분</label><select class="field__control" id="solution-facet"><option>전체</option><option>익산</option><option>제주</option></select></div>
+    <div class="field"><label class="field__label" for="solution-search">화면 검색</label><input class="field__control" id="solution-search" type="search" placeholder="화면관리번호, 화면 ID, 화면명 또는 메뉴를 입력하세요"></div>
+    <button class="button" type="submit">조회</button>
+  </form>
+
+  <div class="table-wrap solution-mockup-table-wrap">
+    <table class="data-table data-table--dense solution-mockup-table">
+      <colgroup><col class="solution-col-name"><col class="solution-col-standard-id"><col class="solution-col-file-name"><col class="solution-col-version"><col class="solution-col-system"><col class="solution-col-kind"><col class="solution-col-facet"><col class="solution-col-date"><col class="solution-col-date"><col class="solution-col-author"></colgroup>
+      <thead><tr><th scope="col">화면명</th><th scope="col">화면관리번호</th><th scope="col">화면 ID</th><th scope="col">버전</th><th scope="col">시스템</th><th scope="col">종류</th><th scope="col">적용 구분</th><th scope="col">최초 작성일</th><th scope="col">수정일</th><th scope="col">최종 수정자</th></tr></thead>
+      <tbody>
+        <tr><td><a class="solution-screen-name" href="08a-solution-mockup-detail.html" title="선불카드 관리 (목록)">선불카드 관리 (목록)</a></td><td class="num nowrap">PS-BO-MRC-010-L01-S</td><td class="num">bo-bizcard-list</td><td class="num">v3</td><td>백오피스</td><td><span class="badge">화면</span></td><td><span class="badge badge--outline">전체</span></td><td class="num">2026-08-11</td><td class="num">2026-08-15</td><td>이병주</td></tr>
+        <tr><td><a class="solution-screen-name" href="08a-solution-mockup-detail.html" title="선불카드 관리 상세">선불카드 관리 상세</a> <span class="badge badge--outline">⚑ 실물과 다름</span></td><td class="num nowrap">PS-BO-MRC-010-D01-S</td><td class="num">bo-bizcard-detail</td><td class="num">v2</td><td>백오피스</td><td><span class="badge">화면</span></td><td><span class="badge badge--outline">제주</span></td><td class="num">2026-08-11</td><td class="num">2026-08-15</td><td>이병주</td></tr>
+        <tr><td><a class="solution-screen-name" href="08a-solution-mockup-detail.html" title="선불카드 카드상태 변경 확인 팝업">선불카드 카드상태 변경 확인 팝업</a></td><td class="num nowrap">PS-BO-MRC-010-P01-S</td><td class="num">bo-bizcard-detail-pop</td><td class="num">v4</td><td>백오피스</td><td><span class="badge">팝업</span></td><td><span class="badge badge--outline">익산</span></td><td class="num">2026-08-11</td><td class="num">2026-08-15</td><td>이병주</td></tr>
+        <tr><td><a class="solution-screen-name" href="08a-solution-mockup-detail.html" title="보유 카드 조회">보유 카드 조회</a></td><td class="num nowrap">wv-card-list</td><td class="num">wv-card-list</td><td class="num">v1</td><td>웹뷰</td><td><span class="badge">화면</span></td><td><span class="badge badge--outline">익산, 제주</span></td><td class="num">2026-08-13</td><td class="num">2026-08-15</td><td>이병주</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="list-table-foot">
+    <span aria-hidden="true"></span>
+    <nav class="list-pagination" aria-label="솔루션 목업 페이지 이동" data-list-loading-links>
+      <span class="list-page-button" aria-disabled="true" aria-label="이전 페이지">‹</span>
+      <a class="list-page-button is-current" href="#" aria-current="page">1</a>
+      <a class="list-page-button" href="#">2</a><a class="list-page-button" href="#">3</a><a class="list-page-button" href="#">4</a><a class="list-page-button" href="#">5</a><a class="list-page-button" href="#">6</a><a class="list-page-button" href="#">7</a><a class="list-page-button" href="#">8</a><a class="list-page-button" href="#">9</a><a class="list-page-button" href="#">10</a>
+      <a class="list-page-button" href="#" aria-label="다음 페이지">›</a>
+    </nav>
+    <form class="list-page-size" action="#" data-list-loading-trigger onsubmit="return false">
+      <label class="sr-only" for="solution-page-size">목록 크기</label>
+      <select class="field__control" id="solution-page-size" aria-label="페이지당 표시 개수" data-list-loading-page-size>
+        <option selected>10개씩</option>
+        <option>20개씩</option>
+        <option>50개씩</option>
+        <option>100개씩</option>
+      </select>
+    </form>
+  </div>
+  </div>
+</template>
+<script src="_shell.js"></script>
+<script>틀({제목:'솔루션 목업',모양:'산출물',지금:'solution-mockups',프로젝트이름:'G2C',프로젝트번호:1,프로젝트들:['G2C','서울페이'],사람:'이영희',안읽은알림:2});</script>
+</body>
+</html>

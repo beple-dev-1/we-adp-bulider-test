@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<body>
+<dialog th:fragment="layer" class="dialog dialog--layer feature-spec-dialog" id="feature-spec-dialog"
+        aria-modal="true" aria-labelledby="feature-spec-dialog-title"
+        aria-describedby="feature-spec-dialog-description"
+        th:attr="data-feature-spec-poll=${polling},data-feature-spec-status-url=@{/projects/{p}/artifacts/functional-specs/{sys}/{s}/status(p=${projectId},sys=${layerSystemCode},s=${layerScreenId})}">
+  <div class="feature-spec-dialog__frame">
+    <header class="dialog__header feature-spec-dialog__header">
+      <div class="dialog__header-copy">
+        <span class="dialog__kicker">기능명세서</span>
+        <h2 class="dialog__title" id="feature-spec-dialog-title" tabindex="-1" th:text="${screenTitle}">화면명</h2>
+        <p class="dialog__description" id="feature-spec-dialog-description"
+           th:text="${systemLabel} + ' · ' + ${managementNumber}">시스템 · 관리번호</p>
+      </div>
+      <button class="dialog__close" type="button" data-feature-spec-close aria-label="기능명세서 닫기"></button>
+    </header>
+
+    <div class="dialog__body feature-spec-dialog__body">
+      <div class="artifact-generation-layout" th:if="${documentState.name() == 'PREPARING'}">
+        <section class="artifact-generation" aria-live="polite">
+          <p class="artifact-generation__label"><span class="artifact-generation__dot" aria-hidden="true"></span>산출물 준비 중</p>
+          <h3>기능명세서를 작성하고 있습니다</h3>
+          <p class="artifact-generation__description">화면 자료와 IA를 확인해 제출용 문서로 정리하고 있습니다.</p>
+          <div class="artifact-generation__track" aria-hidden="true"></div>
+          <p class="artifact-generation__note">완료되면 이 레이어가 자동으로 갱신됩니다.</p>
+        </section>
+        <div class="artifact-generation-paper" aria-hidden="true">
+          <div class="artifact-generation-paper__head">
+            <i class="artifact-generation-paper__kind"></i><i class="artifact-generation-paper__title"></i>
+            <div class="artifact-generation-paper__meta"><div><i></i><i></i></div><div><i></i><i></i></div><div><i></i><i></i></div><div><i></i><i></i></div></div>
+          </div>
+          <div class="artifact-generation-paper__section"><i class="artifact-generation-paper__section-title"></i><i class="artifact-generation-paper__section-rule"></i><i class="artifact-generation-paper__section-line"></i><i class="artifact-generation-paper__section-line artifact-generation-paper__section-line--medium"></i></div>
+          <div class="artifact-generation-paper__section"><i class="artifact-generation-paper__section-title"></i><i class="artifact-generation-paper__section-rule"></i><i class="artifact-generation-paper__section-line"></i><i class="artifact-generation-paper__section-line artifact-generation-paper__section-line--short"></i></div>
+        </div>
+      </div>
+
+      <section class="artifact-generation artifact-generation--refreshing"
+               th:if="${documentState.name() == 'REFRESHING'}" aria-live="polite">
+        <p class="artifact-generation__label"><span class="artifact-generation__dot" aria-hidden="true"></span>산출물 업데이트 중</p>
+        <h3>기능명세서를 업데이트하고 있습니다</h3>
+        <p class="artifact-generation__description">완료되기 전까지 아래에서 마지막 정상 개정본을 계속 확인할 수 있습니다.</p>
+        <div class="artifact-generation__track" aria-hidden="true"></div>
+        <p class="artifact-generation__note">완료되면 아래 문서가 최신 내용으로 자동 갱신됩니다.</p>
+      </section>
+
+      <div class="feature-spec-status feature-spec-status--danger"
+           th:if="${documentState.name() == 'FAILED_EMPTY' or documentState.name() == 'FAILED_STALE'}" role="alert">
+        <strong>기능명세서를 준비하지 못했습니다.</strong>
+        <span th:text="${failureMessage}"></span>
+        <span th:if="${documentState.name() == 'FAILED_STALE'}"> 아래에는 직전 정상 개정본을 표시합니다.</span>
+      </div>
+
+      <article class="feature-spec-official official-document" th:if="${hasDocument}">
+        <header class="official-document__head">
+          <p class="official-document__kind">기능명세서</p>
+          <p class="official-document__title" th:text="${screenTitle}">화면명</p>
+          <dl class="official-document__meta">
+            <div><dt>시스템</dt><dd th:text="${systemLabel}">시스템</dd></div>
+            <div><dt>화면 ID</dt><dd class="num" th:text="${layerScreenId}">SCREEN-001</dd></div>
+            <div><dt>개정</dt><dd th:text="${document.revisionNo} + '차'">1차</dd></div>
+            <div><dt>작성일</dt><dd th:text="${#temporals.format(document.createdAt, 'yyyy-MM-dd')}">2026-08-28</dd></div>
+          </dl>
+        </header>
+        <div class="official-document__body feature-spec-official__body"
+             th:utext="${document.documentHtml}"></div>
+        <footer class="official-document__foot">
+          <span>화면 HTML · 화면 명세 · IA 기준</span>
+          <span th:text="${'기능명세서 ' + document.revisionNo + '차 · ' + #temporals.format(document.createdAt, 'yyyy-MM-dd')}">기능명세서 1차 · 2026-08-28</span>
+        </footer>
+      </article>
+    </div>
+
+    <footer class="dialog__actions feature-spec-dialog__actions">
+      <button class="button" type="button" data-feature-spec-close>닫기</button>
+    </footer>
+  </div>
+</dialog>
+</body>
+</html>

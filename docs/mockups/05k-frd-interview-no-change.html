@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <link rel="stylesheet" href="../../src/main/resources/static/css/tokens.css">
+  <link rel="stylesheet" href="../../src/main/resources/static/css/reset.css">
+  <link rel="stylesheet" href="../../src/main/resources/static/css/typography.css">
+  <link rel="stylesheet" href="../../src/main/resources/static/css/components.css">
+  <link rel="stylesheet" href="../../src/main/resources/static/css/shell.css">
+  <link rel="stylesheet" href="_mock.css">
+  <link rel="stylesheet" href="../../src/main/resources/static/css/screens.css">
+  <link rel="stylesheet" href="_frd-interview.css">
+  <title>FRD 요구사항 분석 결과 검토 — 혼합 범위</title>
+</head>
+<body>
+<template id="본문">
+  <main class="fi-page">
+    <header class="fi-head">
+      <div class="fi-head__copy">
+        <span class="rq-kicker num">FRD-012</span>
+        <h1>고유가 피해지원금 종료처리</h1>
+      </div>
+    </header>
+
+    <nav class="fi-steps" aria-label="FRD 작업 만들기 진행 단계">
+      <div class="fi-step is-done"><i>✓</i><span>요구사항 입력</span></div>
+      <div class="fi-step is-current" aria-current="step"><i>2</i><span>AI 인터뷰</span></div>
+      <div class="fi-step"><i>3</i><span>분석 결과 확인</span></div>
+      <div class="fi-step"><i>4</i><span>FRD 작업 열기</span></div>
+    </nav>
+
+    <div class="fi-layout fi-layout--interview">
+      <section class="fi-card fi-chat fi-chat--interview fi-main" aria-labelledby="interview-title">
+        <header class="fi-card__head fi-conversation-head">
+          <div class="fi-interview-brand">
+            <img src="claudecode-color.png" width="32" height="32" alt="">
+            <h2 id="interview-title">Claude Code</h2>
+          </div>
+          <span class="fi-session-state is-waiting" id="session-state"><i></i><span>분석 결과 검토</span></span>
+        </header>
+
+        <div class="fi-chat__log" id="interview-log" aria-live="polite">
+          <article class="fi-message fi-message--user">
+            <div class="fi-message__who"><strong>이영희</strong><span>10:12</span></div>
+            <div class="fi-message__bubble"><p>가맹점 찾기 안내를 종료 상태로 변경하고, 기존 FAQ 삭제와 공지사항 게시, 지급시스템 신청과 알림톡 중단도 확인해 주세요.</p></div>
+          </article>
+
+          <section class="fi-turn-work fi-turn-work--complete" aria-label="실행 내용">
+            <div class="fi-turn-work__head"><span class="fi-turn-work__state"><i>✓</i><strong>기존 기능과 시스템 범위를 확인했습니다</strong></span></div>
+            <ol class="fi-tool-calls">
+              <li class="is-done"><i>✓</i><div><strong>운영 기능 확인</strong><span>FAQ 삭제와 공지사항 등록 기능이 이미 있습니다.</span></div></li>
+              <li class="is-done"><i>✓</i><div><strong>시스템 범위 확인</strong><span>지급시스템 신청과 알림톡은 이 저장소 밖의 작업입니다.</span></div></li>
+            </ol>
+          </section>
+
+          <article class="fi-message fi-question fi-question--answered">
+            <div class="fi-message__bubble">
+              <p class="fi-question__title">지급시스템의 신청 종료와 알림톡 중단도 이 FRD의 개발 범위에 포함할까요?</p>
+              <div class="fi-question__reason"><strong>질문한 이유</strong><span>현재 저장소에는 지급시스템 화면과 알림톡 구현 근거가 없어 담당 시스템을 확인해야 했습니다.</span></div>
+              <div class="fi-options" role="radiogroup" aria-label="지급시스템 작업 범위">
+                <label class="fi-option"><input type="radio" name="system-scope" disabled><span>이 FRD 개발 범위에 포함</span></label>
+                <label class="fi-option"><input type="radio" name="system-scope" checked disabled><span>지급시스템에서 별도 진행</span></label>
+                <label class="fi-option"><input type="radio" name="system-scope" disabled><span>아직 결정하지 않음</span></label>
+                <label class="fi-option"><input type="radio" name="system-scope" disabled><span>직접 입력</span></label>
+              </div>
+              <div class="fi-question-submit fi-question-submit--done"><span>선택한 답변이 분석에 반영되었습니다.</span><button class="button" type="button" disabled>답변 제출 완료</button></div>
+            </div>
+          </article>
+
+          <article class="fi-message fi-analysis-result" id="analysis-result">
+            <div class="fi-message__bubble">
+              <h2>수정이 필요한 범위를 정리했습니다.</h2>
+              <div class="fi-result-columns">
+                <section class="fi-result-section" aria-labelledby="front-change-title">
+                <header><div><span>FRONTEND</span><h3 id="front-change-title">수정할 프론트</h3></div><strong>1개 화면</strong></header>
+                <ul>
+                  <li><div><strong>가맹점 찾기</strong><small class="num">wv-merc-search-main</small></div><p>결제 가능 상품권 안내 문구를 종료 상태에 맞게 변경합니다.</p></li>
+                </ul>
+                </section>
+                <section class="fi-result-section" aria-labelledby="back-change-title">
+                <header><div><span>BACKEND</span><h3 id="back-change-title">수정할 백엔드</h3></div><strong>1개 항목</strong></header>
+                <ul>
+                  <li><div><span class="badge badge--outline">데이터</span><strong>결제 가능 상품권 안내</strong></div><p>가맹점 찾기에 제공하는 안내 문구 데이터를 종료 상태로 변경합니다.</p></li>
+                </ul>
+                </section>
+              </div>
+            </div>
+          </article>
+          <article class="fi-message fi-confirm-message">
+            <div class="fi-message__bubble">
+              <h2 id="approval-title">이대로 FRD 작업 범위에 적용하시겠습니까?</h2>
+              <p>빠진 개발 범위가 있다면 더 대화한 뒤 다시 분석할 수 있습니다.</p>
+              <div class="fi-decision-actions"><button class="button button--primary" id="apply-analysis" type="button">분석 결과 승인</button><button class="button" id="continue-chat" type="button">더 대화하기</button></div>
+            </div>
+          </article>
+        </div>
+
+        <form class="fi-composer" id="chat-form" action="#">
+          <label for="chat-message"><span class="sr-only">메시지 입력</span><textarea id="chat-message" placeholder="분석 결과에서 궁금한 내용이나 추가 조건을 입력하세요"></textarea></label>
+          <button class="button button--primary" type="submit">전송</button>
+        </form>
+      </section>
+    </div>
+  </main>
+</template>
+<script src="_shell.js"></script>
+<script>
+  틀({제목:'FRD 요구사항 분석 결과 검토',모양:'산출물',지금:'frds',프로젝트이름:'G2C',프로젝트번호:1,프로젝트들:['G2C','서울페이'],사람:'이영희',안읽은알림:2});
+  const chatInput=document.getElementById('chat-message');
+  const sessionState=document.getElementById('session-state');
+  const interviewLog=document.getElementById('interview-log');
+  const analysisResult=document.getElementById('analysis-result');
+  requestAnimationFrame(()=>{interviewLog.scrollTop=analysisResult.offsetTop-interviewLog.offsetTop-16;});
+  document.getElementById('continue-chat').addEventListener('click',()=>chatInput.focus());
+  document.getElementById('apply-analysis').addEventListener('click',event=>{event.currentTarget.textContent='승인 완료';event.currentTarget.disabled=true;document.getElementById('continue-chat').hidden=true;sessionState.classList.remove('is-waiting');sessionState.querySelector('span').textContent='분석 결과 승인 완료';});
+  document.getElementById('chat-form').addEventListener('submit',event=>{event.preventDefault();if(!chatInput.value.trim())return;sessionState.classList.remove('is-waiting');sessionState.querySelector('span').textContent='추가 내용 분석 중';chatInput.value='';});
+</script>
+</body>
+</html>

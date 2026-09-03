@@ -1,0 +1,155 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 700" role="img"
+     aria-labelledby="architecture-title architecture-desc">
+  <title id="architecture-title">we-adk-builder 아키텍처</title>
+  <desc id="architecture-desc">별도 Claude Code 세션의 추출기가 운영 소스에서 기획 저장소를 만들고, Builder가 그 저장소를 클론해 FRD별 Worktree에서 작업한 뒤 개발요청서를 개발 GitLab으로 보내고 as-is 재동기와 테스트 결과를 되받는 구조</desc>
+  <defs>
+    <style>
+      text { font-family: "Noto Sans KR", "Malgun Gothic", sans-serif; fill: #001E2B; }
+      .boundary { fill: #EEF2F0; stroke: #9DB7AD; stroke-width: 1.6; }
+      .container { fill: #FFFFFF; stroke: #C8D2CE; stroke-width: 1.5; }
+      .component { fill: #F7F9F8; stroke: #C8D2CE; stroke-width: 1.3; }
+      .core { fill: #DDEBE5; stroke: #00684A; stroke-width: 1.8; }
+      .boundary-title { font-size: 22px; font-weight: 750; }
+      .boundary-meta { font-size: 13px; font-weight: 700; fill: #52666F; letter-spacing: .04em; }
+      .container-title { font-size: 19px; font-weight: 750; }
+      .component-title { font-size: 16px; font-weight: 750; }
+      .body { font-size: 14px; font-weight: 500; fill: #52666F; }
+      .mono { font-family: "JetBrains Mono", Consolas, monospace; }
+      .path { font-family: "JetBrains Mono", Consolas, monospace; font-size: 14px; font-weight: 750; }
+      .interface-link { fill: none; stroke: #52666F; stroke-width: 1.6; stroke-linecap: round; marker-end: url(#arrow); }
+      .return-link { fill: none; stroke: #00684A; stroke-width: 1.8; stroke-linecap: round; marker-end: url(#arrow-brand); }
+      .dependency { fill: none; stroke: #8A999F; stroke-width: 1.4; stroke-dasharray: 5 5; }
+      .interface-label { font-size: 13px; font-weight: 700; fill: #00684A; }
+      .divider { stroke: #DCE4E1; stroke-width: 1; }
+      .legend { font-size: 12px; font-weight: 500; fill: #52666F; }
+      .legend-label { font-weight: 700; fill: #001E2B; }
+    </style>
+    <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#52666F"/>
+    </marker>
+    <marker id="arrow-brand" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#00684A"/>
+    </marker>
+  </defs>
+
+  <g data-boundary="extraction">
+    <rect class="boundary" x="48" y="40" width="372" height="484" rx="10"/>
+    <text class="boundary-title" x="78" y="82">추출 환경</text>
+    <text class="boundary-meta" x="390" y="81" text-anchor="end">SEPARATE</text>
+
+    <rect class="container" x="88" y="118" width="292" height="84" rx="7"/>
+    <text class="container-title" x="118" y="152">운영 소스</text>
+    <text class="body" x="118" y="180">운영 화면 · CSS · 업무 코드</text>
+
+    <path class="dependency" d="M234 202V236"/>
+
+    <rect class="container" x="88" y="236" width="292" height="164" rx="7"/>
+    <text class="container-title" x="118" y="270">별도 Claude Code 세션</text>
+    <line class="divider" x1="118" y1="286" x2="350" y2="286"/>
+    <rect class="core" x="118" y="302" width="232" height="80" rx="6"/>
+    <text class="component-title" x="234" y="334" text-anchor="middle">Builder Extractor</text>
+    <text class="body" x="234" y="358" text-anchor="middle">화면 · IA · 업무 지식 추출</text>
+
+    <text class="body" x="234" y="434" text-anchor="middle">Builder 서버와 분리해 사람이 돌린다</text>
+    <text class="body" x="234" y="460" text-anchor="middle">결과는 사람이 GitLab에 push 한다</text>
+  </g>
+
+  <g data-boundary="planning-repository">
+    <rect class="boundary" x="474" y="40" width="596" height="484" rx="10"/>
+    <text class="boundary-title" x="504" y="82">기획 저장소</text>
+    <text class="boundary-meta" x="1040" y="81" text-anchor="end">PLANNING GITLAB</text>
+
+    <rect class="container" x="504" y="112" width="536" height="400" rx="7"/>
+    <text class="container-title mono" x="534" y="147">planning-repo/</text>
+    <text class="body" x="1010" y="147" text-anchor="end">AI 작업의 기반</text>
+    <line class="divider" x1="534" y1="164" x2="1010" y2="164"/>
+
+    <rect class="core" x="534" y="182" width="232" height="64" rx="6"/>
+    <text class="component-title mono" x="554" y="209">manifest.json</text>
+    <text class="body" x="554" y="231">기관 스킨의 정본</text>
+
+    <rect class="component" x="778" y="182" width="232" height="64" rx="6"/>
+    <text class="component-title mono" x="798" y="209">index.json</text>
+    <text class="body" x="798" y="231">화면 ID 색인</text>
+
+    <rect class="component" x="534" y="262" width="476" height="140" rx="6"/>
+    <text class="container-title mono" x="558" y="292">core/&lt;system&gt;/</text>
+    <text class="body" x="986" y="292" text-anchor="end">시스템별 현재 운영 화면</text>
+    <line class="divider" x1="558" y1="308" x2="986" y2="308"/>
+    <text class="component-title mono" x="558" y="340">ia.md · pages/&lt;screen-id&gt;.html + .md</text>
+    <text class="component-title mono" x="558" y="372">assets/ · styleguide.md · shell.md</text>
+
+    <rect class="component" x="534" y="418" width="476" height="36" rx="5"/>
+    <text class="path" x="554" y="442">domains/&lt;domain&gt;/*.md</text>
+    <text class="body" x="990" y="442" text-anchor="end">화면 밖 업무 규칙과 흐름</text>
+
+    <rect class="component" x="534" y="462" width="476" height="36" rx="5"/>
+    <text class="path" x="554" y="486">design-guide/ · spec/ · verify/</text>
+    <text class="body" x="990" y="486" text-anchor="end">디자인 · 규격 · 검사기</text>
+  </g>
+
+  <g data-boundary="builder">
+    <rect class="boundary" x="1124" y="40" width="428" height="484" rx="10"/>
+    <text class="boundary-title" x="1154" y="82">Builder 서버</text>
+    <text class="boundary-meta" x="1522" y="81" text-anchor="end">1 SERVER</text>
+
+    <rect class="container" x="1164" y="118" width="348" height="96" rx="7"/>
+    <text class="container-title" x="1194" y="152">Claude Code 계정 관리</text>
+    <line class="divider" x1="1194" y1="168" x2="1482" y2="168"/>
+    <text class="body" x="1194" y="194">작업 1개 = 실행 계정 1개</text>
+    <rect class="core" x="1396" y="185" width="18" height="9" rx="4"/>
+    <rect class="core" x="1418" y="185" width="18" height="9" rx="4"/>
+    <rect class="core" x="1440" y="185" width="18" height="9" rx="4"/>
+    <rect class="component" x="1462" y="185" width="18" height="9" rx="4"/>
+
+    <rect class="container" x="1164" y="238" width="348" height="152" rx="7"/>
+    <text class="container-title" x="1194" y="272">「FRD 작업하기」 마법사</text>
+    <line class="divider" x1="1194" y1="288" x2="1482" y2="288"/>
+    <text class="component-title" x="1194" y="316">걸음 1 · 요구사항 직접 입력</text>
+    <text class="component-title" x="1194" y="344">걸음 2 · AI 인터뷰</text>
+    <text class="component-title" x="1194" y="372">걸음 3 · 개발 범위 확인</text>
+
+    <path class="interface-link" d="M1338 390V410"/>
+    <text class="interface-label" x="1354" y="405">누를 때 Worktree 생성</text>
+
+    <rect class="container" x="1164" y="414" width="348" height="94" rx="7"/>
+    <text class="container-title" x="1194" y="444">기획 저장소 Clone</text>
+    <text class="boundary-meta" x="1482" y="444" text-anchor="end">N BRANCH</text>
+    <rect class="component" x="1194" y="456" width="140" height="36" rx="5"/>
+    <text class="component-title mono" x="1264" y="480" text-anchor="middle">FRD-001</text>
+    <rect class="component" x="1348" y="456" width="140" height="36" rx="5"/>
+    <text class="component-title mono" x="1418" y="480" text-anchor="middle">FRD-002</text>
+  </g>
+
+  <g data-boundary="development-gitlab">
+    <rect class="boundary" x="1124" y="556" width="428" height="72" rx="10"/>
+    <text class="boundary-title" x="1154" y="590">개발 GitLab</text>
+    <text class="boundary-meta" x="1522" y="589" text-anchor="end">DELIVERY</text>
+    <text class="body" x="1154" y="616">개발요청서(DR) 꾸러미를 받아 개발한다</text>
+  </g>
+
+  <path class="interface-link" d="M424 300H470"/>
+  <text class="interface-label" x="447" y="288" text-anchor="middle">push</text>
+
+  <path class="interface-link" d="M1074 300H1120"/>
+  <text class="interface-label" x="1097" y="288" text-anchor="middle">clone · pull</text>
+
+  <path class="interface-link" d="M1338 524V552"/>
+  <text class="interface-label" x="1354" y="544">개발요청서 전송</text>
+
+  <path class="return-link" d="M1124 592H772V528"/>
+  <text class="interface-label" x="950" y="582" text-anchor="middle">as-is 재동기 · 단위/통합 테스트 결과 회신</text>
+
+  <text class="legend" x="48" y="656">
+    <tspan class="legend-label">FRD 1개 = 작업 1개 = Worktree 1개 = 한 사람</tspan>
+    <tspan> · 개발 범위 확인에서 「FRD 작업하기」를 누를 때 Worktree를 만든다</tspan>
+  </text>
+  <text class="legend" x="48" y="676">
+    <tspan class="legend-label">기관 스킨의 정본은 manifest.json</tspan>
+    <tspan> · 빌더 코드에는 기관 이름이 없다. 렌더할 때 저장소가 알려 준다</tspan>
+  </text>
+  <text class="legend" x="48" y="696">
+    <tspan class="legend-label">Builder는 운영 소스를 모른다</tspan>
+    <tspan> · 추출은 사람이 별도 세션에서 돌리고, Builder는 기획 저장소만 클론해 쓴다</tspan>
+  </text>
+</svg>

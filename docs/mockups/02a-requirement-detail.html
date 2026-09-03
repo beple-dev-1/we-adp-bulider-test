@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" href="../../src/main/resources/static/css/tokens.css">
+  <link rel="stylesheet" href="../../src/main/resources/static/css/reset.css">
+  <link rel="stylesheet" href="../../src/main/resources/static/css/typography.css">
+  <link rel="stylesheet" href="../../src/main/resources/static/css/components.css">
+  <link rel="stylesheet" href="../../src/main/resources/static/css/shell.css">
+  <link rel="stylesheet" href="_mock.css">
+  <link rel="stylesheet" href="../../src/main/resources/static/css/screens.css">
+  <link rel="stylesheet" href="_requirement-concepts.css">
+  <title>요구사항 상세</title>
+</head>
+<body>
+<template id="본문">
+  <div class="requirement-concept">
+    <header class="rq-head">
+      <div class="rq-head__copy">
+        <span class="rq-kicker num">REQ-043</span>
+        <h1>상신 화면 임시 저장</h1>
+      </div>
+      <div class="rq-head__actions">
+        <span class="status-badge status-badge--review" id="requirement-status">생성 완료</span>
+        <button class="button button--primary" id="confirm-requirement" type="button">요구사항 확정</button>
+        <!-- ⛔ 잠긴 채로 둔다 (2026-08-16 병주 확정) — 요구사항정의서는 계획 3 이라 만드는 기계가 없다.
+                 확정한 뒤에도 안 열린다: 열리는 시늉을 하면 화면이 「요청 완료」라고 거짓말한다. -->
+        <button class="button" id="request-definition" type="button" title="요구사항정의서는 다음 단계에서 열립니다." disabled>정의서 생성 요청</button>
+      </div>
+    </header>
+
+    <dl class="rq-meta rq-meta--five">
+      <div><dt>요구사항</dt><dd class="num">REQ-043</dd></div>
+      <div><dt>적용 구분</dt><dd><span class="badge badge--outline">익산</span></dd></div>
+      <div><dt>출처 문서</dt><dd>8/12 전자결재 회의록</dd></div>
+      <!-- ⚠ 2026-08-16 에 「관련 요구」를 「등록」으로 바꿨다 — 보완 관계를 담는 자리가 DB 에 없어
+               늘 「—」인 죽은 칸이 된다. ⛔ 개념을 버린 것이 아니다: 그 자리가 서면 되살린다(ia 설계). -->
+      <div><dt>등록</dt><dd class="num">08-12 14:07</dd></div>
+      <div><dt>마지막 수정</dt><dd class="num" id="draft-updated">08-12 15:42</dd></div>
+    </dl>
+
+    <main class="rq-summary-main">
+      <article class="rq-card">
+        <div class="rq-card__head">
+          <div><span class="rq-kicker">현재 초안</span><h2>요구사항 내용</h2></div>
+          <button class="button button--small" type="button">내용 수정</button>
+        </div>
+        <div class="rq-card__body">
+          <p class="rq-lead" id="requirement-summary">상신 화면에서 작성 중인 결재 문서를 사용자가 직접 임시 저장할 수 있어야 합니다.</p>
+          <p class="rq-copy" id="requirement-scope">저장 뒤에도 작성 화면을 유지해 사용자가 문서 작성을 이어갈 수 있어야 합니다.</p>
+          <div class="rq-note">자동 저장은 <span class="num">REQ-042</span> 작성 중인 결재 문서 자동 저장에서 별도로 다룹니다.</div>
+        </div>
+      </article>
+
+      <!-- ⛔ 2026-08-16 — 원문 인용문(rq-source)을 뺐다. 요구 하나가 원문의 어느 대목에서
+               나왔는지를 담는 자리가 없어서, 문서 내용의 앞토막을 넣으면 근거가 아닌 것을
+               근거라고 적는 것이 된다. 자리가 서면 인용문이 이 카드로 돌아온다. -->
+      <section class="rq-card">
+        <div class="rq-card__head">
+          <div><h2>출처 문서</h2><p>이 요구사항을 뽑아낸 받은 문서입니다.</p></div>
+          <a class="button button--small" href="01b-received-document-edit.html">문서 확인</a>
+        </div>
+        <div class="rq-card__body">
+          <ul class="rq-list">
+            <li><strong>8/12 전자결재 회의록</strong><span class="badge badge--outline">회의록</span></li>
+          </ul>
+        </div>
+      </section>
+
+      <!-- ⚠ AI 가 적은 글자 그대로다 — BRD 의 최종 대상 화면과 다른 값이라 관계 표로 만들지 않는다 -->
+      <section class="rq-card">
+        <div class="rq-card__head"><h2>관련 화면 후보</h2><span class="badge badge--outline">참고</span></div>
+        <div class="rq-card__body">
+          <p class="rq-copy">상신 작성 · 임시 저장 문서 목록</p>
+        </div>
+      </section>
+
+      <!-- ⛔ 제외해도 줄을 지우지 않는다 — 번호 재사용 금지가 이 표의 규칙이다.
+           ⛔ 사유를 선택으로 만들지 마라 (ia 설계가 사유를 요구한다). -->
+      <section class="rq-card">
+        <div class="rq-card__head">
+          <div><h2>이 요구사항 제외</h2><p>목록에는 남고 다음 산출물로 가지 않습니다.</p></div>
+        </div>
+        <div class="rq-card__body rq-field-stack">
+          <div class="field">
+            <label class="field__label" for="exclude-reason">제외하는 까닭</label>
+            <input class="field__control" id="exclude-reason" type="text" placeholder="예: REQ-001 과 같은 요구입니다">
+          </div>
+          <div class="rq-actions">
+            <p>제외해도 번호와 이력은 그대로 남습니다.</p>
+            <button class="button" type="button">제외</button>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+</template>
+<script src="_shell.js"></script>
+<script>
+  틀({제목:'요구사항 상세',모양:'산출물',지금:'requirements',프로젝트이름:'G2C',프로젝트번호:1,프로젝트들:['G2C','서울페이'],사람:'이영희',안읽은알림:2});
+
+  document.getElementById('confirm-requirement').addEventListener('click', event => {
+    const status = document.getElementById('requirement-status');
+    status.textContent = '확정 완료';
+    status.classList.replace('status-badge--review', 'status-badge--complete');
+    event.currentTarget.textContent = '확정 완료';
+    event.currentTarget.disabled = true;
+    event.currentTarget.classList.remove('button--primary');
+    // ⛔ 여기서 「정의서 생성 요청」을 열지 마라 (2026-08-16) — 뒷단이 없다.
+  });
+</script>
+<script src="_claude-window.js"></script>
+<script src="_requirement-concepts.js"></script>
+</body>
+</html>

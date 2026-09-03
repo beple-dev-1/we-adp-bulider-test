@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.bizplay.builder.businesslanguage.BusinessDocumentSeedMapper">
+    <insert id="begin">
+        insert into builder.adk_builder_business_document_seed
+            (project_id, state, account_id, started_at, finished_at, failed_reason)
+        values (#{projectId}, 'RUNNING', #{accountId}, now(), null, null)
+        on conflict (project_id)
+            do update set state = 'RUNNING', account_id = excluded.account_id,
+                          started_at = now(), finished_at = null, failed_reason = null
+        where adk_builder_business_document_seed.state = 'FAILED'
+    </insert>
+
+    <update id="finish">
+        update builder.adk_builder_business_document_seed
+           set state = 'DONE', finished_at = now(), failed_reason = null
+         where project_id = #{projectId}
+           and state = 'RUNNING'
+    </update>
+
+    <update id="fail">
+        update builder.adk_builder_business_document_seed
+           set state = 'FAILED', finished_at = now(), failed_reason = #{reason, jdbcType=VARCHAR}
+         where project_id = #{projectId}
+           and state = 'RUNNING'
+    </update>
+
+    <select id="selectOne" parameterType="java.lang.String"
+            resultType="com.bizplay.builder.businesslanguage.BusinessDocumentSeed">
+        select project_id as projectId, state, account_id as accountId,
+               started_at as startedAt, finished_at as finishedAt, failed_reason as failedReason
+          from builder.adk_builder_business_document_seed
+         where project_id = #{projectId}
+    </select>
+
+    <select id="selectRunning" resultType="com.bizplay.builder.businesslanguage.BusinessDocumentSeed">
+        select project_id as projectId, state, account_id as accountId,
+               started_at as startedAt, finished_at as finishedAt, failed_reason as failedReason
+          from builder.adk_builder_business_document_seed
+         where state = 'RUNNING'
+    </select>
+</mapper>

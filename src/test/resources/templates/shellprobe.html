@@ -1,0 +1,16 @@
+<!doctype html>
+<!--
+  시험용 프로브 화면 — 껍데기 조각을 임의의 인자로 부르기 위한 것이다.
+  운영 화면이 아니라 test 클래스패스에만 있다.
+
+  ⚠ 이 파일이 필요한 이유: 껍데기의 네 모양 중 '산출물' 과 '꽉' 은 아직 그것을 쓰는 화면이 없다.
+     화면이 생길 때까지 기다리면 그 둘의 계약이 계속 안 재진다 — 실제로 그래서 안 재였다.
+-->
+<html th:replace="~{fragments/shell :: layout(${title}, ${shape}, ${current}, ~{:: content})}"
+      xmlns:th="http://www.thymeleaf.org">
+<body>
+<div th:fragment="content">
+  <h1>프로브</h1>
+</div>
+</body>
+</html>

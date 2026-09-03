@@ -1,0 +1,13 @@
+<!doctype html>
+<html lang="ko">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<link rel="stylesheet" href="../../src/main/resources/static/css/tokens.css"><link rel="stylesheet" href="../../src/main/resources/static/css/reset.css"><link rel="stylesheet" href="../../src/main/resources/static/css/typography.css"><link rel="stylesheet" href="../../src/main/resources/static/css/components.css"><link rel="stylesheet" href="../../src/main/resources/static/css/shell.css"><link rel="stylesheet" href="_mock.css"><link rel="stylesheet" href="../../src/main/resources/static/css/screens.css"></head>
+<body><template id="본문">
+  <div class="page-head list-page-head"><div><h1 class="page-head__title">프로젝트 관리</h1><p class="page-intro">Builder에서 사용할 기획 저장소와 연결 상태를 관리합니다.</p></div><a class="button button--primary" href="00a-project-register.html">프로젝트 등록</a></div>
+
+  <div class="table-wrap table-wrap--tall"><table class="data-table data-table--dense admin-project-table"><thead><tr><th scope="col">프로젝트</th><th scope="col">기획 저장소</th><th scope="col">기본 브랜치</th><th scope="col">상태</th></tr></thead><tbody>
+    <tr><td><a class="cell" href="00d-project-detail.html"><strong>법인카드 운영 개선</strong><span class="cell__sub num">PJT-001</span></a></td><td>gitlab.example.com/planning/corporate-card</td><td class="num">main</td><td>준비됨</td></tr>
+    <tr><td><a class="cell" href="00d-project-detail.html"><strong>경비 정책 개편</strong><span class="cell__sub num">PJT-002</span></a></td><td>gitlab.example.com/planning/expense-policy</td><td class="num">main</td><td>받는 중</td></tr>
+    <tr><td><a class="cell" href="00e-project-failure-detail.html"><strong>출장비 정산 개선</strong><span class="cell__sub num">PJT-003</span></a></td><td>gitlab.example.com/planning/travel-expense</td><td class="num">main</td><td>실패</td></tr>
+  </tbody></table></div>
+</template><script src="_shell.js"></script><script>틀({제목:'프로젝트 관리',모양:'관리',지금:'projects',사람:'슈퍼관리자',슈퍼계정:true,안읽은알림:0});</script></body></html>

@@ -1,0 +1,742 @@
+<!doctype html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{fragments/shell :: layout(${title}, ${shape}, ${current}, ~{:: content})}">
+<body>
+<div th:fragment="content">
+  <div class="fi-page" th:fragment="wizard-content"
+       th:classappend="${frd == null} ? 'fi-page--setup' : (${frd.state().name() == 'SCOPE_REVIEW'} ? 'fi-page--result' : '')">
+    <header class="fic-head" th:if="${frd != null and (frd.state().name() == 'ANALYZING' or frd.state().name() == 'WAITING_ANSWER' or frd.state().name() == 'PICKED')}">
+      <div class="fic-head__copy">
+        <span class="fic-kicker" th:text="${frd.label()} + ' · FRD 작업 만들기'">FRD 작업 만들기</span>
+        <h1>AI 인터뷰</h1>
+        <p>AI와 함께 개발 범위를 결정하는 데 필요한 내용만 확인합니다.</p>
+      </div>
+      <div class="fi-head__actions">
+        <a class="button" th:href="@{/projects/{p}/artifacts/frds(p=${projectId},query=${listQuery},state=${listState},owner=${listOwner},system=${listSystem},page=${listPage},pageSize=${listPageSize})}">목록으로</a>
+      </div>
+    </header>
+
+    <header class="fi-head" th:unless="${frd != null and (frd.state().name() == 'ANALYZING' or frd.state().name() == 'WAITING_ANSWER' or frd.state().name() == 'PICKED')}">
+      <div class="fi-head__copy">
+        <span class="rq-kicker" th:text="${frd == null ? 'FRD 작업 만들기' : frd.label()}">FRD 작업 만들기</span>
+        <h1 th:text="${frd == null ? '요구사항 분석 준비' : frd.title()}">요구사항 분석 준비</h1>
+        <p th:if="${frd == null}">알고 있는 작업 조건과 화면을 먼저 선택하면 AI가 범위를 더 정확하게 판단합니다.</p>
+        <p th:if="${frd != null and frd.state().name() == 'SCOPE_REVIEW'}">수정하거나 추가할 프론트 화면과 백엔드 작업을 확인합니다.</p>
+      </div>
+      <button class="button button--primary fi-setup-mobile-action" th:if="${frd == null}"
+              type="submit" form="frd-setup-form">요구사항 분석 시작</button>
+      <div class="fi-head__actions fi-scope-head__actions" th:if="${frd != null}">
+        <a class="button fi-scope-head__list-action" th:href="@{/projects/{p}/artifacts/frds(p=${projectId},query=${listQuery},state=${listState},owner=${listOwner},system=${listSystem},page=${listPage},pageSize=${listPageSize})}">목록으로</a>
+        <form class="fi-scope-head__reopen-action" method="post" th:if="${frd.state().name() == 'SCOPE_REVIEW'}"
+              th:action="@{/projects/{p}/artifacts/frds/{f}/interview/reopen(p=${projectId},f=${frd.id()})}">
+          <button class="button" type="submit">다시 인터뷰하기</button>
+        </form>
+        <form class="fi-scope-head__primary-action" method="post" th:if="${frd.state().name() == 'SCOPE_REVIEW' and fastTrackAvailable}"
+              th:action="@{/projects/{p}/artifacts/frds/{f}/fast-track(p=${projectId},f=${frd.id()})}">
+          <button class="button button--primary" type="submit">개발요청서 바로 만들기</button>
+        </form>
+        <form class="fi-scope-head__work-action" method="post" th:if="${frd.state().name() == 'SCOPE_REVIEW'}"
+              th:classappend="${!fastTrackAvailable} ? ' fi-scope-head__primary-action' : ''"
+              th:action="@{/projects/{p}/artifacts/frds/{f}/start(p=${projectId},f=${frd.id()})}">
+          <button class="button" th:classappend="${!fastTrackAvailable} ? ' button--primary' : ''" type="submit"
+                  th:text="${fastTrackAvailable} ? 'FRD 작업으로 진행' : 'FRD 작업하기'">FRD 작업하기</button>
+        </form>
+        <details class="pop rq-head__overflow fi-scope-head__overflow" th:if="${frd.canDelete()}">
+          <summary class="icon-button rq-head__more" aria-label="기타 작업" title="기타 작업"><span aria-hidden="true">⋮</span></summary>
+          <div class="pop__body rq-head__overflow-menu">
+            <button class="rq-head__delete-action" type="button" data-frd-delete-open>FRD 작업 삭제</button>
+          </div>
+        </details>
+      </div>
+    </header>
+
+    <th:block th:if="${frd != null and frd.canDelete()
+                      and frd.state().name() != 'ANALYZING'
+                      and frd.state().name() != 'WAITING_ANSWER'
+                      and frd.state().name() != 'PICKED'}">
+      <div th:replace="~{fragments/frd-delete-dialog :: dialog}"></div>
+    </th:block>
+
+    <nav class="fi-steps" aria-label="FRD 작업 만들기 진행 단계">
+      <div class="fi-step" th:classappend="${frd == null} ? 'is-current' : 'is-done'" th:attr="aria-current=${frd == null} ? 'step' : null"><i>1</i><span>분석 정보 입력</span></div>
+      <div class="fi-step" th:classappend="${frd != null and (frd.state().name() == 'ANALYZING' or frd.state().name() == 'WAITING_ANSWER' or frd.state().name() == 'PICKED')} ? 'is-current' : (${frd != null} ? 'is-done' : '')"><i>2</i><span>AI 인터뷰</span></div>
+      <div class="fi-step" th:classappend="${frd != null and frd.state().name() == 'SCOPE_REVIEW'} ? 'is-current' : (${frd != null and (frd.state().name() == 'DRAFTING' or frd.state().name() == 'REVIEW' or frd.state().name() == 'DONE')} ? 'is-done' : '')"><i>3</i><span>개발 범위 확인</span></div>
+    </nav>
+
+  <p class="source-error" th:if="${error}" th:text="${error}"></p>
+
+    <form class="fi-setup-layout" id="frd-setup-form" method="post"
+          th:if="${frd == null}" th:action="@{/projects/{p}/artifacts/frds(p=${projectId})}">
+      <div class="fi-setup-main">
+        <section class="fi-card fi-setup-section" aria-labelledby="setup-source-title">
+          <header class="fi-setup-section__head"><div><h2 id="setup-source-title">요구사항</h2><p>구현할 내용을 업무 문장으로 입력해 주세요.</p></div><span class="badge badge--outline">직접 입력</span></header>
+          <div class="fi-setup-section__body">
+            <fieldset class="fi-facet-picks" th:if="${!#lists.isEmpty(availableFacets)}">
+              <legend>적용 대상</legend>
+              <label class="fi-check-pill">
+                <input type="checkbox" name="facet" value="__ALL__" data-frd-setup-facet-all checked>
+                <span>전체</span><small>모든 적용 대상</small>
+              </label>
+              <label class="fi-check-pill" th:each="item : ${availableFacets}">
+                <input class="frd-setup-facet" type="checkbox" name="facet" th:value="${item.name()}">
+                <span th:text="${item.name()}">제주</span><small class="num" th:text="${item.code()}">jeju</small>
+              </label>
+            </fieldset>
+            <label class="field" for="frd-source"><span class="field__label">요구사항 내용</span>
+              <textarea class="field__control fi-source fi-source--setup" id="frd-source" name="sourceText" required
+                        placeholder="예: 결재 문서를 작성하다가 임시 저장하고 나중에 이어서 작성할 수 있어야 한다."></textarea>
+            </label>
+          </div>
+        </section>
+
+        <section class="fi-card fi-setup-section" aria-labelledby="setup-screen-title">
+          <header class="fi-setup-section__head"><div><h2 id="setup-screen-title">수정할 솔루션 목업</h2><p>선택한 화면을 AI가 먼저 확인합니다.</p></div><button class="button button--small" id="open-analysis-screen" type="button" onclick="document.getElementById('analysis-screen-dialog').showModal()">화면 추가</button></header>
+          <div class="fi-setup-section__body">
+            <div class="fi-setup-screen-empty" id="setup-screen-empty">
+              <div><strong>선택한 화면이 없습니다</strong><p>기존 화면을 선택하거나 신규 화면 정보를 추가해 주세요.</p></div>
+            </div>
+            <ul class="fi-screen-list fi-setup-selected-screens" id="setup-selected-screens" hidden></ul>
+          </div>
+        </section>
+      </div>
+
+      <aside class="fi-setup-summary" aria-labelledby="setup-summary-title">
+        <section class="fi-card"><header class="fi-card__head"><h2 id="setup-summary-title">AI 분석 기준</h2></header>
+          <div class="fi-card__body"><section class="fi-ai-criteria" aria-labelledby="ai-criteria-title">
+            <header><h3 id="ai-criteria-title">AI가 확인할 기준</h3><p>입력한 요구사항과 작업 조건을 다음 기준으로 분석합니다.</p></header>
+            <ol><li><span>1</span><div><strong>기능 범위</strong><p>기존 기능 변경인지 신규 개발인지 확인</p></div></li><li><span>2</span><div><strong>화면 영향</strong><p>적용 대상별 차이와 영향받는 화면 확인</p></div></li><li><span>3</span><div><strong>연계 범위</strong><p>백엔드·데이터·외부 연계 변경 확인</p></div></li><li><span>4</span><div><strong>완료 기준</strong><p>정상 흐름·예외 상황·검증 조건 확인</p></div></li></ol>
+          </section></div>
+          <footer class="fi-setup-summary__actions"><p>분석 결과는 AI 인터뷰에서 확인한 뒤 확정합니다.</p><button class="button button--primary" type="submit">요구사항 분석 시작</button></footer>
+        </section>
+      </aside>
+
+    </form>
+
+  <div th:if="${frd != null}">
+    <section class="fic-chat-layout" th:if="${waiting or frd.state().name() == 'WAITING_ANSWER'}">
+      <form class="fic-card fic-chat-card" id="frd-answer-form" method="post"
+            th:action="@{/projects/{p}/artifacts/frds/{f}/interview/answers(p=${projectId},f=${frd.id()})}"
+            th:attr="data-async-action=@{/projects/{p}/artifacts/frds/{f}/interview/answers/async(p=${projectId},f=${frd.id()})},
+                     data-fragment-url=@{/projects/{p}/artifacts/frds/{f}/interview/fragment(p=${projectId},f=${frd.id()})},
+                     data-progress-url=@{/projects/{p}/artifacts/frds/{f}/interview/progress(p=${projectId},f=${frd.id()})},
+                     data-events-url=@{/projects/{p}/artifacts/frds/{f}/interview/events(p=${projectId},f=${frd.id()})}">
+        <header class="fic-card__head">
+          <div class="fic-chat-brand"><img th:src="@{/images/claudecode-color.png}" width="30" height="30" alt=""><div><h2>AI 인터뷰</h2><p>필요한 내용을 한 번에 하나씩 확인합니다.</p></div></div>
+          <span class="fic-round" th:if="${!waiting}">현재 질문 <strong th:text="${questionRound}">1</strong></span>
+          <span class="fi-session-state" th:if="${waiting}"><i></i><span>분석 중</span></span>
+        </header>
+
+        <div class="fic-thread" id="interview-log" aria-live="polite">
+          <details class="fic-request-bubble">
+            <summary>입력한 요구사항 <small>전체 보기</small></summary>
+            <p th:text="${frd.sourceText()}"></p>
+          </details>
+
+          <th:block th:each="message : ${interviewMessages}">
+            <article class="fic-history-question"
+                     th:if="${message.kind().name() == 'QUESTION' and (frd.state().name() != 'WAITING_ANSWER' or currentQuestion == null or message.id() != currentQuestion.id())}">
+              <small th:text="${message.questionTopic() != null ? message.questionTopic() : '이전 질문'}">이전 질문</small>
+              <strong th:text="${message.content()}"></strong>
+            </article>
+            <article class="fic-answer-bubble" th:if="${message.kind().name() == 'ANSWER'}">
+              <span>내 답변</span><p th:text="${message.content()}"></p>
+            </article>
+            <article class="fic-answer-bubble" th:if="${message.role().name() == 'USER' and message.kind().name() == 'MESSAGE'}">
+              <span>내 답변</span><p th:text="${message.content()}"></p>
+            </article>
+          </th:block>
+
+          <section class="fi-turn-work" th:if="${waiting}" id="frd-live-progress"
+                   th:attr="data-progress-url=@{/projects/{p}/artifacts/frds/{f}/interview/progress(p=${projectId},f=${frd.id()})},
+                            data-events-url=@{/projects/{p}/artifacts/frds/{f}/interview/events(p=${projectId},f=${frd.id()})}">
+            <div class="fi-turn-work__head"><span class="fi-turn-work__state"><strong>관련 화면과 구현 범위를 확인하고 있습니다</strong></span></div>
+            <ol class="fi-tool-calls" th:if="${!#lists.isEmpty(progress)}" id="frd-progress-list">
+              <li th:each="step, status : ${progress}" th:class="${status.last} ? 'is-running' : 'is-done'"
+                  th:attr="data-progress-key=${step.kind().name() + '|' + step.text()}">
+                <i th:text="${status.last} ? '' : '✓'"></i><div><strong th:text="${step.text()}"></strong><span th:if="${status.last}">처리 중<span class="fi-typing" aria-hidden="true"><b></b><b></b><b></b></span></span></div>
+              </li>
+            </ol>
+            <ol class="fi-tool-calls" th:if="${#lists.isEmpty(progress)}" id="frd-progress-list">
+              <li class="is-running"><i></i><div><strong>분석을 시작할 준비를 하고 있습니다</strong><span>처리 중<span class="fi-typing" aria-hidden="true"><b></b><b></b><b></b></span></span></div></li>
+            </ol>
+          </section>
+
+          <article class="fic-ai-question" th:if="${frd.state().name() == 'WAITING_ANSWER' and currentQuestion != null}">
+            <p class="fic-ai-intro" th:if="${latestAssistantMessage}" th:text="${latestAssistantMessage}"></p>
+            <h2 class="fic-question-title" th:text="${currentQuestion.content()}"></h2>
+            <div class="fic-reason" th:if="${currentQuestion.questionReason()}"><strong>확인이 필요한 이유</strong><span th:text="${currentQuestion.questionReason()}"></span></div>
+            <input type="hidden" name="questionId" th:value="${currentQuestion.id()}">
+            <input type="hidden" name="answer" id="frd-selected-answer">
+            <fieldset class="fic-options"><legend class="sr-only">답변 선택</legend>
+              <label class="fic-option" th:each="option : ${currentQuestion.options()}">
+                <input type="radio" name="answerType" value="OPTION" required><input type="hidden" class="frd-option-value" th:value="${option}"><span th:text="${option}"></span>
+              </label>
+              <label class="fic-option"><input type="radio" name="answerType" value="DIRECT" required><span>직접 입력<small>목록에 없는 조건이나 일정을 직접 설명합니다.</small></span></label>
+            </fieldset>
+            <label class="fic-direct" for="frd-direct-text" id="frd-direct-answer" hidden><span>답변을 입력해 주세요</span><textarea id="frd-direct-text" name="directAnswer" placeholder="추가 조건이나 원하는 처리 방식을 입력하세요"></textarea></label>
+          </article>
+        </div>
+
+        <footer class="fic-actions" th:if="${frd.state().name() == 'WAITING_ANSWER' and currentQuestion != null}">
+          <p>답변을 선택하면 필요한 경우 다음 질문을 드립니다.</p>
+          <div class="fic-actions__buttons">
+            <button class="button button--primary" id="frd-answer-submit" type="submit"
+                    data-submit-loading="답변을 반영하는 중" disabled>답변 제출</button>
+          </div>
+        </footer>
+      </form>
+
+      <aside class="fic-side" aria-label="인터뷰 요약">
+        <section class="fic-card"><header class="fic-card__head"><div><h2>이번 인터뷰</h2><p>조사 결과와 예상 범위를 함께 확인합니다.</p></div></header><div class="fic-card__body">
+          <section class="fic-side-section"><div class="fic-side-section__head"><h3>진행 상황</h3><span th:text="${waiting} ? '1 / 4 완료' : '2 / 4 완료'">2 / 4 완료</span></div>
+            <div class="fic-progress"><div class="fic-progress__bar" role="progressbar" aria-valuemin="0" aria-valuemax="4"
+                 th:attr="aria-valuenow=${waiting} ? 1 : 2,aria-label=${waiting} ? '인터뷰 진행률 25퍼센트' : '인터뷰 진행률 50퍼센트'">
+              <i th:style="${waiting} ? 'width: 25%' : 'width: 50%'"></i>
+            </div></div>
+            <ol class="fic-progress-list"><li class="is-done"><i>✓</i><strong>요구사항 이해</strong><small>완료</small></li><li th:class="${waiting} ? 'is-current' : 'is-done'"><i th:text="${waiting} ? '2' : '✓'">✓</i><strong>관련 화면 조사</strong><small th:text="${waiting} ? '진행 중' : '완료'">완료</small></li><li th:class="${waiting} ? '' : 'is-current'"><i>3</i><strong>필요 조건 확인</strong><small th:text="${waiting} ? '대기' : '진행 중'">진행 중</small></li><li><i>4</i><strong>개발 범위 정리</strong><small>대기</small></li></ol>
+          </section>
+          <section class="fic-side-section" th:if="${!#lists.isEmpty(screens)}"><div class="fic-side-section__head"><h3>선택한 화면</h3><span th:text="${#lists.size(screens)} + '개'">1개</span></div><ul class="fic-screen-list"><li th:each="screen : ${screens}"><strong th:text="${screen.screenName()}"></strong><small class="num" th:text="${screen.screenId()}"></small></li></ul></section>
+          <section class="fic-side-section"><div class="fic-side-section__head"><h3>현재까지 확인한 내용</h3><span>잠정 결과</span></div><p class="fic-scope-note" th:text="${latestAnalysisSummary != null ? latestAnalysisSummary : '요구사항과 관련 화면을 확인하고 있습니다.'}"></p></section>
+          <section class="fic-side-section" th:if="${currentQuestion != null}"><div class="fic-side-section__head"><h3>현재 확인</h3><span th:text="${currentQuestion.questionTopic()}">확인할 내용</span></div><ul class="fic-scope-list"><li><strong th:text="${currentQuestion.content()}"></strong><span>답변에 따라 개발 범위를 정리합니다.</span></li></ul></section>
+        </div></section>
+      </aside>
+
+    </section>
+
+    <section class="empty-state frd-analysis-error" th:if="${failed}" role="alert"
+             aria-labelledby="frd-analysis-error-title">
+      <span class="empty-state__icon" aria-hidden="true">
+        <svg viewBox="0 0 32 32"><circle cx="16" cy="16" r="11"/><path d="M16 10.5v7M16 22h.01"/></svg>
+      </span>
+      <div class="empty-state__copy">
+        <h2 id="frd-analysis-error-title">AI 인터뷰를 시작하지 못했습니다</h2>
+        <p>AI 서비스 연결이 원활하지 않아 요구사항 분석을 끝내지 못했습니다.<br>잠시 후 다시 시도해 주세요. 입력한 요구사항은 그대로 보관되어 있습니다.</p>
+      </div>
+      <form th:action="@{/projects/{p}/artifacts/frds/{f}/interview/retry(p=${projectId},f=${frd.id()})}" method="post">
+        <button class="button button--primary empty-state__action" type="submit">요구사항 다시 분석하기</button>
+      </form>
+    </section>
+
+    <div th:if="${frd.state().name() == 'PICKED'}" class="frd-result fic-chat-layout">
+      <section class="fic-card fic-chat-card fi-result-chat">
+        <header class="fic-card__head">
+          <div class="fic-chat-brand"><img th:src="@{/images/claudecode-color.png}" width="30" height="30" alt=""><div><h2>AI 인터뷰</h2><p>확인한 내용을 개발 범위로 정리했습니다.</p></div></div>
+          <span class="fic-round fic-round--done">범위 정리 완료</span>
+        </header>
+        <div class="fic-thread fic-result-thread" id="interview-log" aria-live="polite">
+          <details class="fic-request-bubble">
+            <summary>입력한 요구사항 <small>전체 보기</small></summary>
+            <p th:text="${frd.sourceText()}"></p>
+          </details>
+          <th:block th:each="message : ${interviewMessages}">
+            <article class="fic-history-question" th:if="${message.kind().name() == 'QUESTION'}">
+              <small th:text="${message.questionTopic() != null ? message.questionTopic() : '이전 질문'}">이전 질문</small>
+              <strong th:text="${message.content()}"></strong>
+            </article>
+            <article class="fic-answer-bubble" th:if="${message.kind().name() == 'ANSWER'}">
+              <span>내 답변</span><p th:text="${message.content()}"></p>
+            </article>
+            <article class="fic-answer-bubble" th:if="${message.role().name() == 'USER' and message.kind().name() == 'MESSAGE'}">
+              <span>내 답변</span><p th:text="${message.content()}"></p>
+            </article>
+          </th:block>
+          <p class="fic-ai-intro fic-result-intro" th:if="${latestAssistantMessage}" th:text="${latestAssistantMessage}"></p>
+          <article class="fi-message fi-change-report" th:if="${hasDevelopmentChanges}" id="analysis-result">
+            <div class="fi-message__bubble">
+              <div class="fi-change-report__intro">
+                <span class="fi-change-report__mark" aria-hidden="true">✓</span>
+                <div class="fi-change-report__copy"><span>분석 결과</span><h2>수정이 필요한 범위만 정리했습니다.</h2><p>실제 개발이 필요한 대상과 변경 내용을 확인해 주세요.</p></div>
+                <dl class="fi-change-report__stats">
+                  <div th:classappend="${#lists.isEmpty(screens)} ? ' is-empty' : ''"><dt>프론트</dt><dd th:text="${#lists.isEmpty(screens) ? '변경 없음' : #lists.size(screens) + '개 화면'}">1개 화면</dd></div>
+                  <div th:classappend="${#lists.isEmpty(requiredBackendChanges)} ? ' is-empty' : ''"><dt>백엔드</dt><dd th:text="${#lists.isEmpty(requiredBackendChanges) ? '변경 없음' : #lists.size(requiredBackendChanges) + '개 항목'}">변경 없음</dd></div>
+                </dl>
+              </div>
+              <div class="fi-change-columns" th:classappend="${#lists.isEmpty(screens) or #lists.isEmpty(requiredBackendChanges)} ? ' fi-change-columns--single' : ''">
+                <section class="fi-change-group fi-change-group--front" aria-labelledby="front-change-title" th:if="${!#lists.isEmpty(screens)}">
+                  <header><span>FRONTEND</span><h3 id="front-change-title">수정할 프론트</h3><strong th:text="${#lists.size(screens)} + '개 화면'"></strong></header>
+                  <ul>
+                    <li th:each="screen : ${screens}">
+                      <div><strong th:text="${screen.screenName()}"></strong><small class="num" th:text="${screen.screenId()}"></small>
+                        <small th:if="${screen.isNewScreen() and iaPlacementByScreenRowId.containsKey(screen.id())}"
+                               th:with="ia=${iaPlacementByScreenRowId.get(screen.id())}"
+                               th:text="${ia.statusLabel() == '미정' ? '화면 연결 미정' : '화면 연결 ' + ia.statusLabel()}"
+                               th:title="${ia.placementMode().name() == 'MENU' ? '메뉴 · ' + ia.menuPathKey()
+                                 : (ia.anchorScreenId() == null ? '연결 화면을 확인해 주세요' : '연결 화면 · ' + ia.anchorScreenId())}">화면 연결 제안</small>
+                      </div>
+                      <div class="fi-change-group__requirements" th:if="${screen.scopeChange() != null and !screen.scopeChange().isBlank()}">
+                        <span th:text="${screen.isNewScreen() ? '신규 화면 구성' : '수정할 내용'}">수정할 내용</span>
+                        <p th:text="${screen.scopeChange()}">요구사항 때문에 이 화면에서 변경할 내용을 표시합니다.</p>
+                      </div>
+                      <p class="fi-change-group__empty" th:if="${screen.scopeChange() == null or screen.scopeChange().isBlank()}">화면별 변경 내용을 다시 확인해 주세요.</p>
+                    </li>
+                  </ul>
+                </section>
+                <section class="fi-change-group fi-change-group--back" aria-labelledby="back-change-title" th:if="${!#lists.isEmpty(requiredBackendChanges)}">
+                  <header><span>BACKEND</span><h3 id="back-change-title">수정할 백엔드</h3><strong th:text="${#lists.size(requiredBackendChanges)} + '개 항목'"></strong></header>
+                  <ul>
+                    <li th:each="change : ${requiredBackendChanges}">
+                      <div><span class="badge badge--outline" th:text="${change.categoryLabel()}"></span><strong th:text="${change.target()}"></strong></div>
+                      <p th:text="${change.changeDetail()}"></p>
+                    </li>
+                  </ul>
+                </section>
+              </div>
+            </div>
+          </article>
+          <article class="fi-message fi-change-report fi-no-change-scenario" th:unless="${hasDevelopmentChanges}" id="analysis-result">
+            <div class="fi-message__bubble">
+              <div class="fi-change-report__intro"><h2>요구사항에 해당하는 수정 작업이 확인되지 않았습니다.</h2></div>
+              <div class="fi-no-change-message">
+                <p>분석 결과를 승인한 뒤 결과 확인 화면에서 대상 화면을 추가하여 작업 범위를 보완할 수 있습니다.</p>
+              </div>
+            </div>
+          </article>
+        </div>
+        <footer class="fic-actions" id="frd-result-actions">
+          <p>정리된 내용이 맞으면 승인하고, 빠진 내용이 있으면 보완해 주세요.</p>
+          <div class="fic-actions__buttons">
+            <button class="button frd-continue-chat" type="button">내용 보완하기</button>
+            <form th:action="@{/projects/{p}/artifacts/frds/{f}/interview/confirm(p=${projectId},f=${frd.id()})}" method="post">
+              <input th:each="screen : ${screens}" type="hidden" name="keep" th:value="${screen.id()}">
+              <button class="button button--primary" type="submit">분석 결과 승인</button>
+            </form>
+          </div>
+        </footer>
+        <form class="fi-composer" id="frd-result-composer" hidden
+              th:action="@{/projects/{p}/artifacts/frds/{f}/interview/messages(p=${projectId},f=${frd.id()})}" method="post">
+          <label for="frd-result-message"><span class="sr-only">보완할 내용</span><textarea id="frd-result-message" name="message" required placeholder="빠진 조건이나 수정할 범위를 입력해 주세요" title="Enter 전송 · Alt+Enter 줄바꿈 · Esc 취소"></textarea></label>
+          <button class="button button--primary" type="submit">내용 반영</button>
+        </form>
+      </section>
+
+      <aside class="fic-side" aria-label="분석 결과 요약">
+        <section class="fic-card"><header class="fic-card__head"><div><h2>이번 인터뷰</h2><p>확인한 내용과 다음 단계를 함께 봅니다.</p></div></header><div class="fic-card__body">
+          <section class="fic-side-section"><div class="fic-side-section__head"><h3>진행 상황</h3><span>3 / 4 완료</span></div>
+            <div class="fic-progress"><div class="fic-progress__bar" role="progressbar" aria-valuemin="0" aria-valuemax="4" aria-valuenow="3" aria-label="인터뷰 진행률 75퍼센트"><i style="width: 75%"></i></div></div>
+            <ol class="fic-progress-list"><li class="is-done"><i>✓</i><strong>요구사항 이해</strong><small>완료</small></li><li class="is-done"><i>✓</i><strong>관련 화면 조사</strong><small>완료</small></li><li class="is-done"><i>✓</i><strong>필요 조건 확인</strong><small>완료</small></li><li class="is-current"><i>4</i><strong>개발 범위 정리</strong><small>검토 중</small></li></ol>
+          </section>
+          <section class="fic-side-section" th:if="${!#lists.isEmpty(screens)}"><div class="fic-side-section__head"><h3>수정할 화면</h3><span th:text="${#lists.size(screens)} + '개'">1개</span></div><ul class="fic-screen-list"><li th:each="screen : ${screens}"><strong th:text="${screen.screenName()}"></strong><small class="num" th:text="${screen.screenId()}"></small></li></ul></section>
+          <section class="fic-side-section"><div class="fic-side-section__head"><h3>정리된 범위</h3><span>최종 분석</span></div><p class="fic-scope-note" th:text="${latestAnalysisSummary != null ? latestAnalysisSummary : '수정이 필요한 프론트와 백엔드 범위를 정리했습니다.'}"></p></section>
+          <section class="fic-side-section"><div class="fic-side-section__head"><h3>다음 단계</h3><span>선택 필요</span></div><p class="fic-scope-note">내용이 맞으면 분석 결과를 승인하고, 빠진 조건이 있으면 내용을 보완해 주세요.</p></section>
+        </div></section>
+      </aside>
+
+    </div>
+
+    <div class="fi-result-layout fi-result-board" th:if="${frd.state().name() == 'SCOPE_REVIEW'}">
+      <aside class="fi-scope-context" aria-labelledby="scope-context-title">
+        <section class="fi-card">
+          <header class="fi-card__head"><div><h2 id="scope-context-title">인터뷰 정리</h2><p>확인한 요구사항과 범위 판단 기준입니다.</p></div></header>
+          <div class="fi-card__body fi-scope-context__body">
+            <section class="fi-scope-summary" aria-labelledby="scope-summary-title">
+              <div class="fi-scope-section-head"><h3 id="scope-summary-title">요구사항 요약</h3><span>최종 분석</span></div>
+              <p th:text="${latestAnalysisSummary != null ? latestAnalysisSummary : frd.sourceText()}">인터뷰에서 확인한 요구사항을 요약합니다.</p>
+              <details class="fi-scope-source"><summary>입력한 요구사항 보기</summary><p th:text="${frd.sourceText()}"></p></details>
+            </section>
+
+            <section class="fi-scope-section" aria-labelledby="scope-items-title">
+              <div class="fi-scope-section-head"><h3 id="scope-items-title">확인된 요구사항</h3><span th:text="${#lists.size(items)} + '개'">1개</span></div>
+              <ol class="fi-scope-item-list" th:if="${!#lists.isEmpty(items)}">
+                <li th:each="item : ${items}">
+                  <div class="fi-scope-item-list__badges">
+                    <span class="badge fi-requirement-nature" th:classappend="${' fi-requirement-nature--' + #strings.toLowerCase(item.nature().name())}" th:text="${item.natureLabel()}">개발</span>
+                    <span class="badge badge--outline" th:if="${item.showsVerdict()}" th:text="${item.verdictLabel()}">화면</span>
+                  </div>
+                  <strong th:text="${item.requirement()}"></strong>
+                  <p th:if="${item.note() != null and !item.note().isBlank()}" th:text="${item.note()}"></p>
+                </li>
+              </ol>
+              <p class="fi-scope-empty" th:if="${#lists.isEmpty(items)}">분류된 요구사항이 없습니다.</p>
+            </section>
+
+            <section class="fi-scope-section" aria-labelledby="scope-criteria-title">
+              <div class="fi-scope-section-head"><h3 id="scope-criteria-title">완료 기준</h3><span th:text="${#lists.size(acceptanceCriteria)} + '개'">1개</span></div>
+              <ul class="fi-scope-check-list" th:if="${!#lists.isEmpty(acceptanceCriteria)}">
+                <li th:each="criterion : ${acceptanceCriteria}" th:text="${criterion.content()}"></li>
+              </ul>
+              <p class="fi-scope-empty" th:if="${#lists.isEmpty(acceptanceCriteria)}">정리된 완료 기준이 없습니다.</p>
+            </section>
+
+            <section class="fi-scope-section" aria-labelledby="scope-issues-title">
+              <div class="fi-scope-section-head"><h3 id="scope-issues-title">확인 필요</h3><span th:text="${#lists.isEmpty(openIssues) ? '없음' : #lists.size(openIssues) + '개'}">없음</span></div>
+              <ul class="fi-scope-issue-list" th:if="${!#lists.isEmpty(openIssues)}">
+                <li th:each="issue : ${openIssues}" th:text="${issue.content()}"></li>
+              </ul>
+              <p class="fi-scope-clear" th:if="${#lists.isEmpty(openIssues)}"><i aria-hidden="true">✓</i> 남은 확인 사항이 없습니다.</p>
+            </section>
+          </div>
+        </section>
+      </aside>
+
+      <section class="fi-card fi-result-scope" aria-labelledby="result-scope-title">
+        <header class="fi-card__head"><div><h2 id="result-scope-title">수정·추가 범위</h2><p>인터뷰 내용을 기준으로 실제 개발 대상을 확인합니다.</p></div><dl class="fi-scope-counts"><div><dt>프론트</dt><dd th:text="${#lists.size(screens)} + '개 화면'">1개 화면</dd></div><div><dt>백엔드</dt><dd th:text="${#lists.size(requiredBackendChanges)} + '개 항목'">0개 항목</dd></div></dl></header>
+        <div class="fi-card__body fi-work-stack">
+          <aside class="fi-fast-track-note" th:if="${fastTrackAvailable}" aria-label="추천 진행 방식">
+            <div><strong>화면 작업 없이 바로 진행할 수 있습니다</strong><p th:text="${workModeReason}">백엔드 변경만 있어 개발요청서로 바로 진행할 수 있습니다.</p></div>
+            <span>FRD 작업 선택 가능</span>
+          </aside>
+          <section class="fi-work-section fi-work-section--front" aria-labelledby="confirmed-front-title" th:if="${!#lists.isEmpty(screens)}">
+            <header class="fi-work-section__head"><h3 id="confirmed-front-title">프론트 화면</h3></header>
+            <ul class="fi-screen-list">
+              <li class="fi-screen-row" th:each="screen : ${screens}">
+                <div class="fi-screen-thumbnail" th:if="${screenPreviewPaths != null and screenPreviewPaths.containsKey(screen.id())}">
+                  <iframe loading="lazy" sandbox="allow-same-origin" tabindex="-1" aria-hidden="true"
+                          th:title="${screen.screenName()} + ' 현재 운영 화면 썸네일'"
+                          th:src="@{/projects/{p}/artifacts/solution-mockups/files/{f}(p=${projectId},f=${screenPreviewPaths.get(screen.id())},skin=${previewSkin})}"></iframe>
+                  <span th:if="${screen.isNewScreen()}">AI 가 고른 시작점</span>
+                  <a class="fi-screen-thumbnail__open" target="_blank" rel="noopener"
+                     th:href="@{/projects/{p}/artifacts/solution-mockups/files/{f}(p=${projectId},f=${screenPreviewPaths.get(screen.id())},skin=${previewSkin})}"
+                     th:aria-label="${screen.screenName()} + ' 현재 운영 화면 새 창으로 보기'"><span class="sr-only">새 창으로 보기</span></a>
+                </div>
+                <div class="fi-screen-thumbnail"
+                     th:if="${screen.isNewScreen() and (screenPreviewPaths == null or !screenPreviewPaths.containsKey(screen.id()))}">
+                  <div class="fi-screen-thumbnail__sample" aria-hidden="true"><i></i><b></b><b></b><b></b></div>
+                </div>
+                <div class="fi-screen-thumbnail fi-screen-thumbnail--empty"
+                     th:if="${!screen.isNewScreen() and (screenPreviewPaths == null or !screenPreviewPaths.containsKey(screen.id()))}">
+                  <span>현재 화면 미리보기 없음</span>
+                </div>
+                <div class="fi-screen-row__content">
+                  <div class="fi-screen-row__top">
+                    <strong th:text="${screen.screenName()}"></strong>
+                    <span class="status-badge status-badge--waiting"
+                          th:if="${screen.isNewScreen() and iaPlacementByScreenRowId.containsKey(screen.id())}"
+                          th:with="ia=${iaPlacementByScreenRowId.get(screen.id())}"
+                          th:text="${ia.statusLabel() == '미정' ? '화면 연결 미정' : '화면 연결 ' + ia.statusLabel()}"
+                          th:title="${ia.placementMode().name() == 'MENU' ? '메뉴 · ' + ia.menuPathKey()
+                            : (ia.anchorScreenId() == null ? '연결 화면을 확인해 주세요' : '연결 화면 · ' + ia.anchorScreenId())}">화면 연결 제안</span>
+                    <form class="fi-screen-remove-form" method="post"
+                          th:action="@{/projects/{p}/artifacts/frds/{f}/screens/{s}/delete(p=${projectId},f=${frd.id()},s=${screen.id()})}"
+                          onsubmit="return confirm('이 화면을 작업 대상에서 제외할까요?');">
+                      <button class="button button--small button--text fi-screen-remove" type="submit">작업 대상에서 제외</button>
+                    </form>
+                  </div>
+                  <div class="fi-screen-row__badges">
+                    <span class="badge fi-screen-system"
+                          th:text="${screen.systemCode() == null and frd.systemCode() == null ? '시스템 확인 필요' : systemLabels.label(screen.systemCode() == null ? frd.systemCode() : screen.systemCode())}">웹뷰</span>
+                    <span class="badge badge--outline" th:text="${screen.isNewScreen() ? '신규 화면' : '기존 화면'}"></span>
+                    <span class="badge badge--outline" th:if="${screen.screenType() != null}" th:text="${screen.screenType()}"></span>
+                    <span class="badge fi-selection-source" th:classappend="${screen.isUserSelected()} ? ' fi-selection-source--user' : ' fi-selection-source--ai'"
+                          th:text="${screen.isUserSelected() ? '사용자 선택' : 'AI 선택'}">AI 선택</span>
+                  </div>
+                  <small class="num" th:text="${screen.screenId()}"></small>
+                  <div class="fi-screen-row__requirements" th:if="${screen.scopeChange() != null and !screen.scopeChange().isBlank()}">
+                    <span th:text="${screen.isNewScreen() ? '신규 화면 구성' : '수정할 내용'}">수정할 내용</span>
+                    <p th:text="${screen.scopeChange()}">요구사항 때문에 이 화면에서 변경할 내용을 표시합니다.</p>
+                  </div>
+                  <p class="fi-screen-row__scope-empty" th:if="${screen.scopeChange() == null or screen.scopeChange().isBlank()}">화면별 변경 내용을 다시 확인해 주세요.</p>
+                </div>
+              </li>
+            </ul>
+          </section>
+          <div class="fi-work-empty" th:if="${#lists.isEmpty(screens)}">
+            <div><h3>프론트 화면</h3><p>프론트 화면 작업 없음</p></div>
+          </div>
+
+          <section class="fi-work-section fi-work-section--back" aria-labelledby="confirmed-back-title" th:if="${!#lists.isEmpty(requiredBackendChanges)}">
+            <header class="fi-work-section__head"><h3 id="confirmed-back-title">예상 백엔드 작업</h3></header>
+            <ul class="fi-back-list">
+              <li class="fi-back-row" th:each="change : ${requiredBackendChanges}">
+                <div class="fi-back-row__top"><strong th:text="${change.target()}"></strong><span class="badge badge--outline" th:text="${change.categoryLabel()}"></span></div>
+                <p th:text="${change.changeDetail()}"></p>
+              </li>
+            </ul>
+          </section>
+          <div class="fi-work-empty" th:if="${#lists.isEmpty(requiredBackendChanges)}">
+            <div><h3>예상 백엔드 작업</h3><p>백엔드 작업 없음</p></div>
+          </div>
+        </div>
+      </section>
+
+    </div>
+  </div>
+
+      <th:block th:if="${frd == null}">
+        <th:block th:replace="~{fragments/frd-screen-dialog :: dialog}"></th:block>
+      </th:block>
+
+  <script>
+    (function () {
+      var interviewLog = document.getElementById('interview-log');
+      if (interviewLog) {
+        requestAnimationFrame(function () {
+          interviewLog.scrollTop = interviewLog.scrollHeight;
+        });
+      }
+      var resultMessage = document.getElementById('frd-result-message');
+      var resultComposer = document.getElementById('frd-result-composer');
+      var resultActions = document.getElementById('frd-result-actions');
+      document.querySelectorAll('.frd-continue-chat').forEach(function (button) {
+        button.addEventListener('click', function () {
+          if (!resultMessage || !resultComposer) return;
+          if (resultActions) resultActions.hidden = true;
+          resultComposer.hidden = false;
+          resultMessage.focus();
+          resultMessage.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        });
+      });
+      var screenDialog = document.getElementById('analysis-screen-dialog');
+      var screenAddDescription = document.getElementById('screen-add-description');
+      var screenAddTabs = document.querySelectorAll('[data-screen-add-mode]');
+      var screenAddPanels = {
+        existing: document.getElementById('existing-screen-panel'),
+        new: document.getElementById('new-screen-panel')
+      };
+      screenAddTabs.forEach(function (tab) {
+        tab.addEventListener('click', function () {
+          var mode = tab.dataset.screenAddMode;
+          screenAddTabs.forEach(function (item) {
+            var active = item === tab;
+            item.classList.toggle('is-active', active);
+            item.setAttribute('aria-selected', String(active));
+          });
+          Object.keys(screenAddPanels).forEach(function (key) {
+            if (screenAddPanels[key]) screenAddPanels[key].hidden = key !== mode;
+          });
+          if (screenAddDescription) {
+            screenAddDescription.textContent = mode === 'new'
+              ? '기준 화면을 바탕으로 개발할 새 화면 정보를 입력해 주세요.'
+              : '현재 운영 화면에서 수정할 화면을 선택해 주세요.';
+          }
+        });
+      });
+      var existingScreenSearch = document.getElementById('existing-screen-search');
+      var existingScreenSystem = document.getElementById('existing-screen-system');
+      var existingScreenItems = document.querySelectorAll('.fi-existing-screen-item');
+      var existingScreenCount = document.getElementById('existing-screen-count');
+      var existingScreenEmpty = document.getElementById('existing-screen-empty');
+      var existingScreenEmptyTitle = document.getElementById('existing-screen-empty-title');
+      var existingScreenEmptyDescription = document.getElementById('existing-screen-empty-description');
+      var existingScreenList = document.getElementById('existing-screen-list');
+      var previewContainers = document.querySelectorAll('.fi-existing-screen-thumb[data-preview-src]');
+      var previewObserver = null;
+      function loadPreview(container) {
+        clearTimeout(container._unloadTimer);
+        if (container.querySelector('iframe')) return;
+        container.classList.remove('is-loaded');
+        container.classList.add('is-loading');
+        var frame = document.createElement('iframe');
+        frame.setAttribute('sandbox', 'allow-same-origin');
+        frame.tabIndex = -1;
+        frame.setAttribute('aria-hidden', 'true');
+        frame.title = container.title;
+        frame.addEventListener('load', function () {
+          container.classList.remove('is-loading');
+          container.classList.add('is-loaded');
+        });
+        frame.src = container.dataset.previewSrc;
+        container.append(frame);
+      }
+      function unloadPreview(container, immediately) {
+        clearTimeout(container._unloadTimer);
+        function removeFrame() {
+          var frame = container.querySelector('iframe');
+          if (frame) frame.remove();
+          container.classList.remove('is-loaded');
+          container.classList.remove('is-loading');
+        }
+        if (immediately) {
+          removeFrame();
+          return;
+        }
+        container._unloadTimer = setTimeout(function () {
+          removeFrame();
+        }, 600);
+      }
+      function startPreviewLoading() {
+        if (!existingScreenList || previewObserver) return;
+        if ('IntersectionObserver' in window) {
+          previewObserver = new IntersectionObserver(function (entries) {
+            entries.forEach(function (entry) {
+              if (entry.isIntersecting) loadPreview(entry.target);
+              else unloadPreview(entry.target, false);
+            });
+          }, { root: existingScreenList, rootMargin: '100px 0px', threshold: 0.01 });
+          previewContainers.forEach(function (container) { previewObserver.observe(container); });
+          return;
+        }
+        Array.from(previewContainers).filter(function (container) {
+          return !container.closest('.fi-existing-screen-item').hidden;
+        }).slice(0, 4).forEach(loadPreview);
+      }
+      function stopPreviewLoading() {
+        if (previewObserver) {
+          previewObserver.disconnect();
+          previewObserver = null;
+        }
+        previewContainers.forEach(function (container) { unloadPreview(container, true); });
+      }
+      document.querySelectorAll('[onclick*="analysis-screen-dialog"]').forEach(function (button) {
+        button.addEventListener('click', startPreviewLoading);
+      });
+      if (screenDialog) screenDialog.addEventListener('close', stopPreviewLoading);
+      function filterExistingScreens() {
+        var keyword = existingScreenSearch ? existingScreenSearch.value.trim().toLowerCase() : '';
+        var system = existingScreenSystem ? existingScreenSystem.value : '';
+        var selectedFacets = Array.from(document.querySelectorAll('.frd-setup-facet:checked')).map(function (input) { return input.value; });
+        var visible = 0;
+        existingScreenItems.forEach(function (item) {
+          var matchesKeyword = !keyword || item.dataset.screenName.includes(keyword) || item.dataset.screenId.includes(keyword);
+          var matchesSystem = !system || item.dataset.screenSystem === system;
+          var itemFacets = item.dataset.screenFacets ? item.dataset.screenFacets.split('|') : [];
+          var matchesFacet = selectedFacets.length === 0 || itemFacets.length === 0
+            || selectedFacets.some(function (facet) { return itemFacets.includes(facet); });
+          item.hidden = !(matchesKeyword && matchesSystem && matchesFacet);
+          if (!item.hidden) visible++;
+        });
+        if (existingScreenCount) existingScreenCount.textContent = String(visible);
+        if (existingScreenList) existingScreenList.hidden = visible === 0;
+        if (existingScreenEmpty) {
+          existingScreenEmpty.hidden = visible !== 0;
+          if (visible === 0 && existingScreenEmptyTitle && existingScreenEmptyDescription) {
+            var hasFilter = Boolean(keyword || system);
+            existingScreenEmptyTitle.textContent = hasFilter
+              ? '검색 결과가 없습니다'
+              : '추가할 수 있는 현재 운영 화면이 없습니다';
+            existingScreenEmptyDescription.textContent = hasFilter
+              ? '검색어나 시스템을 바꿔 다시 확인해 주세요.'
+              : '솔루션 목업에 등록된 화면을 확인해 주세요.';
+          }
+        }
+      }
+      if (existingScreenSearch) existingScreenSearch.addEventListener('input', filterExistingScreens);
+      if (existingScreenSystem) existingScreenSystem.addEventListener('change', filterExistingScreens);
+      var setupFacetInputs = document.querySelectorAll('.frd-setup-facet');
+      var setupFacetAll = document.querySelector('[data-frd-setup-facet-all]');
+      var setupScreenEmpty = document.getElementById('setup-screen-empty');
+      var setupSelectedScreens = document.getElementById('setup-selected-screens');
+      // ⚠ 기준 화면 셀렉트가 없어져(2026-08-22) 거를 것도 없다 — 신규 화면은 시스템과 유형만 고른다.
+      function filterBaseScreens() { }
+      setupFacetInputs.forEach(function (input) {
+        input.addEventListener('change', function () {
+          if (input.checked && setupFacetAll) setupFacetAll.checked = false;
+          if (setupFacetAll && !Array.from(setupFacetInputs).some(function (item) { return item.checked; })) {
+            setupFacetAll.checked = true;
+          }
+          filterExistingScreens();
+          filterBaseScreens();
+        });
+      });
+      if (setupFacetAll) {
+        setupFacetAll.addEventListener('change', function () {
+          if (!setupFacetAll.checked) {
+            setupFacetAll.checked = !Array.from(setupFacetInputs).some(function (item) { return item.checked; });
+          } else {
+            setupFacetInputs.forEach(function (item) { item.checked = false; });
+          }
+          filterExistingScreens();
+          filterBaseScreens();
+        });
+      }
+      function hiddenInput(name, value) {
+        var input = document.createElement('input');
+        input.type = 'hidden'; input.name = name; input.value = value;
+        return input;
+      }
+      /*
+       * ⚠ 신규 화면은 여기서 화면ID 가 없다 — 서버가 행을 앉히면서 기본키로 짓는다
+       *   (정본 docs/superpowers/specs/2026-08-22-new-screen-id-design.md).
+       *   그래서 줄을 가려내는 열쇠는 화면ID 가 아니라 rowKey 다.
+       */
+      var newScreenSeq = 0;
+      function addSetupScreen(screen) {
+        var rowKey = screen.id || 'new-' + (++newScreenSeq);
+        if (!setupSelectedScreens || setupSelectedScreens.querySelector('[data-selected-screen-id="' + CSS.escape(rowKey) + '"]')) return false;
+        var row = document.createElement('li');
+        row.className = 'fi-screen-row';
+        row.dataset.selectedScreenId = rowKey;
+        var thumbnail = document.createElement('div');
+        thumbnail.title = screen.name + (screen.previewSrc ? ' 현재 운영 화면 썸네일' : ' 신규 화면 썸네일');
+        if (screen.previewSrc) {
+          thumbnail.className = 'fi-screen-thumbnail fi-screen-thumbnail--deferred';
+          thumbnail.dataset.previewSrc = screen.previewSrc;
+          var sample = document.createElement('div'); sample.className = 'fi-screen-thumbnail__sample'; sample.setAttribute('aria-hidden', 'true');
+          sample.append(document.createElement('i'), document.createElement('b'), document.createElement('b'), document.createElement('b'));
+          var loading = document.createElement('span'); loading.className = 'fi-screen-preview-loading'; loading.setAttribute('aria-hidden', 'true'); loading.append(document.createElement('i'));
+          thumbnail.append(sample, loading);
+        } else {
+          thumbnail.className = 'fi-screen-thumbnail';
+          var sample = document.createElement('div'); sample.className = 'fi-screen-thumbnail__sample'; sample.setAttribute('aria-hidden', 'true');
+          sample.append(document.createElement('i'), document.createElement('b'), document.createElement('b'), document.createElement('b'));
+          thumbnail.append(sample);
+        }
+        var content = document.createElement('div');
+        content.className = 'fi-screen-row__content';
+        var top = document.createElement('div'); top.className = 'fi-screen-row__top';
+        var title = document.createElement('strong'); title.textContent = screen.name;
+        var remove = document.createElement('button'); remove.type = 'button'; remove.className = 'button button--small button--text fi-screen-remove'; remove.textContent = '작업 대상에서 제외';
+        remove.addEventListener('click', function () {
+          row.remove();
+          if (screen.id) {
+            var candidate = document.querySelector('.setup-add-existing-screen[data-screen-id="' + CSS.escape(screen.id) + '"]');
+            if (candidate) { candidate.disabled = false; candidate.textContent = '화면 추가'; candidate.closest('.fi-existing-screen-item').classList.remove('is-added'); }
+          }
+          updateSetupScreenState();
+        });
+        top.append(title, remove);
+        var badges = document.createElement('div'); badges.className = 'fi-screen-row__badges';
+        var labels = screen.id ? ['기존 화면'] : ['신규 화면'];
+        if (screen.screenType) labels.push(screen.screenType);
+        labels.forEach(function (label) {
+          var badge = document.createElement('span'); badge.className = 'badge badge--outline'; badge.textContent = label; badges.append(badge);
+        });
+        var meta = document.createElement('small'); meta.className = 'num';
+        meta.textContent = (screen.system || '시스템 확인 필요') + ' · ' + (screen.id || '화면ID 는 추가할 때 정해집니다');
+        /*
+         * ⚠ 신규 화면의 화면 ID는 아직 없다. 빈 screenId는 Spring이 요청 목록에서 빼므로
+         *   기존 화면과 다른 필드로 보낸다. 그래야 신규 화면이 분석 조건까지 남는다.
+         */
+        if (screen.id) {
+          content.append(top, badges, meta, hiddenInput('screenId', screen.id),
+              hiddenInput('screenName', screen.name), hiddenInput('baseScreenId', screen.baseId || ''),
+              hiddenInput('screenType', ''));
+        } else {
+          content.append(top, badges, meta, hiddenInput('newScreenName', screen.name),
+              hiddenInput('newScreenType', screen.screenType || ''),
+              hiddenInput('newScreenSystem', screen.system || ''));
+        }
+        row.append(thumbnail, content);
+        setupSelectedScreens.append(row);
+        if (screen.previewSrc) loadPreview(thumbnail);
+        updateSetupScreenState();
+        return true;
+      }
+      function updateSetupScreenState() {
+        if (!setupSelectedScreens || !setupScreenEmpty) return;
+        var hasScreens = setupSelectedScreens.children.length > 0;
+        setupScreenEmpty.hidden = hasScreens;
+        setupSelectedScreens.hidden = !hasScreens;
+      }
+      document.querySelectorAll('.setup-add-existing-screen').forEach(function (button) {
+        button.addEventListener('click', function () {
+          if (addSetupScreen({ id: button.dataset.screenId, name: button.dataset.screenName, baseId: button.dataset.screenId, screenType: null, system: button.dataset.screenSystem, previewSrc: button.dataset.previewSrc })) {
+            button.disabled = true; button.textContent = '추가됨'; button.closest('.fi-existing-screen-item').classList.add('is-added');
+          }
+        });
+      });
+      var addNewScreen = document.getElementById('setup-add-new-screen');
+      if (addNewScreen) addNewScreen.addEventListener('click', function () {
+        var name = document.getElementById('new-screen-name');
+        var error = document.getElementById('new-screen-error');
+        var type = document.querySelector('select[name="newScreenType"]');
+        var system = document.querySelector('select[name="newScreenSystem"]');
+        if (!system || !system.value || !type || !type.value || !name.value.trim()) {
+          error.textContent = '시스템, 화면 유형과 새 화면명을 입력해 주세요.'; error.hidden = false; return;
+        }
+        /*
+         * ⚠ 화면ID 도 기준 화면도 안 넘긴다 — 이름은 서버가 기본키로 짓고, 시작점은 목업을 만들 때
+         *   AI 가 같은 유형 화면들을 읽어 정한다(정본 2026-08-22-new-screen-id-design).
+         */
+        addSetupScreen({ id: null, name: name.value.trim(), baseId: null, screenType: type.value,
+          system: system.value, previewSrc: null });
+        error.hidden = true; name.value = ''; type.value = ''; if (system.options.length !== 2) system.value = ''; screenDialog.close();
+      });
+      filterExistingScreens();
+      filterBaseScreens();
+    }());
+  </script>
+  <script th:src="@{/js/frd-interview.js}"></script>
+  </div>
+</div>
+</body>
+</html>

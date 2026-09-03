@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <link rel="stylesheet" href="../../src/main/resources/static/css/tokens.css">
+  <link rel="stylesheet" href="../../src/main/resources/static/css/reset.css">
+  <link rel="stylesheet" href="../../src/main/resources/static/css/typography.css">
+  <link rel="stylesheet" href="../../src/main/resources/static/css/components.css">
+  <link rel="stylesheet" href="../../src/main/resources/static/css/shell.css">
+  <link rel="stylesheet" href="_mock.css">
+  <link rel="stylesheet" href="../../src/main/resources/static/css/screens.css">
+  <link rel="stylesheet" href="_frd-analyzing-focus.css">
+  <title>FRD 요구사항 분석 중 — 새 시안</title>
+</head>
+<body>
+<template id="본문">
+  <main class="afx-page">
+    <header class="afx-head">
+      <div>
+        <span class="rq-kicker num">FRD-026</span>
+        <h1>출근 체크 이벤트 관리</h1>
+        <p>요구사항을 읽고 개발 범위를 찾는 중입니다.</p>
+      </div>
+      <span class="afx-state"><i aria-hidden="true"></i>요구사항 분석 중</span>
+    </header>
+
+    <nav class="afx-steps" aria-label="FRD 작업 만들기 진행 단계">
+      <ol>
+        <li class="is-done"><i>✓</i><span>분석 정보 입력</span></li>
+        <li class="is-current" aria-current="step"><i>2</i><span>AI 인터뷰</span></li>
+        <li><i>3</i><span>개발 범위 확인</span></li>
+      </ol>
+    </nav>
+
+    <section class="afx-focus" aria-labelledby="analysis-focus-title">
+      <header class="afx-focus__head">
+        <div class="afx-focus__brand">
+          <span class="afx-focus__mark"><img src="claudecode-color.png" width="42" height="42" alt=""></span>
+          <div>
+            <span>현재 분석</span>
+            <h2 id="analysis-focus-title">관련 화면과 업무 규칙을 확인하고 있습니다.</h2>
+            <p>확인 결과를 바탕으로 꼭 필요한 질문만 정리합니다.</p>
+          </div>
+        </div>
+        <span class="afx-focus__activity" aria-hidden="true"><i></i><i></i><i></i></span>
+      </header>
+
+      <ol class="afx-phases" aria-label="요구사항 분석 과정">
+        <li class="is-done"><i>✓</i><div><strong>요구사항 구조화</strong><span>기능 목적과 요청 내용 정리</span></div></li>
+        <li class="is-done"><i>✓</i><div><strong>업무 규칙 확인</strong><span>상태 변경과 알림 정책 확인</span></div></li>
+        <li class="is-current"><i aria-hidden="true"></i><div><strong>관련 화면 찾기</strong><span>화면 후보 3개 검토 중</span></div></li>
+        <li><i>4</i><div><strong>질문 정리</strong><span>확인이 필요한 내용 선별</span></div></li>
+      </ol>
+
+      <p class="afx-focus__notice"><span aria-hidden="true">i</span>브라우저를 닫아도 분석은 계속됩니다. 질문이 준비되면 FRD 목록에서 확인할 수 있습니다.</p>
+    </section>
+
+    <div class="afx-grid">
+      <section class="afx-panel afx-findings" aria-labelledby="findings-title">
+        <header class="afx-panel__head">
+          <div><span>확인 완료</span><h2 id="findings-title">지금까지 파악한 내용</h2></div>
+          <strong>3개 항목</strong>
+        </header>
+        <ol>
+          <li>
+            <span class="afx-finding-number">01</span>
+            <div><h3>사용자 출근 이벤트 관리</h3><p>관리자가 출근 이벤트를 등록하고 상태에 따라 수정·조회하는 기능입니다.</p></div>
+          </li>
+          <li>
+            <span class="afx-finding-number">02</span>
+            <div><h3>목록에서 상세와 등록·수정으로 이동</h3><p>목록, 상세, 등록·수정 화면이 하나의 관리 흐름으로 연결됩니다.</p></div>
+          </li>
+          <li>
+            <span class="afx-finding-number">03</span>
+            <div><h3>상태 변경 시 알림 정책 적용</h3><p>이벤트 상태와 사용자 조건에 따라 노출과 알림 결과가 달라집니다.</p></div>
+          </li>
+        </ol>
+      </section>
+
+      <aside class="afx-panel afx-screens" aria-labelledby="screens-title">
+        <header class="afx-panel__head">
+          <div><span>검토 중</span><h2 id="screens-title">관련 화면 후보</h2></div>
+          <strong>3개</strong>
+        </header>
+        <ul>
+          <li><span class="afx-screen-kind">목록</span><div><strong>출근 이벤트 목록</strong><small class="num">bo-cbck-evt-list</small></div></li>
+          <li><span class="afx-screen-kind">상세</span><div><strong>출근 이벤트 상세</strong><small class="num">bo-cbck-evt-detail</small></div></li>
+          <li><span class="afx-screen-kind">편집</span><div><strong>출근 이벤트 등록·수정</strong><small class="num">bo-cbck-evt-modify</small></div></li>
+        </ul>
+        <p class="afx-screens__note">화면 후보는 분석 결과에서 추가하거나 제외할 수 있습니다.</p>
+      </aside>
+    </div>
+
+    <details class="afx-log">
+      <summary><span>분석 실행 내용</span><small>최근 활동: 관련 화면 연결 확인</small></summary>
+      <ol>
+        <li><time>10:24</time><div><strong>요구사항 분석 시작</strong><p>입력한 요구사항과 적용 구분을 확인했습니다.</p></div><span>완료</span></li>
+        <li><time>10:25</time><div><strong>업무 흐름 정리</strong><p>기능 목적, 주요 화면, 상태 정책을 정리했습니다.</p></div><span>완료</span></li>
+        <li class="is-current"><time>현재</time><div><strong>관련 화면 연결 확인</strong><p>화면 후보와 연결된 처리 범위를 확인하고 있습니다.</p></div><span>진행 중</span></li>
+      </ol>
+    </details>
+  </main>
+</template>
+<script src="_shell.js"></script>
+<script>틀({제목:'FRD 요구사항 분석 중 — 새 시안',모양:'산출물',지금:'frds',프로젝트이름:'G2C',프로젝트번호:1,프로젝트들:['G2C','서울페이'],사람:'이영희',안읽은알림:2});</script>
+</body>
+</html>

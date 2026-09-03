@@ -1,0 +1,144 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<!--
+    FRD 작업. 표 설명의 정본은 V17__frd.sql 이다.
+    ⚠ 표 이름 앞의 `builder.` 를 지우지 마라 — MyBatis 는 Flyway 의 default-schema 를 안 물려받는다.
+    ⛔ source_ref 로 다른 표를 조인하지 마라. 글자 도장이다(2026-08-18 병주 확정).
+-->
+<mapper namespace="com.bizplay.builder.frd.FrdMapper">
+
+    <!-- ⛔ 인자 순서를 바꾸지 마라 — Frd 의 생성자와 자리로 맞춘다. -->
+    <resultMap id="frd" type="com.bizplay.builder.frd.Frd">
+        <constructor>
+            <idArg column="id"                 javaType="java.lang.String"/>
+            <arg   column="project_id"         javaType="java.lang.String"/>
+            <arg   column="number"             javaType="_int"/>
+            <arg   column="title"              javaType="java.lang.String"/>
+            <arg   column="system_code"        javaType="java.lang.String"/>
+            <arg   column="source_kind"        javaType="com.bizplay.builder.frd.Frd$SourceKind"/>
+            <arg   column="source_ref"         javaType="java.lang.String"/>
+            <arg   column="source_text"        javaType="java.lang.String"/>
+            <arg   column="source_imported_at" javaType="java.time.Instant"/>
+            <arg   column="no_screen_reason"   javaType="java.lang.String"/>
+            <arg   column="state"              javaType="com.bizplay.builder.frd.Frd$State"/>
+            <arg   column="failure"            javaType="java.lang.String"/>
+            <arg   column="owner_account_id"   javaType="java.lang.String"/>
+            <arg   column="created_at"         javaType="java.time.Instant"/>
+            <arg   column="updated_at"         javaType="java.time.Instant"/>
+            <arg   column="completed_at"       javaType="java.time.Instant"/>
+        </constructor>
+    </resultMap>
+
+    <sql id="columns">
+        id, project_id, number, title, system_code, source_kind, source_ref, source_text,
+        source_imported_at, no_screen_reason, state, failure, owner_account_id, created_at, updated_at,
+        completed_at
+    </sql>
+
+    <!--
+        ⛔ flushCache="true" 를 빠뜨리지 마라. 겉모습은 <select> 지만 실은 UPDATE 다 —
+        MyBatis 의 기본 localCacheScope(SESSION)는 같은 문+같은 인자를 캐시에서 답한다.
+        같은 프로젝트로 두 번 부르면(한 트랜잭션 안에서 FRD 를 둘 잇달아 열 때) 두 번째 호출이
+        DB 를 다시 안 치고 첫 번째 캐시값을 그대로 돌려준다 — 번호가 안 늘고 그대로 멎는다.
+        RequirementMapper.allocateNumber 에도 같은 위험이 있다(2026-08-18 이 시험으로 처음 드러났다).
+    -->
+    <select id="allocateNumber" parameterType="java.lang.String" resultType="_int" flushCache="true">
+        update builder.adk_builder_project
+           set frd_seq = frd_seq + 1
+         where id = #{projectId}
+        returning frd_seq
+    </select>
+
+    <!-- ⚠ 널이 올 수 있는 칸은 jdbcType 을 박는다 — 안 박으면 PostgreSQL 이 setNull 을 거절한다. -->
+    <insert id="insert" parameterType="com.bizplay.builder.frd.Frd">
+        insert into builder.adk_builder_frd
+               (id, project_id, number, title, system_code, source_kind, source_ref,
+                source_text, source_imported_at, no_screen_reason, state, failure, owner_account_id)
+        values (#{id}, #{projectId}, #{number}, #{title}, #{systemCode,jdbcType=VARCHAR},
+                #{sourceKind}, #{sourceRef,jdbcType=VARCHAR}, #{sourceText},
+                #{sourceImportedAt,jdbcType=TIMESTAMP}, #{noScreenReason,jdbcType=VARCHAR},
+                #{state}, #{failure,jdbcType=VARCHAR}, #{ownerAccountId,jdbcType=VARCHAR})
+    </insert>
+
+    <!-- ⚠ 번호 오름차순의 반대다 — 목록은 새것이 위다. 문자열이 아니라 숫자로 정렬한다. -->
+    <select id="selectByProjectId" parameterType="java.lang.String" resultMap="frd">
+        select <include refid="columns"/>
+          from builder.adk_builder_frd
+         where project_id = #{projectId}
+         order by number desc
+    </select>
+
+    <select id="selectVisibleByProjectId" parameterType="java.lang.String" resultMap="frd">
+        select <include refid="columns"/>
+          from builder.adk_builder_frd
+         where project_id = #{projectId}
+           and source_kind &lt;&gt; 'SRT'
+         order by number desc
+    </select>
+
+    <select id="selectByState" parameterType="com.bizplay.builder.frd.Frd$State" resultMap="frd">
+        select <include refid="columns"/>
+          from builder.adk_builder_frd
+         where state = #{state}
+         order by updated_at
+    </select>
+
+    <select id="selectById" parameterType="java.lang.String" resultMap="frd">
+        select <include refid="columns"/>
+          from builder.adk_builder_frd
+         where id = #{id}
+    </select>
+
+    <select id="selectByIdIn" resultMap="frd">
+        select <include refid="columns"/>
+          from builder.adk_builder_frd
+         where id in
+        <foreach item="id" collection="ids" open="(" separator="," close=")">#{id}</foreach>
+    </select>
+
+    <!-- ⭐ 상태와 값들을 한 문장에서 같이 쓴다 — 갈라 쓰면 그 사이에 CHECK 를 어기는 순간이 생긴다. -->
+    <update id="updateAfterPick">
+        update builder.adk_builder_frd
+           set title            = coalesce(#{title,jdbcType=VARCHAR}, title),
+               system_code      = #{systemCode,jdbcType=VARCHAR},
+               no_screen_reason = #{noScreenReason,jdbcType=VARCHAR},
+               state            = #{state},
+               failure          = #{failure,jdbcType=VARCHAR},
+               updated_at       = now(),
+               completed_at     = case when #{state} in ('REVIEW', 'DONE') then coalesce(completed_at, now()) else null end
+         where id = #{id}
+    </update>
+
+    <update id="updateState">
+        update builder.adk_builder_frd
+           set state = #{state},
+               updated_at = now(),
+               completed_at = case when #{state} in ('REVIEW', 'DONE') then coalesce(completed_at, now()) else null end
+         where id = #{id}
+    </update>
+
+    <update id="updateSrtSource">
+        update builder.adk_builder_frd
+           set title = #{title}, source_text = #{sourceText}, updated_at = now()
+         where id = #{id} and source_kind = 'SRT' and state = 'SCOPE_REVIEW'
+    </update>
+
+    <update id="transitionState">
+        update builder.adk_builder_frd
+           set state = #{state},
+               updated_at = now(),
+               completed_at = case when #{state} in ('REVIEW', 'DONE') then coalesce(completed_at, now()) else null end
+         where id = #{id}
+           and state = #{expected}
+    </update>
+
+    <delete id="deleteIncomplete">
+        delete from builder.adk_builder_frd
+         where project_id = #{projectId}
+           and id = #{id}
+           and state not in ('REVIEW', 'DONE')
+    </delete>
+
+</mapper>

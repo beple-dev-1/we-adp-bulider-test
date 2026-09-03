@@ -1,0 +1,155 @@
+<!doctype html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{fragments/shell :: layout(${title}, ${shape}, ${current}, ~{:: content})}">
+<body>
+<div th:fragment="content">
+
+  <!--/*
+    목업 docs/mockups/02a-requirement-detail.html 이 정본이다.
+    ⛔ 「출처 문서 근거」에 원문 인용문(rq-source)을 만들지 마라 — 요구 하나가 원문의 어느
+       대목에서 나왔는지를 담는 자리가 없다. 문서 내용의 앞토막을 대신 넣으면
+       근거가 아닌 것을 근거라고 적는 것이 된다.
+    ⛔ 「정의서 생성 요청」은 잠긴 자리다 (2026-08-16 병주 확정) — 계획 3 이 열릴 때 산다.
+    ⚠ 메타 다섯 중 「관련 요구」를 「등록」으로 바꿨다 — 보완 관계를 담는 자리가 아직 없다.
+       ⛔ 개념을 버린 것이 아니다: 그 자리가 서면 되살린다(ia 설계의 「보완 관계」).
+  */-->
+
+  <div class="requirement-concept">
+    <p class="source-error" th:if="${error}" th:text="${error}"></p>
+
+    <header class="rq-head">
+      <div class="rq-head__copy">
+        <span class="rq-kicker num" th:text="${requirement.code()}"></span>
+        <h1 th:text="${requirement.title()}"></h1>
+      </div>
+      <div class="rq-head__actions">
+        <a class="button" th:href="@{/projects/{p}/artifacts/requirements(p=${projectId})}">목록으로</a>
+        <span th:if="${requirement.reviewState().name() == 'DRAFTED'}"
+              class="status-badge status-badge--review">생성 완료</span>
+        <span th:if="${requirement.reviewState().name() == 'CONFIRMED'}"
+              class="status-badge status-badge--complete">확정 완료</span>
+        <span th:if="${requirement.reviewState().name() == 'EXCLUDED'}"
+              class="badge badge--outline">제외</span>
+
+        <!--/* ⚠ 확정은 폼이라 칸을 그대로 채우게 둔다 (받은 문서 상세와 같은 규칙) */-->
+        <form th:if="${requirement.reviewState().name() == 'DRAFTED'}" method="post"
+              th:action="@{/projects/{p}/artifacts/requirements/{r}/confirm(p=${projectId},r=${requirement.id()})}">
+          <button class="button button--primary" type="submit">요구사항 확정</button>
+        </form>
+
+        <button class="button" id="request-definition" type="button" disabled
+                title="요구사항정의서는 다음 단계에서 열립니다.">정의서 생성 요청</button>
+      </div>
+    </header>
+
+    <dl class="rq-meta rq-meta--five">
+      <div><dt>요구사항</dt><dd class="num" th:text="${requirement.code()}"></dd></div>
+      <div>
+        <dt>적용 구분</dt>
+        <dd>
+          <span class="facet-badges" th:if="${!facets.isEmpty()}">
+            <span class="badge badge--outline" th:each="facet : ${facets}" th:text="${facet}"></span>
+          </span>
+          <span th:if="${facets.isEmpty()}">—</span>
+        </dd>
+      </div>
+      <div><dt>출처 문서</dt><dd th:text="${intake.title()}"></dd></div>
+      <div><dt>등록</dt>
+        <dd class="num" th:text="${#temporals.format(requirement.createdAt(), 'MM-dd HH:mm')}"></dd></div>
+      <div><dt>마지막 수정</dt>
+        <dd class="num" th:text="${#temporals.format(requirement.lastTouchedAt(), 'MM-dd HH:mm')}"></dd></div>
+    </dl>
+
+    <main class="rq-summary-main">
+      <article class="rq-card">
+        <div class="rq-card__head">
+          <div><span class="rq-kicker">현재 초안</span><h2>요구사항 내용</h2></div>
+          <a class="button button--small" th:unless="${editing}"
+             th:href="@{/projects/{p}/artifacts/requirements/{r}(p=${projectId},r=${requirement.id()},edit=true)}">내용 수정</a>
+        </div>
+
+        <div class="rq-card__body" th:unless="${editing}">
+          <p class="rq-lead" th:text="${requirement.title()}"></p>
+          <p class="rq-copy document-content-body" th:text="${requirement.body()}"></p>
+          <div class="rq-note" th:if="${requirement.excludedReason() != null}">
+            제외한 까닭 — <span th:text="${requirement.excludedReason()}"></span>
+          </div>
+        </div>
+
+        <!--/* ⚠ AI 초안을 사람이 고친다. 검토 상태는 안 움직인다 — 고친 것이 판단은 아니다. */-->
+        <form class="rq-card__body rq-field-stack" th:if="${editing}" method="post"
+              th:action="@{/projects/{p}/artifacts/requirements/{r}/content(p=${projectId},r=${requirement.id()})}">
+          <div class="field">
+            <label class="field__label" for="requirement-title">요구사항 이름</label>
+            <input class="field__control" id="requirement-title" name="title" type="text"
+                   th:value="${requirement.title()}" required>
+          </div>
+          <div class="field">
+            <label class="field__label" for="requirement-body">요구사항 내용</label>
+            <textarea class="field__control rq-field-large" id="requirement-body" name="body"
+                      th:text="${requirement.body()}" required></textarea>
+          </div>
+          <div class="rq-actions">
+            <p><span class="ai-label">AI 초안</span> 을 고칩니다. 확정 상태는 바뀌지 않습니다.</p>
+            <a class="button"
+               th:href="@{/projects/{p}/artifacts/requirements/{r}(p=${projectId},r=${requirement.id()})}">그만두기</a>
+            <button class="button button--primary" type="submit">저장</button>
+          </div>
+        </form>
+      </article>
+
+      <section class="rq-card">
+        <div class="rq-card__head">
+          <div><h2>출처 문서</h2><p>이 요구사항을 뽑아낸 받은 문서입니다.</p></div>
+          <a class="button button--small"
+             th:href="@{/projects/{p}/artifacts/received-docs/{i}(p=${projectId},i=${intake.id()})}">문서 확인</a>
+        </div>
+        <div class="rq-card__body">
+          <ul class="rq-list">
+            <li>
+              <strong th:text="${intake.title()}"></strong>
+              <span class="badge badge--outline" th:if="${document != null}"
+                    th:text="${document.documentType().label()}"></span>
+            </li>
+          </ul>
+        </div>
+      </section>
+
+      <section class="rq-card" th:if="${requirement.screenHints() != null}">
+        <div class="rq-card__head">
+          <h2>관련 화면 후보</h2>
+          <span class="badge badge--outline">참고</span>
+        </div>
+        <div class="rq-card__body">
+          <!--/* ⚠ AI 가 적은 글자 그대로다 — BRD 의 최종 대상 화면과 다른 값이다 */-->
+          <p class="rq-copy" th:text="${requirement.screenHints()}"></p>
+        </div>
+      </section>
+
+      <!--/*
+        ⛔ 제외해도 줄을 지우지 않는다 — 번호 재사용 금지가 이 표의 규칙이다.
+        ⛔ 사유를 선택으로 만들지 마라: 까닭 없이 뺀 것은 「왜 뺐나」를 아무도 모른다.
+      */-->
+      <section class="rq-card" th:if="${requirement.reviewState().name() != 'EXCLUDED'}">
+        <div class="rq-card__head">
+          <div><h2>이 요구사항 제외</h2><p>목록에는 남고 다음 산출물로 가지 않습니다.</p></div>
+        </div>
+        <form class="rq-card__body rq-field-stack" method="post"
+              th:action="@{/projects/{p}/artifacts/requirements/{r}/exclude(p=${projectId},r=${requirement.id()})}">
+          <div class="field">
+            <label class="field__label" for="exclude-reason">제외하는 까닭</label>
+            <input class="field__control" id="exclude-reason" name="reason" type="text"
+                   placeholder="예: REQ-001 과 같은 요구입니다" required>
+          </div>
+          <div class="rq-actions">
+            <p>제외해도 번호와 이력은 그대로 남습니다.</p>
+            <button class="button" type="submit">제외</button>
+          </div>
+        </form>
+      </section>
+    </main>
+  </div>
+
+</div>
+</body>
+</html>

@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.bizplay.builder.businesslanguage.BusinessDocumentMapper">
+    <sql id="columns">
+        project_id as projectId, kind, content, source_refs as sourceRefs,
+        updated_at as updatedAt, updated_by as updatedBy
+    </sql>
+
+    <select id="selectOne" resultType="com.bizplay.builder.businesslanguage.BusinessDocument">
+        select <include refid="columns"/>
+          from builder.adk_builder_business_document
+         where project_id = #{projectId}
+           and kind = #{kind}
+    </select>
+
+    <select id="selectOneForUpdate" resultType="com.bizplay.builder.businesslanguage.BusinessDocument">
+        select <include refid="columns"/>
+          from builder.adk_builder_business_document
+         where project_id = #{projectId}
+           and kind = #{kind}
+           for update
+    </select>
+
+    <select id="selectByProjectId" parameterType="java.lang.String"
+            resultType="com.bizplay.builder.businesslanguage.BusinessDocument">
+        select <include refid="columns"/>
+          from builder.adk_builder_business_document
+         where project_id = #{projectId}
+         order by kind
+    </select>
+
+    <insert id="upsert">
+        insert into builder.adk_builder_business_document
+            (project_id, kind, content, source_refs, updated_at, updated_by)
+        values (#{projectId}, #{kind}, #{content}, #{sourceRefs, jdbcType=VARCHAR}, now(), #{updatedBy, jdbcType=VARCHAR})
+        on conflict (project_id, kind)
+            do update set content = excluded.content, source_refs = excluded.source_refs,
+                          updated_at = now(), updated_by = excluded.updated_by
+    </insert>
+
+    <update id="updateContent">
+        update builder.adk_builder_business_document
+           set content = #{content}, updated_at = now(), updated_by = #{updatedBy, jdbcType=VARCHAR}
+         where project_id = #{projectId}
+           and kind = #{kind}
+    </update>
+
+    <update id="updateDocument">
+        update builder.adk_builder_business_document
+           set content = #{content}, source_refs = #{sourceRefs, jdbcType=VARCHAR},
+               updated_at = now(), updated_by = #{updatedBy, jdbcType=VARCHAR}
+         where project_id = #{projectId}
+           and kind = #{kind}
+    </update>
+</mapper>

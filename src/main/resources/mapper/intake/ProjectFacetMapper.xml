@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<!--
+    그 프로젝트에 어떤 적용 구분이 있나 — 값의 정본이다. 표의 뜻은 V4__intake.sql 의 COMMENT 가 정본이다.
+
+    ⚠ 표 이름 앞의 `builder.` 를 지우지 마라. 이 저장소의 표는 public 이 아니라 builder 스키마에 산다.
+      MyBatis 는 Hibernate 의 default_schema 를 안 물려받는다 — 지우면 「표가 없다」로 죽는다.
+
+    ⚠ project_id 가 가리키는 adk_builder_project 도 2026-08-15 에 MyBatis 로 넘어왔다 —
+      프로젝트 INSERT 가 JDBC 로 곧장 들어가므로 여기 INSERT 가 FK 를 바로 채운다.
+      그래서 ProjectService.register 의 flush + em.refresh 를 같은 날 걷어냈다. 되살리지 마라.
+
+    ⚠ 표시 이름 변경은 updateName 하나로 한다. 접수 FK 가 ON UPDATE CASCADE 라 같은 트랜잭션에서
+      이미 등록된 접수도 따라간다. 적용 구분 전체를 지웠다 다시 넣는 방식으로 되돌리지 마라.
+-->
+<mapper namespace="com.bizplay.builder.intake.ProjectFacetMapper">
+
+    <!--
+        setter 가 없는 값 묶음이라 생성자로 담는다.
+        ⛔ 인자 순서를 바꾸지 마라 — ProjectFacet 의 생성자와 자리로 맞춘다.
+        ⚠ 여기로 담긴 것은 다듬지 않는다. 다듬는 자리는 ProjectFacet.create 하나뿐이고,
+          DB 에 앉은 값은 이미 다듬어진 것이다(CHECK (name = btrim(name)) 가 지킨다).
+    -->
+    <resultMap id="projectFacet" type="com.bizplay.builder.intake.ProjectFacet">
+        <constructor>
+            <idArg column="project_id" javaType="java.lang.String"/>
+            <idArg column="code"       javaType="java.lang.String"/>
+            <idArg column="name"       javaType="java.lang.String"/>
+        </constructor>
+    </resultMap>
+
+    <!--
+        ⚠ order by 를 지우지 마라 — 넣은 순서는 안 지키고 화면이 이름순으로 읽는다.
+          그것이 등록 화면의 고르개와 목록의 거르개가 같은 순서로 뜨는 까닭이다.
+    -->
+    <select id="selectByProjectId" parameterType="java.lang.String" resultMap="projectFacet">
+        select project_id, code, name
+          from builder.adk_builder_project_facet
+         where project_id = #{projectId}
+         order by name
+    </select>
+
+    <!-- 테스트가 「어느 프로젝트에도 한 행도 안 남았다」를 잴 때 쓴다. -->
+    <select id="selectAll" resultMap="projectFacet">
+        select project_id, code, name
+          from builder.adk_builder_project_facet
+         order by project_id, name
+    </select>
+
+    <insert id="insert" parameterType="com.bizplay.builder.intake.ProjectFacet">
+        insert into builder.adk_builder_project_facet (project_id, code, name)
+        values (#{projectId}, #{code}, #{name})
+    </insert>
+
+    <update id="updateCode">
+        update builder.adk_builder_project_facet
+           set code       = #{code}
+         where project_id = #{projectId}
+           and name       = #{name}
+    </update>
+
+    <!-- FK 가 ON UPDATE CASCADE 라 이미 등록된 접수의 표시 이름도 같은 트랜잭션에서 따라간다. -->
+    <update id="updateName">
+        update builder.adk_builder_project_facet
+           set name       = #{name}
+         where project_id = #{projectId}
+           and code       = #{code}
+    </update>
+
+    <!--
+        기본키 둘로 한 줄을 지운다.
+        ⚠ 인자가 둘인 것은 기본키가 (project_id, name) 둘이라서다. JPA 때는 이 자리를 위해
+          ProjectFacet.Key 라는 복합키 레코드가 있었는데, @IdClass 규약을 맞추려고만 있던 것이라
+          2026-08-15 에 지웠다. 되살리지 마라 — 여기 인자 둘이면 족하다.
+        ⛔ project_id 조건을 지우지 마라. 같은 이름의 적용 구분이 다른 프로젝트에도 있다 —
+          지우면 남의 프로젝트 값까지 같이 날아간다.
+    -->
+    <delete id="deleteByProjectIdAndName">
+        delete from builder.adk_builder_project_facet
+         where project_id = #{projectId}
+           and name       = #{name}
+    </delete>
+
+</mapper>

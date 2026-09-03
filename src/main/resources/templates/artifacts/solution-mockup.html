@@ -1,0 +1,487 @@
+<!doctype html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{fragments/shell :: layout(${title}, ${shape}, ${current}, ~{:: content})}">
+<body>
+<div th:fragment="content">
+
+  <!--/*
+    목업 docs/mockups/08a-solution-mockup-detail.html 이 정본이다.
+    ⛔ 「읽기 전용」 배지를 되살리지 마라 — 설계가 2026-08-14 에 「③ 은 고치지 않는다」를 뒤집었다.
+    ⛔ 「현재 버전」·「버전 이력」을 되살리지 마라 — 레포에 판 번호가 없다. git 이 판본이다.
+    ⚠ 미리보기는 추출된 진짜 html 을 끼운다. sandbox 를 빼지 마라 — 추출 html 285장 중
+      225장에 <script> 가 남아 있다(2026-08-16 실측).
+  */-->
+
+  <div class="solution-detail">
+    <p class="source-error" th:if="${error}" th:text="${error}"></p>
+
+    <header class="rq-head">
+      <div class="rq-head__copy">
+        <span class="rq-kicker num"
+              th:text="${screen.screenId} + ' · ' + ${systemLabel}"></span>
+        <h1 th:text="${screen.screenName}"></h1>
+        <p th:if="${!#strings.isEmpty(screen.menuPath)}" th:text="${screen.menuPath}"></p>
+      </div>
+      <div class="rq-head__actions">
+        <a class="button" th:href="@{/projects/{p}/artifacts/solution-mockups(p=${projectId},query=${listQuery},system=${listSystem},page=${listPage},pageSize=${listPageSize})}">목록으로</a>
+      </div>
+    </header>
+
+    <dl class="rq-meta">
+      <div><dt>화면관리번호</dt><dd class="num" th:text="${standardId}"></dd></div>
+      <div><dt>화면 ID</dt><dd class="num" th:text="${screen.screenId}"></dd></div>
+      <div><dt>최초 작성일</dt><dd class="num" th:text="${screen.history.firstDate} ?: '—'"></dd></div>
+      <div>
+        <dt>최종 수정</dt>
+        <dd th:if="${screen.history.isEmpty()}">—</dd>
+        <dd th:unless="${screen.history.isEmpty()}">
+          <span class="num" th:text="${screen.history.lastDate}"></span> ·
+          <span th:text="${screen.history.lastAuthor}"></span>
+        </dd>
+      </div>
+    </dl>
+
+    <main class="solution-detail-main">
+      <section class="preview-stage" aria-labelledby="solution-preview-title">
+        <header class="preview-stage__head">
+          <h2 id="solution-preview-title">
+            <span class="sr-only">작업 목업 기준 화면: </span>
+            <span class="num" th:text="${screen.screenId}"></span>
+            <span aria-hidden="true"> · </span>
+            <span th:text="${screen.screenName}"></span>
+          </h2>
+          <!--/*
+            ⛔ 확대·축소를 빼지 마라 — 백오피스 운영 화면은 1200px 안팎이라 이 칸에 안 들어간다.
+               2026-08-16 에 한 번 뺐다가 목업 검사기가 잡았다.
+          */-->
+          <div class="preview-zoom" role="group" aria-label="미리보기 확대 및 축소">
+            <button type="button" id="zoom-out" aria-label="미리보기 축소">&minus;</button>
+            <button type="button" id="zoom-reset" aria-label="미리보기 배율 초기화">
+              <output id="zoom-level">100%</output>
+            </button>
+            <button type="button" id="zoom-in" aria-label="미리보기 확대">+</button>
+          </div>
+          <button class="icon-button preview-tool-button preview-document-button" id="open-solution-document" type="button"
+                  aria-label="기능정의서 보기" title="기능정의서 보기"
+                  aria-controls="solution-document-dialog" aria-expanded="false">
+            <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M9 4H6v17h12V4h-3M9 3h6v4H9V3Z"></path>
+              <path d="m9 12 1.3 1.3L13 10.5M14.5 12H16M9 17h7"></path>
+            </svg>
+          </button>
+          <button class="icon-button preview-tool-button preview-feature-toggle" id="toggle-solution-features" type="button"
+                  aria-label="기능 위치 표시" title="기능 위치 표시" aria-pressed="false"
+                  th:disabled="${!screenDocument.hasFunctions()}">
+            <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M5 4h14a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-8l-5 3v-3H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2Z"></path>
+              <path d="M8 8h8M8 12h6"></path>
+            </svg>
+          </button>
+          <a class="icon-button preview-open-window" target="_blank" rel="noopener"
+             aria-label="새 창으로 열기" title="새 창으로 열기"
+             th:href="@{/projects/{p}/artifacts/solution-mockups/files/{f}(p=${projectId},f=${previewPath},skin=${variant})}">
+            <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M14 4h6v6M20 4l-9 9"></path><path d="M18 13v6H5V6h6"></path>
+            </svg>
+          </a>
+        </header>
+
+        <!--/*
+          ⭐ 기관 탭 하나가 지렛대 둘을 태운다 (설계 2026-08-22-preview-skin-design).
+            · 갈래 화면 — 기관마다 **마크업이 갈린다**. 기저 html 이 아예 없어(있으면 저쪽 A-1 red)
+              하나를 골라야 열린다. 고르면 **파일**이 갈린다.
+            · 스킨 화면 — 목업은 한 장뿐이고 **스타일만 갈린다**. 고르면 **css 폴더**가 갈린다.
+          ⚠ 고를 것이 하나뿐인 시스템은 탭이 안 뜬다(g2c portal 은 제주뿐) — 「전환 대상이 아니다」와 같은 뜻이다.
+        */-->
+        <div class="preview-stage__tabs" role="tablist" aria-label="기관"
+             th:if="${not #lists.isEmpty(facetTabs)}">
+          <a th:each="item : ${facetTabs}" class="preview-tab" role="tab"
+             th:classappend="${item.code == variant} ? 'is-current' : ''"
+             th:attr="aria-selected=${item.code == variant} ? 'true' : 'false'"
+             th:text="${item.name}"
+             th:href="@{/projects/{p}/artifacts/solution-mockups/{s}(p=${projectId},s=${screen.screenId},variant=${item.code})}"></a>
+        </div>
+
+        <!--/*
+          ⭐ sandbox 의 allow-same-origin 을 빼지 마라 — 빼면 곁의 css 가 안 붙어
+            뼈대만 뜬 화면이 된다(2026-08-17 실측). 까닭은 SolutionPreviewController.SANDBOX 에 적었다.
+          ⛔ 거기에 allow-scripts 를 더하지 마라 — 둘이 같이 있으면 안의 문서가 울타리를
+            스스로 걷어낸다. 지금 이 자리가 안전한 것은 스크립트가 아예 못 돌기 때문이다.
+        */-->
+        <div class="preview-review" id="preview-review">
+          <div class="preview-canvas" id="preview-canvas">
+            <iframe class="preview-frame" sandbox="allow-same-origin"
+                    th:title="${screen.screenName} + ' 운영 화면 미리보기'"
+                    th:src="@{/projects/{p}/artifacts/solution-mockups/files/{f}(p=${projectId},f=${previewPath},skin=${variant})}"></iframe>
+          </div>
+          <aside class="preview-feature-panel" id="solution-feature-panel" aria-labelledby="solution-feature-panel-title" hidden>
+            <header class="preview-feature-panel__head">
+              <div>
+                <h3 id="solution-feature-panel-title">기능 설명</h3>
+                <p>화면 명세에 기록된 기능과 현재 표시 상태입니다.</p>
+              </div>
+              <span class="badge badge--outline" th:text="${#lists.size(screenDocument.functions)} + '개'"></span>
+            </header>
+            <ol class="preview-feature-list" id="solution-feature-list"></ol>
+          </aside>
+        </div>
+      </section>
+
+      <section class="rq-card" aria-labelledby="solution-history-title">
+        <div class="rq-card__head">
+          <div>
+            <h2 id="solution-history-title">수정 이력</h2>
+            <p>기획 저장소에서 이 화면이 바뀐 때와 수정자입니다.</p>
+          </div>
+          <span class="badge badge--outline"
+                th:text="${#lists.size(screen.history.changes)} + '개'"></span>
+        </div>
+        <div class="rq-card__body">
+          <p class="rq-note" th:if="${screen.history.isEmpty()}">
+            기획 저장소에서 이 화면의 이력을 읽지 못했습니다. 클론이 얕게 받아졌을 수 있습니다.
+          </p>
+          <div class="table-wrap" th:unless="${screen.history.isEmpty()}">
+            <table class="data-table data-table--dense solution-history-table">
+              <thead>
+                <tr>
+                  <th scope="col">수정일</th>
+                  <th scope="col">수정자</th>
+                  <th scope="col">무엇을 고쳤나</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr th:each="change : ${screen.history.changes}">
+                  <td class="num nowrap" th:text="${change.date}"></td>
+                  <td class="nowrap" th:text="${change.author}"></td>
+                  <td th:text="${change.subject}"></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <dialog class="dialog dialog--layer solution-document-dialog" id="solution-document-dialog"
+          aria-modal="true" aria-labelledby="solution-document-title" aria-describedby="solution-document-description">
+    <div class="solution-document-dialog__frame">
+      <header class="dialog__header dialog__header--with-meta">
+        <div class="dialog__header-copy">
+          <span class="dialog__kicker">기능정의서</span>
+          <h2 class="dialog__title" id="solution-document-title" th:text="${screen.screenName}"></h2>
+          <p class="dialog__description" id="solution-document-description">현재 화면에 연결된 기능과 처리 기준입니다.</p>
+        </div>
+        <span class="dialog__meta num" th:text="${screen.screenId}"></span>
+        <button class="dialog__close" type="button" data-solution-document-close aria-label="기능정의서 닫기"></button>
+      </header>
+
+      <div class="dialog__body solution-document-dialog__body">
+        <div class="empty-state solution-document-empty" th:if="${screenDocument.isEmpty()}">
+          <div class="empty-state__copy">
+            <h3>아직 기능정의서가 없습니다</h3>
+            <p>이 화면에 연결된 화면 명세(<span class="num">md</span>)를 찾지 못했습니다.<br>기획 저장소 갱신 상태를 확인해 주세요.</p>
+          </div>
+        </div>
+
+        <div class="solution-document-content" th:unless="${screenDocument.isEmpty()}">
+          <section class="rq-card" aria-labelledby="solution-document-overview-title">
+            <div class="rq-card__head">
+              <div><h3 id="solution-document-overview-title">화면 개요</h3><p>화면 명세에 기록된 목적과 진입 정보입니다.</p></div>
+            </div>
+            <div class="rq-card__body">
+              <dl class="rq-meta rq-meta--stack">
+                <div th:if="${!#strings.isEmpty(screenDocument.purpose)}"><dt>목적</dt><dd th:text="${screenDocument.purpose}"></dd></div>
+                <div th:if="${!#strings.isEmpty(screenDocument.path)}"><dt>경로</dt><dd th:text="${screenDocument.path}"></dd></div>
+                <div th:if="${!#strings.isEmpty(screenDocument.entry)}"><dt>진입</dt><dd th:text="${screenDocument.entry}"></dd></div>
+              </dl>
+            </div>
+          </section>
+
+          <section class="rq-card" th:if="${screenDocument.hasFunctions()}" aria-labelledby="solution-document-functions-title">
+            <div class="rq-card__head">
+              <div><h3 id="solution-document-functions-title">기능과 화면 항목</h3><p>화면 명세가 요소별로 짚어 둔 내용입니다.</p></div>
+              <span class="badge badge--outline" th:text="${#lists.size(screenDocument.functions)} + '개'"></span>
+            </div>
+            <div class="rq-card__body">
+              <div class="table-wrap" tabindex="0" aria-label="기능과 화면 항목">
+                <table class="data-table data-table--dense solution-document-table">
+                  <thead><tr><th scope="col">번호</th><th scope="col">구분</th><th scope="col">이름</th><th scope="col">처리 기준</th></tr></thead>
+                  <tbody><tr th:each="item : ${screenDocument.functions}">
+                    <td class="num nowrap" th:text="${#strings.isEmpty(item.no) ? '—' : item.no}"></td>
+                    <td><span class="badge badge--outline" th:text="${#strings.isEmpty(item.kind) ? '기타' : item.kind}"></span></td>
+                    <td th:text="${#strings.isEmpty(item.label) ? (#strings.isEmpty(item.locator) ? '—' : item.locator) : item.label}"></td>
+                    <td th:text="${#strings.isEmpty(item.detail) ? '—' : item.detail}"></td>
+                  </tr></tbody>
+                </table>
+              </div>
+            </div>
+          </section>
+
+          <details class="rq-card feature-spec-raw">
+            <summary>화면 명세 원문 보기</summary>
+            <pre class="feature-spec-raw__body" th:text="${screenDocument.raw}"></pre>
+          </details>
+        </div>
+      </div>
+      <footer class="dialog__actions">
+        <button class="button" type="button" data-solution-document-close>닫기</button>
+      </footer>
+    </div>
+  </dialog>
+
+  <ul id="solution-feature-data" hidden>
+    <li th:each="item : ${screenDocument.functions}"
+        th:attr="data-no=${item.no},data-kind=${item.kind},data-locator=${item.locator},data-anchor=${item.anchor},data-label=${item.label},data-detail=${item.detail}"></li>
+  </ul>
+
+  <!--/*
+    ⚠ 목업 08a 의 것과 같은 대본이다. 배율은 화면 밖으로 안 나간다(50~150%).
+    기능 위치 표시는 allow-same-origin 으로 읽을 수 있는 DOM 에만 임시 표식을 얹는다.
+    추출 html 원문은 바꾸지 않으며 allow-scripts 도 추가하지 않는다.
+  */-->
+  <script>
+    (function () {
+      const canvas = document.getElementById('preview-canvas');
+      const zoomLevel = document.getElementById('zoom-level');
+      const zoomOutButton = document.getElementById('zoom-out');
+      const zoomInButton = document.getElementById('zoom-in');
+      if (!canvas || !zoomLevel || !zoomOutButton || !zoomInButton) {
+        return;
+      }
+      let zoom = 100;
+      const updateZoom = function (nextZoom) {
+        zoom = Math.min(150, Math.max(50, nextZoom));
+        canvas.style.setProperty('--preview-zoom', zoom / 100);
+        zoomLevel.value = zoom + '%';
+        zoomLevel.textContent = zoom + '%';
+        zoomOutButton.disabled = zoom === 50;
+        zoomInButton.disabled = zoom === 150;
+      };
+      zoomOutButton.addEventListener('click', function () { updateZoom(zoom - 10); });
+      zoomInButton.addEventListener('click', function () { updateZoom(zoom + 10); });
+      document.getElementById('zoom-reset').addEventListener('click', function () { updateZoom(100); });
+    })();
+    (function () {
+      const button = document.getElementById('open-solution-document');
+      const dialog = document.getElementById('solution-document-dialog');
+      if (!button || !dialog) return;
+      const close = function () {
+        if (!dialog.open) return;
+        dialog.close();
+        button.setAttribute('aria-expanded', 'false');
+        button.focus();
+      };
+      button.addEventListener('click', function () {
+        dialog.showModal();
+        button.setAttribute('aria-expanded', 'true');
+      });
+      dialog.querySelectorAll('[data-solution-document-close]').forEach(function (closeButton) {
+        closeButton.addEventListener('click', close);
+      });
+      dialog.addEventListener('close', function () { button.setAttribute('aria-expanded', 'false'); });
+    })();
+    (function () {
+      const toggle = document.getElementById('toggle-solution-features');
+      const frame = document.querySelector('.preview-frame');
+      const data = document.getElementById('solution-feature-data');
+      const review = document.getElementById('preview-review');
+      const panel = document.getElementById('solution-feature-panel');
+      const featureList = document.getElementById('solution-feature-list');
+      if (!toggle || !frame || !data || !review || !panel || !featureList) return;
+
+      const features = Array.from(data.children).map(function (item) {
+        const detail = item.dataset.detail || '처리 기준이 기록되지 않았습니다.';
+        return {
+          no: item.dataset.no || '',
+          kind: item.dataset.kind || '기능',
+          locator: item.dataset.locator || '',
+          anchor: item.dataset.anchor || '',
+          label: item.dataset.label || detail.split(/\s*(?:→|\(|=)\s*/)[0] || item.dataset.locator || '이름 없음',
+          detail: detail,
+          state: 'missing',
+          target: null,
+          pin: null,
+          panelButton: null
+        };
+      });
+      let active = false;
+
+      const removeOverlay = function (keepPanel) {
+        try {
+          const previewDocument = frame.contentDocument;
+          if (previewDocument) {
+            previewDocument.querySelector('[data-builder-feature-root]')?.remove();
+            previewDocument.querySelector('[data-builder-feature-style]')?.remove();
+            previewDocument.querySelectorAll('[data-builder-feature-highlight]').forEach(function (element) {
+              element.removeAttribute('data-builder-feature-highlight');
+            });
+          }
+        } catch (error) {
+          // 다른 출처의 문서라 접근할 수 없으면 부모 화면만 원래 상태로 돌린다.
+        }
+        if (!keepPanel) {
+          panel.hidden = true;
+          review.classList.remove('is-feature-open');
+        }
+      };
+
+      const findTargets = function (previewDocument, feature) {
+        const locator = feature.locator;
+        const separator = locator.indexOf('=');
+        if (separator > 0) {
+          const type = locator.slice(0, separator).trim();
+          const value = locator.slice(separator + 1).trim();
+          try {
+            if (type === 'id' && value) {
+              const element = previewDocument.getElementById(value);
+              if (element) return [element];
+            }
+            if (type === 'name' && value) {
+              const elements = Array.from(previewDocument.getElementsByName(value));
+              if (elements.length > 0) return elements;
+            }
+            if (type === 'selector' && value) {
+              const elements = Array.from(previewDocument.querySelectorAll(value));
+              if (elements.length > 0) return elements;
+            }
+          } catch (error) {
+            // 잘못된 좌표여도 아래의 추출 앵커로 한 번 더 찾는다.
+          }
+        }
+        if (!feature.anchor) return [];
+        return Array.from(previewDocument.querySelectorAll('[data-element-id]')).filter(function (element) {
+          return element.getAttribute('data-element-id') === feature.anchor;
+        });
+      };
+
+      const selectFeature = function (feature, moveFocus) {
+        features.forEach(function (item) {
+          item.panelButton?.closest('.preview-feature-item')?.classList.remove('is-selected');
+          item.pin?.classList.remove('is-selected');
+        });
+        feature.panelButton?.closest('.preview-feature-item')?.classList.add('is-selected');
+        feature.pin?.classList.add('is-selected');
+        if (moveFocus && feature.panelButton) {
+          feature.panelButton.focus({ preventScroll: true });
+          feature.panelButton.scrollIntoView({ block: 'nearest' });
+        }
+      };
+
+      const renderFeaturePanel = function () {
+        featureList.replaceChildren();
+        features.forEach(function (feature) {
+          const item = document.createElement('li');
+          item.className = 'preview-feature-item';
+          item.dataset.state = feature.state;
+          const button = document.createElement('button');
+          button.type = 'button';
+          button.className = 'preview-feature-item__button';
+          const top = document.createElement('span');
+          top.className = 'preview-feature-item__top';
+          const no = document.createElement('span');
+          no.className = 'preview-feature-item__no num';
+          no.textContent = feature.no || '—';
+          const name = document.createElement('span');
+          name.className = 'preview-feature-item__name';
+          name.textContent = feature.label;
+          const state = document.createElement('span');
+          state.className = 'preview-feature-item__state';
+          state.textContent = feature.state === 'visible' ? '화면에 표시' : (feature.state === 'hidden' ? '현재 숨김' : '위치 없음');
+          const detail = document.createElement('span');
+          detail.className = 'preview-feature-item__detail';
+          detail.textContent = feature.detail;
+          top.append(no, name, state);
+          button.append(top, detail);
+          button.setAttribute('aria-label', feature.label + (feature.state === 'visible' ? ' 위치 강조' : ' 설명 선택'));
+          button.addEventListener('click', function () {
+            if (feature.state === 'visible') {
+              feature.target.scrollIntoView({ block: 'center', inline: 'center' });
+            }
+            selectFeature(feature, false);
+          });
+          feature.panelButton = button;
+          item.append(button);
+          featureList.append(item);
+        });
+        panel.hidden = false;
+        review.classList.add('is-feature-open');
+      };
+
+      const applyOverlay = function () {
+        removeOverlay(true);
+        try {
+          const previewDocument = frame.contentDocument;
+          if (!previewDocument || !previewDocument.documentElement || !previewDocument.body) throw new Error('preview unavailable');
+
+          const style = previewDocument.createElement('style');
+          style.dataset.builderFeatureStyle = '';
+          style.textContent = `
+            [data-builder-feature-highlight] { outline: 2px solid #9d8abb !important; outline-offset: 3px !important; }
+            [data-builder-feature-root] { position: absolute; top: 0; left: 0; width: 0; height: 0; z-index: 2147483646; pointer-events: none; font-family: Arial, sans-serif; }
+            .builder-feature-pin { all: initial; box-sizing: border-box; position: absolute; width: 30px; height: 30px; display: grid; place-items: center; border: 1px solid #9d8abb; border-radius: 999px; background: #eee8fb; color: #514268; box-shadow: 0 2px 6px rgba(81,66,104,.2); font: 700 11px/1 Arial, sans-serif; cursor: pointer; pointer-events: auto; transition: background 120ms ease, box-shadow 120ms ease, transform 120ms ease; }
+            .builder-feature-pin:hover, .builder-feature-pin.is-selected { background: #c5b0f4; box-shadow: 0 0 0 4px rgba(197,176,244,.38); transform: scale(1.08); }
+            .builder-feature-pin:focus-visible { outline: 3px solid #f59e0b; outline-offset: 2px; }
+          `;
+          previewDocument.head.append(style);
+
+          const root = previewDocument.createElement('div');
+          root.dataset.builderFeatureRoot = '';
+          previewDocument.body.append(root);
+          features.forEach(function (feature, index) {
+            feature.state = 'missing';
+            feature.target = null;
+            feature.pin = null;
+            feature.panelButton = null;
+            const locatedTargets = findTargets(previewDocument, feature);
+            if (locatedTargets.length === 0) {
+              return;
+            }
+            const targets = locatedTargets.filter(function (element) {
+              return element && element.nodeType === 1 && element.getClientRects().length > 0;
+            });
+            if (targets.length === 0) {
+              feature.state = 'hidden';
+              return;
+            }
+            feature.state = 'visible';
+            feature.target = targets[0];
+            targets.forEach(function (element) { element.dataset.builderFeatureHighlight = ''; });
+            const rect = targets[0].getBoundingClientRect();
+            const pin = previewDocument.createElement('button');
+            pin.type = 'button';
+            pin.className = 'builder-feature-pin';
+            pin.textContent = feature.no || String(index + 1);
+            pin.title = feature.label + ' — ' + feature.detail;
+            pin.setAttribute('aria-label', feature.label + ' 기능 설명 보기');
+            pin.style.left = Math.max(0, rect.left + previewDocument.defaultView.scrollX - 15) + 'px';
+            pin.style.top = Math.max(0, rect.top + previewDocument.defaultView.scrollY - 15) + 'px';
+            pin.addEventListener('click', function () { selectFeature(feature, true); });
+            root.append(pin);
+            feature.pin = pin;
+          });
+          renderFeaturePanel();
+        } catch (error) {
+          features.forEach(function (feature) {
+            feature.state = 'missing';
+            feature.target = null;
+            feature.pin = null;
+            feature.panelButton = null;
+          });
+          renderFeaturePanel();
+        }
+      };
+
+      toggle.addEventListener('click', function () {
+        active = !active;
+        toggle.setAttribute('aria-pressed', String(active));
+        if (active) applyOverlay();
+        else removeOverlay(false);
+      });
+      frame.addEventListener('load', function () { if (active) applyOverlay(); });
+    })();
+  </script>
+
+</div>
+</body>
+</html>

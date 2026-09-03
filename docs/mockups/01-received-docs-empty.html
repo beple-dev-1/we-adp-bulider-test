@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" href="../../src/main/resources/static/css/tokens.css">
+  <link rel="stylesheet" href="../../src/main/resources/static/css/reset.css">
+  <link rel="stylesheet" href="../../src/main/resources/static/css/typography.css">
+  <link rel="stylesheet" href="../../src/main/resources/static/css/components.css">
+  <link rel="stylesheet" href="../../src/main/resources/static/css/shell.css">
+  <link rel="stylesheet" href="_mock.css">
+  <link rel="stylesheet" href="../../src/main/resources/static/css/screens.css">
+</head>
+<body>
+<template id="본문">
+  <div class="page-head list-page-head">
+    <div>
+      <h1 class="page-head__title">받은 문서</h1>
+      <p class="page-intro received-docs-intro">Flow 게시물이나 받은 문서를 등록하고, 필요한 문서에서 요구사항을 분석합니다.</p>
+    </div>
+    <a class="button button--primary" href="01a-received-document-register.html">문서 등록</a>
+  </div>
+
+  <section class="state-panel list-empty-state" role="status">
+    <span class="list-empty-state__icon" aria-hidden="true">
+      <svg viewBox="0 0 32 32" fill="none">
+        <path d="M6.5 7.5h19v17h-19z"/>
+        <path d="M6.5 19.5h5l2.2 3h4.6l2.2-3h5"/>
+        <path d="M11 12h10M11 15.5h7"/>
+      </svg>
+    </span>
+    <strong>조회된 내용이 없습니다.</strong>
+  </section>
+</template>
+<script src="_shell.js"></script>
+<script>틀({제목:'받은 문서',모양:'산출물',지금:'received-docs',프로젝트이름:'G2C',프로젝트번호:1,프로젝트들:['G2C','서울페이'],사람:'이영희',안읽은알림:2});</script>
+</body>
+</html>

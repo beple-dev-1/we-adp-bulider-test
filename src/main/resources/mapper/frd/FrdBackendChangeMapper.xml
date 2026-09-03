@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.bizplay.builder.frd.FrdBackendChangeMapper">
+    <resultMap id="change" type="com.bizplay.builder.frd.FrdBackendChange">
+        <constructor>
+            <idArg column="id" javaType="java.lang.String"/>
+            <arg column="frd_id" javaType="java.lang.String"/>
+            <arg column="seq" javaType="_int"/>
+            <arg column="requirement_seq" javaType="java.lang.Integer"/>
+            <arg column="category" javaType="com.bizplay.builder.frd.FrdBackendChange$Category"/>
+            <arg column="target" javaType="java.lang.String"/>
+            <arg column="change_detail" javaType="java.lang.String"/>
+            <arg column="evidence" javaType="java.lang.String"/>
+            <arg column="verification" javaType="java.lang.String"/>
+            <arg column="required" javaType="_boolean"/>
+            <arg column="created_at" javaType="java.time.Instant"/>
+        </constructor>
+    </resultMap>
+
+    <insert id="insert" parameterType="com.bizplay.builder.frd.FrdBackendChange">
+        insert into builder.adk_builder_frd_backend_change
+               (id, frd_id, seq, requirement_seq, category, target, change_detail, evidence,
+                verification, required)
+        values (#{id}, #{frdId}, #{seq}, #{requirementSeq,jdbcType=INTEGER}, #{category},
+                #{target}, #{changeDetail}, #{evidence,jdbcType=VARCHAR},
+                #{verification,jdbcType=VARCHAR}, #{required})
+    </insert>
+
+    <select id="selectByFrdId" parameterType="java.lang.String" resultMap="change">
+        select id, frd_id, seq, requirement_seq, category, target, change_detail,
+               evidence, verification, required, created_at
+          from builder.adk_builder_frd_backend_change
+         where frd_id = #{frdId}
+         order by seq
+    </select>
+
+    <delete id="deleteByFrdId" parameterType="java.lang.String">
+        delete from builder.adk_builder_frd_backend_change where frd_id = #{frdId}
+    </delete>
+</mapper>

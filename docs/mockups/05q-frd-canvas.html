@@ -1,0 +1,225 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <link rel="stylesheet" href="../../src/main/resources/static/css/tokens.css">
+  <link rel="stylesheet" href="../../src/main/resources/static/css/reset.css">
+  <link rel="stylesheet" href="../../src/main/resources/static/css/typography.css">
+  <link rel="stylesheet" href="../../src/main/resources/static/css/components.css">
+  <link rel="stylesheet" href="../../src/main/resources/static/css/shell.css">
+  <link rel="stylesheet" href="_mock.css">
+  <link rel="stylesheet" href="../../src/main/resources/static/css/screens.css">
+  <link rel="stylesheet" href="_frd-canvas.css">
+  <title>FRD 작업 공간 · 전체 화면 캔버스</title>
+</head>
+<body>
+<template id="본문">
+  <div class="fc-page">
+    <header class="fc-head">
+      <div>
+        <span class="rq-kicker num">FRD-003</span>
+        <h1>결재 문서 임시 저장</h1>
+        <p>선택한 화면과 화면 사이의 이동을 한 공간에서 확인하고 수정합니다.</p>
+      </div>
+      <div class="fc-head__actions">
+        <span class="status-badge status-badge--review">수정 중</span>
+        <button class="button" type="button">FRD 내용 보기</button>
+        <button class="button button--primary" type="button">FRD 작업 완료</button>
+      </div>
+    </header>
+
+    <main class="fc-workspace">
+      <aside class="fc-navigator" aria-labelledby="fc-nav-title">
+        <header class="fc-panel-head">
+          <div><span>작업 대상</span><h2 id="fc-nav-title">FRD 화면</h2></div>
+          <button class="icon-button" type="button" aria-label="작업 대상 추가" title="작업 대상 추가">+</button>
+        </header>
+        <nav class="fc-nav-list" aria-label="FRD 작업 대상">
+          <button class="fc-nav-item is-current" type="button" data-target="write">
+            <span class="fc-nav-item__order">01</span><span><small class="num">wv-appr-write</small><strong>결재 문서 작성</strong></span><i class="fc-dot fc-dot--review" aria-label="검토 필요"></i>
+          </button>
+          <button class="fc-nav-item" type="button" data-target="draft">
+            <span class="fc-nav-item__order">02</span><span><small class="num">wv-appr-draft-list</small><strong>임시 저장 문서함</strong></span><i class="fc-dot fc-dot--progress" aria-label="수정 중"></i>
+          </button>
+          <button class="fc-nav-item" type="button" data-target="restore">
+            <span class="fc-nav-item__order">03</span><span><small class="num">wv-appr-write</small><strong>작성 내용 복원</strong></span><i class="fc-dot fc-dot--complete" aria-label="완료"></i>
+          </button>
+        </nav>
+        <div class="fc-progress">
+          <div><strong>화면 작업</strong><span>1 / 3 완료</span></div>
+          <progress value="1" max="3">33%</progress>
+        </div>
+      </aside>
+
+      <section class="fc-stage" aria-labelledby="fc-stage-title">
+        <header class="fc-toolbar">
+          <div>
+            <h2 id="fc-stage-title">전체 화면</h2>
+            <p>현재 연결과 이번 FRD에서 추가할 연결을 구분해 확인합니다.</p>
+          </div>
+          <div class="fc-toolbar__actions">
+            <div class="fc-zoom" role="group" aria-label="캔버스 확대 및 축소">
+              <button id="fc-zoom-out" type="button" aria-label="축소">−</button>
+              <button id="fc-zoom-reset" type="button" aria-label="배율 초기화"><output id="fc-zoom-value">60%</output></button>
+              <button id="fc-zoom-in" type="button" aria-label="확대">+</button>
+            </div>
+            <button class="button button--small" id="fc-fit" type="button">전체 맞춤</button>
+            <button class="button button--small fc-map-ai-trigger" id="open-fc-map-chat" type="button"
+                    aria-controls="fc-map-chat" aria-expanded="true">
+              <img src="../../src/main/resources/static/images/claudecode-color.png" alt="">FRD 맵 AI
+            </button>
+          </div>
+        </header>
+
+        <div class="fc-canvas" id="fc-canvas" tabindex="0" aria-label="FRD 전체 화면 캔버스">
+          <div class="fc-world" id="fc-world">
+            <svg class="fc-connectors" viewBox="0 0 1040 600" aria-hidden="true" preserveAspectRatio="none">
+              <defs>
+                <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z"></path></marker>
+                <marker id="arrow-planned" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z"></path></marker>
+                <marker id="arrow-proposal" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z"></path></marker>
+              </defs>
+              <path class="fc-connector--planned" d="M300 222 C345 222 350 222 390 222" marker-end="url(#arrow-planned)"></path>
+              <path d="M650 222 C700 222 700 222 740 222" marker-end="url(#arrow)"></path>
+              <path class="fc-connector--proposal" d="M170 392 C170 420 170 425 170 452" marker-end="url(#arrow-proposal)"></path>
+              <text class="fc-connector-label fc-connector-label--planned" x="345" y="205" text-anchor="middle">FRD 추가</text>
+              <text class="fc-connector-label" x="695" y="205" text-anchor="middle">현재 연결</text>
+              <text class="fc-connector-label fc-connector-label--proposal" x="215" y="427" text-anchor="middle">AI 제안</text>
+            </svg>
+
+            <article class="fc-screen-node" data-node="write" tabindex="0" role="link" aria-label="결재 문서 작성 화면 상세 열기">
+              <header class="fc-node-head"><div><small class="num">01 · wv-appr-write</small><strong>결재 문서 작성</strong></div><span class="status-badge status-badge--review">검토 필요</span></header>
+              <div class="fc-screen-preview">
+                <div class="fc-appbar"><span>전자결재</span><b>결재 문서 작성</b><i></i></div>
+                <div class="fc-form-row"><span>결재선</span><em>홍길동 기안 · 이영희 결재</em></div>
+                <div class="fc-form-row"><span>제목</span><em>8월 정기 구매 품의</em></div>
+                <div class="fc-editor-lines"><i></i><i></i><i></i><i></i></div>
+                <div class="fc-preview-actions"><button type="button">취소</button><button type="button">임시 저장</button><button type="button">결재 요청</button></div>
+              </div>
+              <footer><span>변경 3건</span><span>화면 상세 열기 →</span></footer>
+            </article>
+
+            <article class="fc-screen-node" data-node="draft" tabindex="0" role="link" aria-label="임시 저장 문서함 화면 상세 열기">
+              <header class="fc-node-head"><div><small class="num">02 · wv-appr-draft-list</small><strong>임시 저장 문서함</strong></div><span class="status-badge status-badge--progress">수정 중</span></header>
+              <div class="fc-screen-preview">
+                <div class="fc-appbar"><span>전자결재</span><b>임시 저장 문서함</b><i></i></div>
+                <div class="fc-search-row"><span>문서명 또는 작성자 검색</span><button type="button">검색</button></div>
+                <div class="fc-table"><div><b>문서명</b><b>저장 시각</b></div><div><span>8월 정기 구매 품의</span><span>오늘 14:32</span></div><div><span>워크숍 장소 예약</span><span>어제 17:10</span></div><div><span>신규 장비 구매</span><span>8월 19일</span></div></div>
+              </div>
+              <footer><span>변경 2건</span><span>화면 상세 열기 →</span></footer>
+            </article>
+
+            <article class="fc-screen-node" data-node="restore" tabindex="0" role="link" aria-label="작성 내용 복원 화면 상세 열기">
+              <header class="fc-node-head"><div><small class="num">03 · wv-appr-write</small><strong>작성 내용 복원</strong></div><span class="status-badge status-badge--complete">완료</span></header>
+              <div class="fc-screen-preview">
+                <div class="fc-appbar"><span>전자결재</span><b>결재 문서 작성</b><i></i></div>
+                <div class="fc-toast"><strong>임시 저장 내용을 불러왔습니다</strong><span>오늘 14:32 저장</span></div>
+                <div class="fc-form-row"><span>제목</span><em>8월 정기 구매 품의</em></div>
+                <div class="fc-editor-lines"><i></i><i></i><i></i></div>
+                <div class="fc-preview-actions"><button type="button">다시 저장</button><button type="button">결재 요청</button></div>
+              </div>
+              <footer><span>완료 조건 3건</span><span>화면 상세 열기 →</span></footer>
+            </article>
+
+            <article class="fc-proposal-node" aria-label="AI가 제안한 임시 저장 취소 확인 화면">
+              <span>AI 화면 제안 · 적용 전</span>
+              <strong>임시 저장 취소 확인</strong>
+              <p>작성 중인 내용이 사라질 수 있음을 확인하는 팝업</p>
+              <small>기준 화면 · 결재 문서 작성</small>
+            </article>
+          </div>
+        </div>
+        <p class="fc-canvas-help"><span><i class="fc-line-key"></i>현재 화면 연결</span><span><i class="fc-line-key fc-line-key--planned"></i>이번 FRD에서 추가</span><span><i class="fc-line-key fc-line-key--proposal"></i>AI 제안</span> 화면을 누르면 상세 작업대로 이동합니다.</p>
+      </section>
+    </main>
+
+    <section class="wm-ai-chat fc-map-chat" id="fc-map-chat" role="dialog" aria-labelledby="fc-map-chat-title">
+      <header class="wm-ai-chat__head">
+        <img src="../../src/main/resources/static/images/claudecode-color.png" alt="">
+        <div class="wm-ai-chat__identity">
+          <strong id="fc-map-chat-title">Claude Code</strong>
+          <span><b>FRD-003</b> 맵 대화</span>
+        </div>
+        <div class="wm-ai-chat__actions">
+          <button class="wm-ai-chat__expand" type="button" aria-label="별도 창으로 열기" title="별도 창으로 열기">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 5h5v5M19 5l-7 7M10 19H5v-5M5 19l7-7"/></svg>
+          </button>
+          <button class="wm-ai-chat__close" id="close-fc-map-chat" type="button" aria-label="대화창 닫기">×</button>
+        </div>
+      </header>
+      <div class="wm-ai-chat__log" aria-live="polite">
+        <article class="wm-ai-chat-message wm-ai-chat-message--ai">
+          <strong>Claude Code</strong>
+          <p>FRD 전체 화면과 연결을 확인하고 있습니다. 추가하거나 바꿀 화면을 말씀해 주세요.</p>
+        </article>
+        <article class="wm-ai-chat-message wm-ai-chat-message--user">
+          <strong>나</strong>
+          <p>결재 문서 작성에서 임시 저장을 취소할 때 확인 팝업을 추가해줘.</p>
+        </article>
+        <article class="wm-ai-chat-message wm-ai-chat-message--ai fc-proposal-message">
+          <strong>Claude Code</strong>
+          <p>결재 문서 작성 화면을 기준으로 확인 팝업과 연결을 제안했습니다. 캔버스에서 위치와 흐름을 확인해 주세요.</p>
+          <dl class="fc-proposal-summary">
+            <div><dt>새 화면</dt><dd>임시 저장 취소 확인</dd></div>
+            <div><dt>종류</dt><dd>팝업</dd></div>
+            <div><dt>연결</dt><dd>결재 문서 작성 → 확인 팝업</dd></div>
+            <div><dt>화면ID</dt><dd>적용할 때 입력</dd></div>
+          </dl>
+          <div class="fc-proposal-actions"><button class="button button--small" type="button">제안 취소</button><button class="button button--primary button--small" type="button">화면과 연결 추가</button></div>
+        </article>
+      </div>
+      <form class="wm-ai-chat__composer" id="fc-map-chat-form">
+        <label class="sr-only" for="fc-map-chat-message">FRD 화면 또는 연결 작업 요청</label>
+        <textarea id="fc-map-chat-message" placeholder="예: 결재 완료 화면을 추가하고 작성 화면과 연결해 주세요"></textarea>
+        <button class="button button--primary" type="submit">전송</button>
+      </form>
+    </section>
+  </div>
+</template>
+<script src="_shell.js"></script>
+<script>틀({제목:'FRD 작업 공간',모양:'산출물',지금:'frds',프로젝트이름:'G2C',프로젝트번호:1,프로젝트들:['G2C','서울페이'],사람:'이영희',안읽은알림:2});</script>
+<script>
+  const nodes = [...document.querySelectorAll('[data-node]')];
+  const navItems = [...document.querySelectorAll('[data-target]')];
+
+  function focusNode(key) {
+    navItems.forEach(item => item.classList.toggle('is-current', item.dataset.target === key));
+    document.querySelector(`[data-node="${key}"]`)?.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+  }
+  nodes.forEach(node => {
+    node.addEventListener('click', () => { window.location.href = `05a-frd-workbench.html#${node.dataset.node}`; });
+    node.addEventListener('keydown', event => { if (event.key === 'Enter') { event.preventDefault(); node.click(); } });
+  });
+  navItems.forEach(item => item.addEventListener('click', () => focusNode(item.dataset.target)));
+
+  const mapChat = document.getElementById('fc-map-chat');
+  const mapChatOpen = document.getElementById('open-fc-map-chat');
+  document.getElementById('close-fc-map-chat').addEventListener('click', () => {
+    mapChat.hidden = true;
+    mapChatOpen.setAttribute('aria-expanded', 'false');
+    mapChatOpen.focus();
+  });
+  mapChatOpen.addEventListener('click', () => {
+    mapChat.hidden = false;
+    mapChatOpen.setAttribute('aria-expanded', 'true');
+    document.getElementById('fc-map-chat-message').focus();
+  });
+  document.getElementById('fc-map-chat-form').addEventListener('submit', event => event.preventDefault());
+
+  const world = document.getElementById('fc-world');
+  const zoomValue = document.getElementById('fc-zoom-value');
+  let zoom = 60;
+  function setZoom(value) {
+    zoom = Math.max(50, Math.min(110, value));
+    world.style.setProperty('--fc-zoom', zoom / 100);
+    zoomValue.value = `${zoom}%`;
+    zoomValue.textContent = `${zoom}%`;
+  }
+  document.getElementById('fc-zoom-out').addEventListener('click', () => setZoom(zoom - 10));
+  document.getElementById('fc-zoom-in').addEventListener('click', () => setZoom(zoom + 10));
+  document.getElementById('fc-zoom-reset').addEventListener('click', () => setZoom(60));
+  document.getElementById('fc-fit').addEventListener('click', () => setZoom(window.innerWidth < 700 ? 50 : 60));
+</script>
+</body>
+</html>

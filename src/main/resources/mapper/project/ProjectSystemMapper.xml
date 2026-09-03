@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<!--
+    그 프로젝트의 시스템과 화면에 뜨는 이름. 표의 뜻은 V39__project_system.sql 의 COMMENT 가 정본이다.
+
+    ⚠ 표 이름 앞의 `builder.` 를 지우지 마라. 이 저장소의 표는 public 이 아니라 builder 스키마에 산다.
+      MyBatis 는 flyway 의 default-schema 를 안 물려받는다 — 지우면 「표가 없다」로 죽는다.
+-->
+<mapper namespace="com.bizplay.builder.project.ProjectSystemMapper">
+
+    <!-- ⛔ 인자 순서를 바꾸지 마라 — ProjectSystem 레코드의 생성자와 자리로 맞춘다. -->
+    <resultMap id="projectSystem" type="com.bizplay.builder.project.ProjectSystem">
+        <constructor>
+            <idArg column="project_id"   javaType="java.lang.String"/>
+            <idArg column="system_code"  javaType="java.lang.String"/>
+            <arg   column="display_name" javaType="java.lang.String"/>
+        </constructor>
+    </resultMap>
+
+    <!--
+        ⚠ order by 를 지우지 마라 — 관리 화면의 줄 순서이자 이름이 안 붙은 시스템의 순서다.
+          코드순이 정본이다: 이름은 비어 있을 수 있어 정렬 열로 못 쓴다.
+    -->
+    <select id="selectByProjectId" parameterType="java.lang.String" resultMap="projectSystem">
+        select project_id, system_code, display_name
+          from builder.adk_builder_project_system
+         where project_id = #{projectId}
+         order by system_code
+    </select>
+
+    <insert id="insert" parameterType="com.bizplay.builder.project.ProjectSystem">
+        insert into builder.adk_builder_project_system (project_id, system_code, display_name)
+        values (#{projectId}, #{systemCode}, #{displayName})
+    </insert>
+
+    <update id="updateDisplayName">
+        update builder.adk_builder_project_system
+           set display_name = #{displayName}
+         where project_id  = #{projectId}
+           and system_code = #{systemCode}
+    </update>
+
+    <!-- ⛔ project_id 조건을 지우지 마라 — 같은 시스템 코드가 다른 프로젝트에도 있다. -->
+    <delete id="deleteByProjectIdAndSystemCode">
+        delete from builder.adk_builder_project_system
+         where project_id  = #{projectId}
+           and system_code = #{systemCode}
+    </delete>
+
+</mapper>

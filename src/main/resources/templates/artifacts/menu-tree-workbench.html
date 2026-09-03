@@ -1,0 +1,153 @@
+<!doctype html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{fragments/shell :: layout(${title}, ${shape}, ${current}, ~{:: content})}">
+<body><div th:fragment="content">
+  <header class="page-head list-page-head ia-candidate-head">
+    <div>
+      <h1 class="page-head__title" th:text="${systemLabel == null ? 'IA' : systemLabel + ' IA'}">IA</h1>
+      <p class="page-intro">트리에서 메뉴를 선택하고 연결 화면을 확인합니다.</p>
+    </div>
+    <div class="ia-candidate-actions">
+      <a class="button" th:href="@{/projects/{p}/artifacts/menu-tree(p=${projectId})}">목록으로</a>
+    </div>
+  </header>
+
+  <div data-menu-tree-feedback aria-live="polite">
+    <p class="source-error" th:if="${error}" th:text="${error}"></p>
+    <p class="source-success" th:if="${message}" th:text="${message}"></p>
+  </div>
+
+  <th:block th:if="${workbench != null}">
+    <dl class="rq-meta" data-menu-tree-meta>
+      <div><dt>최종 수정일</dt><dd class="num"
+        th:text="${workbench.structure.updatedAt == null ? '—' : #temporals.format(workbench.structure.updatedAt, 'yyyy-MM-dd HH:mm')}"></dd></div>
+      <div><dt>최종 수정자</dt><dd th:text="${workbench.lastModifiedBy} ?: '—'"></dd></div>
+      <div><dt>메뉴 행</dt><dd class="num" th:text="${#lists.size(workbench.rows)} + '개'"></dd></div>
+      <div><dt>미연결 화면</dt><dd class="num" th:text="${#lists.size(workbench.unlinkedScreens)} + '개'"></dd></div>
+    </dl>
+
+    <main class="ia-split ia-split--readable" data-menu-tree-workbench th:if="${selectedNode != null}">
+      <section class="ia-split__tree" aria-labelledby="menu-structure-title">
+        <header class="ia-split__title">
+          <div><h2 id="menu-structure-title">메뉴 구조</h2>
+            <p class="ia-selected-path">전체 <span class="num" th:text="${#lists.size(workbench.rows)}"></span>개</p></div>
+          <div class="ia-tree-tools" data-menu-tree-tools role="group" aria-label="메뉴 구조 기능">
+            <a class="button button--small" data-menu-dialog-open data-dialog-title="메뉴 그룹 추가"
+               data-dialog-description="그룹 이름과 상위 메뉴를 정합니다."
+               th:href="@{/projects/{p}/artifacts/menu-tree/{s}/rows/new(p=${projectId},s=${systemCode},group=true)}"
+               aria-label="메뉴 그룹 추가" title="메뉴 그룹 추가"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></a>
+            <form method="post" data-menu-delete-form th:hidden="${selected == null}"
+                  th:action="${selected == null ? '#' : '/projects/' + projectId + '/artifacts/menu-tree/' + systemCode + '/rows/' + selected.row.id + '/delete'}"
+                  onsubmit="return confirm('선택한 메뉴를 삭제할까요?');">
+              <input type="hidden" name="version" data-menu-version-input th:value="${workbench.structure.version}">
+              <button class="button button--small button--danger-outline" type="submit" aria-label="메뉴 삭제" title="메뉴 삭제"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M4 7h16M9 7V4h6v3M7 7l1 13h8l1-13"/></svg></button>
+            </form>
+            <form method="post" data-menu-move-form th:action="@{/projects/{p}/artifacts/menu-tree/{s}/nodes/move(p=${projectId},s=${systemCode})}">
+              <input type="hidden" name="nodeKey" data-menu-node-key-input th:value="${selectedNode.nodeKey}">
+              <input type="hidden" name="version" data-menu-version-input th:value="${workbench.structure.version}"><input type="hidden" name="direction" value="up">
+              <button class="button button--small" data-menu-move-up type="submit" aria-label="위로 이동" title="위로 이동" th:disabled="${!canMoveUp}"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M12 19V5m0 0-5 5m5-5 5 5"/></svg></button>
+            </form>
+            <form method="post" data-menu-move-form th:action="@{/projects/{p}/artifacts/menu-tree/{s}/nodes/move(p=${projectId},s=${systemCode})}">
+              <input type="hidden" name="nodeKey" data-menu-node-key-input th:value="${selectedNode.nodeKey}">
+              <input type="hidden" name="version" data-menu-version-input th:value="${workbench.structure.version}"><input type="hidden" name="direction" value="down">
+              <button class="button button--small" data-menu-move-down type="submit" aria-label="아래로 이동" title="아래로 이동" th:disabled="${!canMoveDown}"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M12 5v14m0 0-5-5m5 5 5-5"/></svg></button>
+            </form>
+          </div>
+        </header>
+        <nav class="ia-readable-tree ia-tree--lines" data-menu-tree-nav th:aria-label="${systemLabel} + ' 메뉴 트리'">
+          <th:block th:replace="~{artifacts/menu-tree-workbench :: tree(${workbench.tree}, ${selectedNode.nodeKey}, false)}"></th:block>
+        </nav>
+      </section>
+
+      <section class="ia-split__detail" data-menu-tree-detail aria-labelledby="selected-menu-title" aria-live="polite">
+        <header class="ia-split__title">
+          <div><h2 id="selected-menu-title" data-selection-label th:text="${selectedNode.label}"></h2></div>
+          <span class="ia-detail-loading" role="status" aria-label="메뉴 정보를 불러오는 중" aria-hidden="true"><span aria-hidden="true"></span></span>
+          <a class="button button--small ia-detail-edit" data-menu-edit data-menu-dialog-open
+             data-dialog-title="메뉴 수정" data-dialog-description="메뉴 정보를 확인하고 상위 메뉴를 변경합니다."
+             th:hidden="${selected == null}"
+             th:href="${selected == null ? '#' : '/projects/' + projectId + '/artifacts/menu-tree/' + systemCode + '/rows/' + selected.row.id + '/edit'}"
+             aria-label="메뉴 수정" title="메뉴 수정"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M4 20h4L19 9l-4-4L4 16v4M13.5 6.5l4 4"/></svg></a>
+        </header>
+        <div class="ia-split__detail-body">
+          <section class="ia-detail-section" aria-labelledby="menu-info-title">
+            <h3 id="menu-info-title">메뉴 정보</h3>
+            <dl class="ia-detail-list">
+              <div><dt>화면관리번호</dt><dd class="num" data-selection-standard-id th:text="${selected == null ? '—' : (selected.standardScreenId ?: '—')}"></dd></div>
+              <div><dt>뎁스</dt><dd class="num" data-selection-depth th:text="'Depth ' + ${selectedNode.depth}"></dd></div>
+              <div><dt>메뉴 유형</dt><dd data-selection-menu-type th:text="${selectedNode.menuType}"></dd></div>
+              <div><dt>적용 대상</dt><dd data-selection-application-target th:text="${selectedNode.applicationTarget}"></dd></div>
+              <div><dt>화면 유형</dt><dd><span data-selection-screen-type th:text="${selected == null or selected.screen == null ? '—' : selected.screen.screenType}"></span><span class="ia-type-source" data-selection-type-review th:hidden="${selected == null or selected.screen == null or !selected.screen.typeNeedsReview()}" title="화면 이름을 기준으로 분류됨" aria-label="화면 이름을 기준으로 분류됨">?</span></dd></div>
+              <div><dt>상위 메뉴</dt><dd data-selection-parent th:text="${parentLabel} ?: '최상위'"></dd></div>
+            </dl>
+            <p class="rq-note" data-selection-group-note th:hidden="${selected != null}">하위 메뉴를 묶는 그룹입니다. 이동하면 하위 메뉴가 함께 이동합니다.</p>
+          </section>
+          <section class="ia-detail-section" aria-labelledby="screen-summary-title">
+            <h3 id="screen-summary-title">화면 요약</h3>
+            <p class="ia-screen-summary" data-selection-screen-summary
+               th:text="${selected == null or selected.screen == null or #strings.isEmpty(selected.screen.summary)
+                 ? '등록된 화면 요약이 없습니다.' : selected.screen.summary}">등록된 화면 요약이 없습니다.</p>
+          </section>
+        </div>
+      </section>
+    </main>
+
+    <dialog class="dialog dialog--layer ia-menu-edit-dialog" data-menu-dialog
+            aria-labelledby="menu-edit-dialog-title" aria-describedby="menu-edit-dialog-description">
+      <header class="dialog__header">
+        <div class="dialog__header-copy">
+          <h2 class="dialog__title" id="menu-edit-dialog-title">메뉴 수정</h2>
+          <p class="dialog__description" id="menu-edit-dialog-description">메뉴 정보를 확인하고 상위 메뉴를 변경합니다.</p>
+        </div>
+        <button class="dialog__close" type="button" data-menu-dialog-close aria-label="메뉴 레이어 닫기"></button>
+      </header>
+      <div class="dialog__body ia-menu-edit-dialog__body">
+        <div class="ia-menu-edit-loading" data-menu-edit-loading role="status">
+          <span class="ia-menu-edit-spinner" aria-hidden="true"><svg viewBox="0 0 48 48"><circle cx="24" cy="24" r="19"></circle><path d="M24 5a19 19 0 0 1 19 19"></path></svg></span>
+          <strong>메뉴 정보를 불러오는 중입니다.</strong>
+          <small>입력 화면을 준비하고 있습니다.</small>
+        </div>
+        <p class="source-error" data-menu-edit-error role="alert" hidden></p>
+        <div data-menu-edit-content></div>
+      </div>
+    </dialog>
+
+    <details class="ia-unlinked-panel" data-menu-unlinked open>
+      <summary><span><strong>미연결 화면</strong><small>메뉴 구조에 아직 연결되지 않은 화면입니다.</small></span><span class="badge badge--outline" th:text="${#lists.size(workbench.unlinkedScreens)} + '개'"></span></summary>
+      <div class="ia-unlinked-panel__body">
+        <p class="rq-note" th:if="${#lists.isEmpty(workbench.unlinkedScreens)}">모든 화면이 메뉴 구조에 연결되어 있습니다.</p>
+        <div class="table-wrap ia-screen-table-wrap" tabindex="0" aria-label="미연결 화면 목록" th:unless="${#lists.isEmpty(workbench.unlinkedScreens)}">
+          <table class="data-table data-table--dense ia-screen-table ia-screen-table--unlinked"><thead><tr><th scope="col">화면명</th><th scope="col">화면 ID</th><th scope="col">종류</th><th scope="col">화면 유형</th><th scope="col"><span class="sr-only">메뉴 연결</span></th></tr></thead>
+            <tbody><tr th:each="screen : ${workbench.unlinkedScreens}"><td><strong th:text="${screen.screenName}"></strong></td><td class="num" th:text="${screen.screenId}"></td><td th:text="${screen.kind}"></td>
+              <td><span th:text="${screen.screenType}"></span><span class="ia-type-source" th:if="${screen.typeNeedsReview()}" title="화면 이름을 기준으로 분류됨" aria-label="화면 이름을 기준으로 분류됨">?</span></td>
+              <td><a class="ia-menu-link" data-menu-dialog-open data-dialog-title="메뉴 연결"
+                     data-dialog-description="화면을 연결할 메뉴명과 위치를 확인합니다."
+                     th:href="@{/projects/{p}/artifacts/menu-tree/{s}/rows/new(p=${projectId},s=${systemCode},screenId=${screen.screenId})}"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M10 13a5 5 0 0 0 7.5.5l2-2a5 5 0 0 0-7-7l-1.1 1.1M14 11a5 5 0 0 0-7.5-.5l-2 2a5 5 0 0 0 7 7l1.1-1.1"/></svg><span>메뉴 연결</span></a></td></tr></tbody></table>
+        </div>
+      </div>
+    </details>
+  </th:block>
+  <script defer th:src="@{/js/menu-tree-workbench.js}"></script>
+</div>
+
+<ul th:fragment="tree(nodes, selectedNodeKey, hidden)" th:if="${!#lists.isEmpty(nodes)}" th:hidden="${hidden}"><li th:each="node : ${nodes}"
+    th:with="expanded=${node.depth < 2 or node.nodeKey == selectedNodeKey or node.containsNode(selectedNodeKey)}">
+    <div class="ia-tree-row-wrap">
+      <a class="ia-tree-row" th:classappend="${node.nodeKey == selectedNodeKey ? 'is-current' : (node.containsNode(selectedNodeKey) ? 'is-path' : '')}"
+         th:href="@{/projects/{p}/artifacts/menu-tree/{s}(p=${projectId},s=${systemCode},nodeKey=${node.nodeKey})}"
+         th:attr="data-menu-node-key=${node.nodeKey}"
+         th:aria-current="${node.nodeKey == selectedNodeKey ? 'page' : null}">
+        <span class="ia-tree-toggle-placeholder" th:text="${#lists.isEmpty(node.children) ? '•' : ''}" aria-hidden="true"></span>
+        <span class="ia-tree-label"><strong th:text="${node.label}" th:title="${node.label}"></strong></span>
+        <span class="ia-tree-meta num" th:if="${node.row != null and node.row.standardScreenId != null}"
+              th:text="${node.row.standardScreenId}" th:title="'표준 화면ID: ' + ${node.row.standardScreenId}"></span>
+      </a>
+      <button class="ia-tree-toggle" type="button" data-tree-toggle th:aria-expanded="${expanded}"
+              th:aria-label="${expanded ? '하위 메뉴 접기' : '하위 메뉴 펼치기'}"
+              th:title="${expanded ? '하위 메뉴 접기' : '하위 메뉴 펼치기'}" th:if="${!#lists.isEmpty(node.children)}">
+        <span aria-hidden="true" th:text="${expanded ? '−' : '+'}">−</span>
+      </button>
+    </div>
+    <th:block th:replace="~{artifacts/menu-tree-workbench :: tree(${node.children}, ${selectedNodeKey}, ${!expanded})}"></th:block>
+  </li></ul>
+</body></html>

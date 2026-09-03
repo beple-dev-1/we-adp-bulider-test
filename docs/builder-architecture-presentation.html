@@ -1,0 +1,213 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>we-adk-builder 아키텍처</title>
+  <style>
+    :root {
+      --brand-deep: #001E2B;
+      --brand: #00684A;
+      --canvas: #F4F7F6;
+      --text: #001E2B;
+      --text-secondary: #445760;
+      --text-muted: #718087;
+      --type-h2: 56px;
+      --type-sub: 26px;
+      --type-label: 16px;
+      --font-sans: "Noto Sans KR", "Malgun Gothic", -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html,
+    body {
+      width: 100%;
+      height: 100%;
+      margin: 0;
+      overflow: hidden;
+      background: #081115;
+    }
+
+    body {
+      color: var(--text);
+      font-family: var(--font-sans);
+    }
+
+    .stage {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      width: 1920px;
+      height: 1080px;
+      transform-origin: center;
+    }
+
+    .slide {
+      position: absolute;
+      inset: 0;
+      width: 1920px;
+      height: 1080px;
+      overflow: hidden;
+      padding: 64px 128px 72px;
+      background: var(--canvas);
+    }
+
+    .slide::before {
+      content: "";
+      position: absolute;
+      top: 0;
+      right: 0;
+      left: 0;
+      height: 12px;
+      background: var(--brand-deep);
+    }
+
+    .slide::after {
+      content: "";
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 240px;
+      height: 12px;
+      background: var(--brand);
+    }
+
+    .slide__brand {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      color: var(--text-muted);
+      font-size: var(--type-label);
+      line-height: 1.4;
+      font-weight: 700;
+    }
+
+    .brand-name {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      color: var(--text);
+      font-size: 18px;
+      font-weight: 800;
+    }
+
+    .brand-name::before {
+      content: "";
+      width: 12px;
+      height: 12px;
+      background: var(--brand);
+      border-radius: 2px;
+    }
+
+    .brand-name strong,
+    .slide__footer strong {
+      color: var(--brand);
+    }
+
+    .slide__section {
+      letter-spacing: 0.04em;
+    }
+
+    .slide__title {
+      position: absolute;
+      top: 150px;
+      right: 128px;
+      left: 128px;
+      margin: 0;
+      font-size: var(--type-h2);
+      line-height: 1.16;
+      font-weight: 750;
+      letter-spacing: -0.035em;
+    }
+
+    .slide__sub {
+      position: absolute;
+      top: 239px;
+      right: 128px;
+      left: 128px;
+      margin: 0;
+      color: var(--text-secondary);
+      font-size: var(--type-sub);
+      line-height: 1.45;
+      font-weight: 400;
+      letter-spacing: -0.018em;
+    }
+
+    .architecture {
+      position: absolute;
+      top: 314px;
+      left: 192px;
+      display: block;
+      width: 1536px;
+      height: 672px;
+      object-fit: contain;
+    }
+
+    .slide__footer {
+      position: absolute;
+      right: 128px;
+      bottom: 38px;
+      left: 128px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      color: var(--text-muted);
+      font-size: 14px;
+      line-height: 1.4;
+      font-weight: 600;
+    }
+
+    @media print {
+      html,
+      body {
+        overflow: visible;
+        background: #FFFFFF;
+      }
+
+      .stage {
+        position: static;
+        transform: none !important;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="stage">
+    <section class="slide" aria-label="we-adk-builder 기획 저장소 기반 작업 구조">
+      <header class="slide__brand">
+        <span class="brand-name"><span><strong>WE-ADK</strong> BUILDER</span></span>
+        <span class="slide__section">아키텍처</span>
+      </header>
+
+      <h1 class="slide__title">기획 저장소 기반 작업 구조</h1>
+      <p class="slide__sub">추출된 운영 지식을 FRD별 독립 작업으로 연결해 개발 조직에 전달하고, 결과를 다시 저장소로 되받는다</p>
+
+      <img
+        class="architecture"
+        src="assets/diagrams/we-adk-builder-architecture.svg"
+        alt="별도 Claude Code 세션의 추출기가 기획 저장소를 만들고, Builder가 클론해 FRD별 Worktree에서 작업한 뒤 개발 GitLab으로 전달하고 as-is 재동기를 되받는 구조"
+      >
+
+      <footer class="slide__footer">
+        <span><strong>WE-ADK Builder</strong> · Working Group Demo</span>
+        <span>01 / 01</span>
+      </footer>
+    </section>
+  </main>
+
+  <script>
+    const stage = document.querySelector('.stage');
+
+    function fitStage() {
+      const scale = Math.min(window.innerWidth / 1920, window.innerHeight / 1080);
+      stage.style.transform = `translate(-50%, -50%) scale(${scale})`;
+    }
+
+    window.addEventListener('resize', fitStage);
+    fitStage();
+  </script>
+</body>
+</html>

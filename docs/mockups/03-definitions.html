@@ -1,0 +1,126 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <link rel="stylesheet" href="../../src/main/resources/static/css/tokens.css">
+  <link rel="stylesheet" href="../../src/main/resources/static/css/reset.css">
+  <link rel="stylesheet" href="../../src/main/resources/static/css/typography.css">
+  <link rel="stylesheet" href="../../src/main/resources/static/css/components.css">
+  <link rel="stylesheet" href="../../src/main/resources/static/css/shell.css">
+  <link rel="stylesheet" href="_mock.css">
+  <link rel="stylesheet" href="../../src/main/resources/static/css/screens.css">
+</head>
+<body>
+<template id="본문">
+  <div class="page-head">
+    <h1 class="page-head__title">요구사항정의서</h1>
+  </div>
+  <p class="page-intro">각 정의서가 어느 요구사항에서 생성되었고 어떤 BRD에 포함되었는지 확인합니다.</p>
+
+  <form class="filter-bar filter-bar--four" action="#" role="search">
+    <div class="field">
+      <label class="field__label" for="def-search">정의서 검색</label>
+      <input class="field__control" id="def-search" type="search" placeholder="번호 또는 정의서 제목을 입력하세요">
+    </div>
+    <div class="field">
+      <label class="field__label" for="def-brd">BRD 포함 상태</label>
+      <select class="field__control" id="def-brd">
+        <option>전체</option>
+        <option>BRD에 포함됨</option>
+        <option>BRD에 포함되지 않음</option>
+      </select>
+    </div>
+    <div class="field">
+      <label class="field__label" for="def-system">BRD 시스템</label>
+      <select class="field__control" id="def-system">
+        <option>전체</option>
+        <option>웹뷰</option>
+        <option>백오피스</option>
+      </select>
+    </div>
+    <div class="field"><label class="field__label" for="def-facet">적용 구분</label><select class="field__control" id="def-facet"><option>전체</option><option>익산</option><option>제주</option></select></div>
+  </form>
+
+  <div class="table-wrap table-wrap--tall">
+    <table class="data-table data-table--dense">
+      <thead>
+        <tr>
+          <th scope="col">번호</th>
+          <th scope="col">정의서</th>
+          <th scope="col">출처 요구사항</th>
+          <th scope="col">적용 구분</th>
+          <th scope="col">이 정의서를 포함한 BRD</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="num nowrap">RD-014</td>
+          <td>
+            <span class="cell">
+              <a href="03a-definition-detail.html">결재 문서 임시 저장</a>
+              <span class="cell__sub">작성 중인 결재 문서를 사용자가 직접 임시 저장할 수 있어야 합니다.</span>
+            </span>
+          </td>
+          <td>
+            <a class="cell" href="02a-requirement-detail.html">
+              <span class="num">REQ-001</span>
+              <span class="cell__sub">상신 문서 임시 저장</span>
+            </a>
+          </td>
+          <td><span class="badge badge--outline">제주</span></td>
+          <td>
+            <a class="cell" href="04-brd.html">
+              <span class="num">BRD-003</span>
+              <span class="cell__sub">전자결재 · 웹뷰</span>
+            </a>
+          </td>
+        </tr>
+        <tr>
+          <td class="num nowrap">RD-015</td>
+          <td>
+            <span class="cell">
+              <a href="03a-definition-detail.html">임시 저장 문서 수정 권한</a>
+              <span class="cell__sub">임시 저장 문서는 작성자만 수정할 수 있어야 합니다.</span>
+            </span>
+          </td>
+          <td>
+            <a class="cell" href="02a-requirement-detail.html">
+              <span class="num">REQ-001</span>
+              <span class="cell__sub">상신 문서 임시 저장</span>
+            </a>
+          </td>
+          <td><span class="badge badge--outline">제주</span></td>
+          <td>
+            <a class="cell" href="04-brd.html">
+              <span class="num">BRD-004</span>
+              <span class="cell__sub">전자결재 · 백오피스</span>
+            </a>
+          </td>
+        </tr>
+        <tr>
+          <td class="num nowrap">RD-031</td>
+          <td>
+            <span class="cell">
+              <a href="03a-definition-detail.html">작성 내용 자동 저장 주기</a>
+              <span class="cell__sub">30초마다 작성 내용을 자동으로 저장해야 합니다.</span>
+            </span>
+          </td>
+          <td>
+            <a class="cell" href="02a-requirement-detail.html">
+              <span class="num">REQ-042</span>
+              <span class="cell__sub">작성 내용 자동 저장</span>
+            </a>
+          </td>
+          <td><span class="badge badge--outline">익산</span></td>
+          <td class="cell__sub">아직 BRD에 포함되지 않음</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="list-table-foot"><span aria-hidden="true"></span><nav class="list-pagination" aria-label="요구사항정의서 페이지 이동"><span class="list-page-button" aria-disabled="true" aria-label="이전 페이지">‹</span><a class="list-page-button is-current" href="#" aria-current="page">1</a><a class="list-page-button" href="#">2</a><a class="list-page-button" href="#">3</a><a class="list-page-button" href="#">4</a><a class="list-page-button" href="#">5</a><a class="list-page-button" href="#">6</a><a class="list-page-button" href="#">7</a><a class="list-page-button" href="#">8</a><a class="list-page-button" href="#">9</a><a class="list-page-button" href="#">10</a><a class="list-page-button" href="#" aria-label="다음 페이지">›</a></nav><div class="list-page-size"><label class="sr-only" for="definitions-page-size">목록 크기</label><select class="field__control" id="definitions-page-size"><option>20개씩</option><option>50개씩</option><option>100개씩</option></select></div></div>
+</template>
+<script src="_shell.js"></script>
+<script>틀({제목:'요구사항정의서',모양:'산출물',지금:'definitions',프로젝트이름:'G2C',프로젝트번호:1,프로젝트들:['G2C','서울페이'],사람:'이영희',안읽은알림:2});</script>
+</body>
+</html>

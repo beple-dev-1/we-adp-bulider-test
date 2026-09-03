@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<!--
+    받은 문서를 추출·정리한 시도 한 번. 표의 뜻은 V4__intake.sql 의 COMMENT 가 정본이고,
+    「누구 자격으로 도나」는 V6__document_processing.sql 이 고쳐 적었다.
+
+    ⚠ 표 이름 앞의 `builder.` 를 지우지 마라 — 이 저장소의 표는 builder 스키마에 산다.
+    ⛔ DELETE 를 만들지 마라. 시도 이력이 남는 것이 이 표의 존재 이유다.
+-->
+<mapper namespace="com.bizplay.builder.intake.DocumentProcessingRunMapper">
+
+    <!--
+        ⛔ 인자 순서를 바꾸지 마라 — DocumentProcessingRun 의 생성자와 자리로 맞춘다.
+        ⚠ Kind·State 는 DocumentProcessingRun 안의 중첩 열거라 `$` 로 적는다. 점으로 적으면 부팅 때 죽는다.
+    -->
+    <resultMap id="processingRun" type="com.bizplay.builder.intake.DocumentProcessingRun">
+        <constructor>
+            <idArg column="id"              javaType="java.lang.String"/>
+            <arg   column="document_id"     javaType="java.lang.String"/>
+            <arg   column="run_kind"
+                   javaType="com.bizplay.builder.intake.DocumentProcessingRun$Kind"/>
+            <arg   column="state"
+                   javaType="com.bizplay.builder.intake.DocumentProcessingRun$State"/>
+            <arg   column="provider_run_id" javaType="java.lang.String"/>
+            <arg   column="error_message"   javaType="java.lang.String"/>
+            <arg   column="input_tokens"    javaType="java.lang.Long"/>
+            <arg   column="output_tokens"   javaType="java.lang.Long"/>
+            <arg   column="cost_amount"     javaType="java.math.BigDecimal"/>
+            <arg   column="started_at"      javaType="java.time.Instant"/>
+            <arg   column="finished_at"     javaType="java.time.Instant"/>
+            <arg   column="created_at"      javaType="java.time.Instant"/>
+        </constructor>
+    </resultMap>
+
+    <sql id="columns">
+        id, document_id, run_kind, state, provider_run_id, error_message,
+        input_tokens, output_tokens, cost_amount, started_at, finished_at, created_at
+    </sql>
+
+    <!--
+        ⚠ id 는 넣는다. DB 에도 default 가 있지만 채번은 IdSequence 가 한다.
+        ⚠ 줄 서는 모습으로만 넣는다 — 시작·끝 시각과 사용량은 나중의 update 가 채운다.
+    -->
+    <insert id="insert" parameterType="com.bizplay.builder.intake.DocumentProcessingRun">
+        insert into builder.adk_builder_document_processing_run
+               (id, document_id, run_kind, state)
+        values (#{id}, #{documentId}, #{kind}, #{state})
+    </insert>
+
+    <update id="updateRunning">
+        update builder.adk_builder_document_processing_run
+           set state      = 'RUNNING',
+               started_at = #{startedAt}
+         where id         = #{runId}
+    </update>
+
+    <!-- ⚠ error_message 는 성공일 때 null 이라 jdbcType 을 박는다. -->
+    <update id="updateFinished">
+        update builder.adk_builder_document_processing_run
+           set state         = #{state},
+               error_message = #{errorMessage,jdbcType=VARCHAR},
+               finished_at   = #{finishedAt}
+         where id            = #{runId}
+    </update>
+
+    <!-- 새것이 위다 — 「왜 안 됐나」는 마지막 시도가 답한다. -->
+    <select id="selectByDocumentId" resultMap="processingRun">
+        select <include refid="columns"/>
+          from builder.adk_builder_document_processing_run
+         where document_id = #{documentId}
+         order by created_at desc, id desc
+    </select>
+
+    <!--
+        아직 안 끝난 시도. ⛔ 재기동 청소가 이것을 닫는다 — 안 닫으면 부분 유일 인덱스
+        (..._one_live)에 걸려 그 문서가 **영영 다시 시도할 수 없다.**
+    -->
+    <select id="selectLive" resultMap="processingRun">
+        select <include refid="columns"/>
+          from builder.adk_builder_document_processing_run
+         where state in ('WAITING', 'RUNNING')
+    </select>
+
+</mapper>

@@ -1,0 +1,2 @@
+# zonky 의 @AutoConfigureEmbeddedDatabase 가 테스트용 datasource 를 넣는다.
+# 스키마는 Flyway 단독 관리. JPA 는 validate 로 그 결과를 검사한다.

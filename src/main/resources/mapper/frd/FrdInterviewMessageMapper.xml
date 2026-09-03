@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.bizplay.builder.frd.FrdInterviewMessageMapper">
+    <resultMap id="message" type="com.bizplay.builder.frd.FrdInterviewMessage">
+        <constructor>
+            <idArg column="id" javaType="java.lang.String"/>
+            <arg column="frd_id" javaType="java.lang.String"/>
+            <arg column="seq" javaType="_int"/>
+            <arg column="role" javaType="com.bizplay.builder.frd.FrdInterviewMessage$Role"/>
+            <arg column="kind" javaType="com.bizplay.builder.frd.FrdInterviewMessage$Kind"/>
+            <arg column="content" javaType="java.lang.String"/>
+            <arg column="question_topic" javaType="java.lang.String"/>
+            <arg column="question_reason" javaType="java.lang.String"/>
+            <arg column="options_json" javaType="java.lang.String"/>
+            <arg column="created_at" javaType="java.time.Instant"/>
+        </constructor>
+    </resultMap>
+
+    <insert id="insert" parameterType="com.bizplay.builder.frd.FrdInterviewMessage">
+        insert into builder.adk_builder_frd_interview_message
+               (id, frd_id, seq, role, kind, content, question_topic, question_reason, options_json)
+        values (#{id}, #{frdId}, #{seq}, #{role}, #{kind}, #{content},
+                #{questionTopic,jdbcType=VARCHAR}, #{questionReason,jdbcType=VARCHAR},
+                #{optionsJson,jdbcType=VARCHAR})
+    </insert>
+
+    <select id="selectByFrdId" parameterType="java.lang.String" resultMap="message">
+        select id, frd_id, seq, role, kind, content, question_topic, question_reason,
+               options_json, created_at
+          from builder.adk_builder_frd_interview_message
+         where frd_id = #{frdId}
+         order by seq
+    </select>
+
+    <select id="selectLatestQuestion" parameterType="java.lang.String" resultMap="message">
+        select id, frd_id, seq, role, kind, content, question_topic, question_reason,
+               options_json, created_at
+          from builder.adk_builder_frd_interview_message
+         where frd_id = #{frdId} and kind = 'QUESTION'
+         order by seq desc
+         limit 1
+    </select>
+
+    <select id="selectNextSeq" parameterType="java.lang.String" resultType="_int">
+        select coalesce(max(seq), 0) + 1
+          from builder.adk_builder_frd_interview_message
+         where frd_id = #{frdId}
+    </select>
+</mapper>

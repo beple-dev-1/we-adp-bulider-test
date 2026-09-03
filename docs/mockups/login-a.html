@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <link rel="stylesheet" href="_auth-concepts.css">
+</head>
+<body class="auth auth--a auth--a-refined">
+  <main class="auth-a-shell">
+    <header class="auth-a-brand">
+      <a class="auth-brand" href="login-a.html">
+        <strong>WE-ADP <em>Builder</em></strong>
+        <small class="auth-brand__version">v1.0.1</small>
+      </a>
+      <span>기획 업무 시스템</span>
+    </header>
+
+    <section class="auth-a-card" aria-labelledby="login-title">
+      <div class="auth-a-intro">
+        <p>기획 업무 공간</p>
+        <h1 id="login-title">Builder 로그인</h1>
+        <span>기획 산출물 작업을 이어서 시작하세요.</span>
+      </div>
+
+      <form action="11-first-password.html" onsubmit="setTimeout(() => location.href='11-first-password.html', 600); return false">
+        <label for="a-id">아이디</label>
+        <input id="a-id" name="username" autocomplete="username" autofocus placeholder="Builder 아이디">
+        <label for="a-password">비밀번호</label>
+        <input id="a-password" name="password" type="password" autocomplete="current-password" placeholder="비밀번호">
+        <button type="submit" data-submit-loading="로그인 중">로그인</button>
+      </form>
+
+      <aside class="auth-a-first">
+        <span aria-hidden="true">i</span>
+        <div><strong>처음 로그인하시나요?</strong><p>발급받은 아이디와 임시 비밀번호로 로그인해 새 비밀번호를 설정합니다. Claude Code 계정은 이어서 연결하거나 나중에 연결할 수 있습니다.</p></div>
+      </aside>
+    </section>
+
+  </main>
+  <script src="_shell.js"></script>
+</body>
+</html>

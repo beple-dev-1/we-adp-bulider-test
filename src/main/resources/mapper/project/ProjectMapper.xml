@@ -1,0 +1,131 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<!--
+    프로젝트 — 기획 레포 하나 = 클론 대상. 표의 뜻은 V3__project.sql 의 COMMENT 가 정본이다.
+
+    ⚠ 표 이름 앞의 `builder.` 를 지우지 마라. 이 저장소의 표는 public 이 아니라 builder 스키마에 산다.
+      MyBatis 는 Hibernate 의 default_schema 를 안 물려받는다 — 지우면 「표가 없다」로 죽는다.
+
+    ⛔ 이미 앉은 줄을 고치는 문은 아래 둘뿐이다 (updateState · updateToken).
+      2026-08-15 이전에는 그 자리가 전부 엔티티의 상태 변경 메서드 + JPA 더티 체킹이었다 —
+      save() 없이 고치면 저장되던 것이 MyBatis 에서는 아무 일도 안 일어나고 예외도 안 난다.
+      셋째 UPDATE 를 더하기 전에 Project.java 머리의 경고를 먼저 읽어라.
+-->
+<mapper namespace="com.bizplay.builder.project.ProjectMapper">
+
+    <!--
+        setter 가 없는 값 묶음이라 생성자로 담는다.
+        ⛔ 인자 순서를 바꾸지 마라 — Project 의 생성자와 자리로 맞춘다.
+           name·repo_url·default_branch·failure_reason 은 넷 다 글자고 sealed_token·token_nonce 는
+           둘 다 byte[] 라, 뒤바뀌어도 컴파일도 되고 예외도 안 난다.
+           화면에 엉뚱한 값이 뜨거나 봉인이 안 풀리는 것으로만 드러난다.
+        ⚠ byte[] 의 별칭은 `_byte[]` 다(`byte[]` 는 래퍼 Byte[] 를 가리킨다).
+    -->
+    <resultMap id="project" type="com.bizplay.builder.project.Project">
+        <constructor>
+            <idArg column="id"             javaType="java.lang.String"/>
+            <arg   column="name"           javaType="java.lang.String"/>
+            <arg   column="repo_url"       javaType="java.lang.String"/>
+            <arg   column="default_branch" javaType="java.lang.String"/>
+            <arg   column="platform_code"  javaType="java.lang.String"/>
+            <arg   column="sealed_token"   javaType="_byte[]"/>
+            <arg   column="token_nonce"    javaType="_byte[]"/>
+            <arg   column="state"          javaType="com.bizplay.builder.project.ProjectState"/>
+            <arg   column="failure_reason" javaType="java.lang.String"/>
+            <arg   column="created_at"     javaType="java.time.Instant"/>
+        </constructor>
+    </resultMap>
+
+    <sql id="columns">
+        id, name, repo_url, default_branch, platform_code, sealed_token, token_nonce,
+        state, failure_reason, created_at
+    </sql>
+
+    <select id="selectById" parameterType="java.lang.String" resultMap="project">
+        select <include refid="columns"/>
+          from builder.adk_builder_project
+         where id = #{id}
+    </select>
+
+    <!-- 등록이 「같은 이름이 이미 있나」를 볼 때 쓴다. 이름은 unique 라 많아야 한 줄이다. -->
+    <select id="selectByName" parameterType="java.lang.String" resultMap="project">
+        select <include refid="columns"/>
+          from builder.adk_builder_project
+         where name = #{name}
+    </select>
+
+    <!-- ⚠ order by 를 지우지 마라 — 관리 목록이 이 순서 그대로 그린다. -->
+    <select id="selectAll" resultMap="project">
+        select <include refid="columns"/>
+          from builder.adk_builder_project
+         order by name
+    </select>
+
+    <!--
+        ⚠ 지금 부르는 곳은 READY 하나다 — 고르기 화면과 머리의 프로젝트 목록.
+        ⚠ order by 를 지우지 마라 — 고르개와 목록이 같은 순서로 떠야 사람이 헷갈리지 않는다.
+    -->
+    <select id="selectByState" parameterType="com.bizplay.builder.project.ProjectState"
+            resultMap="project">
+        select <include refid="columns"/>
+          from builder.adk_builder_project
+         where state = #{state}
+         order by name
+    </select>
+
+    <!--
+        ⚠ created_at 을 넣지 않는다 — DB 의 default now() 가 채운다.
+          그래서 ProjectService.register 는 넣은 뒤 selectById 로 한 번 되읽어 돌려준다.
+        ⚠ failure_reason 도 안 넣는다 — 새로 앉는 줄은 아직 실패한 적이 없어 늘 null 이다.
+        ⚠ id 는 넣는다. DB 에도 default 가 있지만 채번은 IdSequence 가 한다.
+        ⚠ state 는 DB 에 default 가 없기도 하지만, 있더라도 넣는다 — 「처음 값이 무엇인가」는
+          업무가 정하는 것이라 자바 쪽 Project.create 가 정본이다.
+          (시각처럼 DB 만 알 수 있는 값과 다른 자리다.)
+    -->
+    <insert id="insert" parameterType="com.bizplay.builder.project.Project">
+        insert into builder.adk_builder_project
+               (id, name, repo_url, default_branch, platform_code, sealed_token, token_nonce, state)
+        values (#{id}, #{name}, #{repoUrl}, #{defaultBranch}, #{platformCode}, #{sealedToken}, #{tokenNonce}, #{state})
+    </insert>
+
+    <!--
+        상태를 고치는 유일한 문이다. 클론 성공 · 클론 실패 · 다시 받기가 다 여기로 온다.
+
+        ⛔ 실패 이유를 안 건드리는 짝을 만들지 마라 — 「준비됨·받는 중이 되면 이유를 비운다」가
+          이 표의 규칙이다(V3__project.sql 의 COMMENT). 둘을 갈라 두면 성공한 프로젝트에
+          지난 실패 이유가 남아 상세 화면이 「실패했다」고 말한다.
+        ⚠ failureReason 은 null 로 올 수 있어 jdbcType 을 박아 둔다 — MyBatis 는 값이 null 이면
+          자바 타입으로 종류를 못 정해 기본값(OTHER)으로 setNull 을 부르고, PostgreSQL 이 그것을 거절한다.
+    -->
+    <update id="updateState">
+        update builder.adk_builder_project
+           set state          = #{state},
+               failure_reason = #{failureReason,jdbcType=VARCHAR}
+         where id             = #{projectId}
+    </update>
+
+    <!--
+        ⚠ 봉인과 nonce 는 짝이라 늘 같이 간다. 하나만 가는 문을 만들지 마라 — 봉인이 안 풀린다.
+        ⚠ 상태를 안 건드린다. 토큰 교체는 「다시 받기」가 아니다 — 실패한 프로젝트의 토큰만 갈아 두고
+          받기는 사람이 따로 누른다(admin/project-detail.html 의 버튼 둘이 그래서 갈라져 있다).
+    -->
+    <update id="updateToken">
+        update builder.adk_builder_project
+           set sealed_token = #{sealedToken},
+               token_nonce  = #{tokenNonce}
+         where id           = #{projectId}
+    </update>
+
+    <!--
+        테스트가 트랜잭션을 끊고 만든 줄을 손으로 치울 때 쓴다.
+        ⛔ 운영 화면의 「프로젝트 지우기」로 쓰지 마라 — 접수·적용 구분·AI 실행이 이 표를 FK 로
+          가리켜서 그냥 지우면 FK 위배로 죽는다. 지우는 기능은 아직 없는 기능이다.
+    -->
+    <delete id="deleteById" parameterType="java.lang.String">
+        delete from builder.adk_builder_project
+         where id = #{id}
+    </delete>
+
+</mapper>

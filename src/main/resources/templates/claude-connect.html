@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{fragments/shell :: layout('Claude 계정 연결', '카드', null, ~{:: content})}">
+<body>
+<div th:fragment="content">
+  <section class="setup-screen setup-screen--claude" aria-labelledby="claude-connect-title">
+    <header class="setup-header">
+      <a class="setup-brand" th:href="@{/login}">WE-ADP <span>Builder</span></a>
+      <div class="setup-step" aria-label="최초 설정 진행 단계">
+        <span>✓</span><i></i><span aria-current="step">2</span>
+      </div>
+    </header>
+
+    <div class="setup-intro">
+      <p>최초 로그인 · 선택 설정</p>
+      <h1 id="claude-connect-title">Claude Code 계정 연결</h1>
+      <span>AI 기능을 사용하려면 본인 Claude Code 계정을 연결하세요. 지금 연결하지 않아도 Builder를 사용할 수 있습니다.</span>
+    </div>
+
+    <ol class="claude-steps">
+      <li>
+        <span>1</span>
+        <div class="claude-step-content">
+          <strong>Claude에서 접근 승인</strong>
+          <p>이 브라우저의 새 창에서 본인 계정으로 로그인하고 Builder의 접근을 승인합니다.</p>
+          <form th:if="${authorizeUrl == null}" method="post"
+                th:action="@{/claude/connect/start}" class="claude-start-form">
+            <button class="secondary-action" type="submit"
+                    data-submit-loading="승인 화면 여는 중" data-submit-loading-tone="dark">승인 화면 열기</button>
+          </form>
+          <a th:if="${authorizeUrl != null}" class="secondary-action"
+             th:href="${authorizeUrl}" target="_blank" rel="noopener">승인 화면 다시 열기</a>
+        </div>
+      </li>
+      <li>
+        <span>2</span>
+        <div class="claude-step-content">
+          <strong>연결 상태 확인</strong>
+          <p>승인을 마치면 화면에 승인 코드가 나옵니다. 그 코드를 붙여넣고 계정 연결을 누르세요.</p>
+          <form class="claude-code-form" id="claude-code-form" method="post"
+                th:action="@{/claude/connect}">
+            <label for="claude-code">승인 코드 <span>필수</span></label>
+            <input id="claude-code" name="code" autocomplete="off"
+                   placeholder="승인 후 화면에 나온 코드"
+                   th:attr="aria-invalid=${error != null ? 'true' : null}"
+                   aria-describedby="claude-connect-error">
+            <p class="setup-field-error" id="claude-connect-error" role="alert"
+               th:if="${error}" th:text="${error}"></p>
+          </form>
+        </div>
+      </li>
+    </ol>
+
+    <div class="claude-choice">
+      <p>사용자 메뉴에서 나중에 연결할 수 있습니다.</p>
+      <div>
+        <form method="post" th:action="@{/claude/connect/skip}">
+          <button class="claude-later-button" type="submit"
+                  data-submit-loading="나중에 연결 처리 중" data-submit-loading-tone="dark">나중에 연결</button>
+        </form>
+        <button class="claude-connect-button" type="submit" form="claude-code-form"
+                data-submit-loading="Claude 계정 연결 중">계정 연결</button>
+      </div>
+    </div>
+  </section>
+  <script>
+    /*
+      ⛔ 창은 사람이 누른 그 순간에 연다 — fetch 응답을 기다렸다 열면 브라우저가 팝업으로 보고 막는다.
+         빈 창을 먼저 띄워 두고, 주소가 오면 그 창을 그리로 보낸다.
+      ⚠ 창이 막혔거나 요청이 실패하면 평소의 폼 전송으로 떨어진다 — 그러면 「다시 열기」 링크가 남는다.
+    */
+    document.querySelector('.claude-start-form')?.addEventListener('submit', function (event) {
+      const popup = window.open('', 'claude-authorize');
+      if (!popup) return;
+      event.preventDefault();
+      const form = event.currentTarget;
+      fetch(form.action, {
+        method: 'POST',
+        headers: { 'X-Requested-With': 'fetch' },
+        body: new FormData(form)          // ★ 숨은 _csrf 가 이 안에 딸려 간다
+      })
+        .then((response) => (response.ok ? response.json() : Promise.reject(response.status)))
+        .then((body) => {
+          popup.location = body.authorizeUrl;
+          window.location.reload();       // 코드를 넣을 2단계와 「다시 열기」 링크를 띄운다
+        })
+        .catch(() => {
+          popup.close();
+          form.submit();
+        });
+    });
+  </script>
+</div>
+</body>
+</html>

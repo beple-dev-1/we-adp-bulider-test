@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.bizplay.builder.frd.FrdFacetMapper">
+
+    <select id="selectByFrdId" parameterType="java.lang.String"
+            resultType="com.bizplay.builder.frd.FrdFacet">
+        select frd_id as frdId, project_id as projectId, name
+          from builder.adk_builder_frd_facet
+         where frd_id = #{frdId}
+         order by name
+    </select>
+
+    <select id="selectByProjectId" parameterType="java.lang.String"
+            resultType="com.bizplay.builder.frd.FrdFacet">
+        select frd_id as frdId, project_id as projectId, name
+          from builder.adk_builder_frd_facet
+         where project_id = #{projectId}
+         order by frd_id, name
+    </select>
+
+    <insert id="insert" parameterType="com.bizplay.builder.frd.FrdFacet">
+        insert into builder.adk_builder_frd_facet (frd_id, project_id, name)
+        values (#{frdId}, #{projectId}, #{name})
+    </insert>
+
+</mapper>

@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{fragments/shell :: layout('사용자 상세', '관리', 'accounts', ~{:: content})}">
+<body>
+<div th:fragment="content">
+
+  <div class="requirement-concept account-detail-page">
+    <header class="rq-head">
+      <div class="rq-head__copy">
+        <span class="rq-kicker">사용자 계정</span>
+        <h1 th:text="${account.name}"></h1>
+        <p>로그인 정보와 Builder 사용 준비 상태를 확인합니다.</p>
+      </div>
+      <div class="rq-head__actions">
+        <span class="status-badge"
+              th:classappend="${setupState == '설정 완료' ? ' status-badge--complete' : (setupState == 'Claude 연결 필요' ? ' status-badge--review' : ' status-badge--waiting')}"
+              th:text="${setupState}"></span>
+        <a class="button" th:href="@{/admin/accounts}">목록으로</a>
+        <a class="button" th:if="${own}" th:href="@{/password}">비밀번호 변경</a>
+        <form th:unless="${own}" method="post"
+              th:action="@{/admin/accounts/{n}/temporary-password(n=${account.id})}">
+          <button class="button button--danger-outline" type="submit"
+                  data-submit-loading="임시 비밀번호 재발급 중" data-submit-loading-tone="dark">임시 비밀번호 재발급</button>
+        </form>
+      </div>
+    </header>
+
+    <main class="account-detail-sections">
+      <section class="rq-card" aria-labelledby="user-information-title">
+        <div class="rq-card__head">
+          <div>
+            <span class="rq-kicker">사용자 정보</span>
+            <h2 id="user-information-title">계정 및 연결 상태</h2>
+            <p>로그인과 작업 기록에 사용하는 정보입니다.</p>
+          </div>
+        </div>
+        <div class="rq-card__body">
+          <dl class="project-info-list">
+            <div><dt>이름</dt><dd th:text="${account.name}"></dd></div>
+            <div><dt>로그인 아이디</dt><dd class="num" th:text="${account.loginId}"></dd></div>
+            <div><dt>이메일</dt><dd th:text="${account.email}"></dd></div>
+            <div><dt>권한</dt><dd th:text="${account.superAccount ? '슈퍼 관리자' : '기획자'}"></dd></div>
+            <div>
+              <dt>최초 설정</dt>
+              <dd><span class="status-badge"
+                th:classappend="${setupState == '설정 완료' ? ' status-badge--complete' : (setupState == 'Claude 연결 필요' ? ' status-badge--review' : ' status-badge--waiting')}"
+                th:text="${setupState}"></span></dd>
+            </div>
+            <div class="account-detail-claude-field">
+              <dt>Claude 계정</dt>
+              <dd><span class="status-badge"
+                th:classappend="${claudeState == '연결 완료' ? ' status-badge--complete' : ' status-badge--waiting'}"
+                th:text="${claudeState}"></span></dd>
+            </div>
+          </dl>
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <dialog class="dialog dialog--layer account-password-dialog" id="account-password-dialog"
+          aria-labelledby="account-password-dialog-title"
+          th:attr="data-open-on-load=${(issuedPassword != null and !issuedPassword.isEmpty()) or (error != null and !error.isEmpty())}">
+    <form method="dialog">
+      <header class="dialog__header">
+        <div class="dialog__header-copy">
+          <h2 class="dialog__title" id="account-password-dialog-title"
+              th:text="${issuedPassword != null and !issuedPassword.isEmpty()} ? '임시 비밀번호가 재발급되었습니다.' : '임시 비밀번호를 재발급하지 못했습니다.'">
+            임시 비밀번호가 재발급되었습니다.
+          </h2>
+          <p class="dialog__description"
+             th:text="${issuedPassword != null and !issuedPassword.isEmpty()} ? '지금 사용자에게 직접 전달해 주세요. 이 화면을 닫으면 다시 볼 수 없습니다.' : '오류 이유를 확인한 뒤 다시 시도해 주세요.'">
+            지금 사용자에게 직접 전달해 주세요. 이 화면을 닫으면 다시 볼 수 없습니다.
+          </p>
+        </div>
+        <button class="dialog__close" type="submit" aria-label="임시 비밀번호 안내 닫기"></button>
+      </header>
+      <div class="dialog__body account-password-dialog__body">
+        <div class="account-password-dialog__value" role="status"
+             th:if="${issuedPassword != null and !issuedPassword.isEmpty()}">
+          <code class="num" th:text="${issuedPassword}"></code>
+        </div>
+        <div class="state-panel state-panel--error" role="alert"
+             th:if="${error != null and !error.isEmpty()}">
+          <strong>재발급을 완료하지 못했습니다.</strong>
+          <p th:text="${error}"></p>
+        </div>
+      </div>
+      <div class="dialog__actions">
+        <button class="button button--primary" id="account-password-dialog-confirm" type="submit">확인</button>
+      </div>
+    </form>
+  </dialog>
+
+  <script>
+    (function () {
+      const dialog = document.getElementById('account-password-dialog');
+      if (dialog?.dataset.openOnLoad === 'true') {
+        dialog.showModal();
+        document.getElementById('account-password-dialog-confirm')?.focus();
+      }
+    })();
+  </script>
+
+</div>
+</body>
+</html>

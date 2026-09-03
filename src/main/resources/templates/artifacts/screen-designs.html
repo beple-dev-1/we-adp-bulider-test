@@ -1,0 +1,144 @@
+<!doctype html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{fragments/shell :: layout(${title}, ${shape}, ${current}, ~{:: content})}">
+<body>
+<div th:fragment="content">
+  <link rel="stylesheet" th:href="@{/css/screen-design.css}">
+
+  <div class="list-loading-region screen-design-list-page" data-list-loading-region>
+    <div class="page-loading-overlay list-loading-overlay" data-list-loading-overlay
+         role="status" aria-label="조회 결과 처리 중" hidden>
+      <span class="page-loading-indicator">
+        <span class="page-loading-spinner" aria-hidden="true"></span>
+      </span>
+    </div>
+
+    <div class="page-head list-page-head">
+      <div>
+        <h1 class="page-head__title">화면설계서</h1>
+        <p class="page-intro">화면별 화면설계서의 최신 상태를 확인하고 제출용 문서를 엽니다.</p>
+      </div>
+    </div>
+
+    <form class="filter-bar filter-bar--screen-design" th:if="${totalCount > 0}"
+          method="get" role="search" data-list-loading-trigger
+          th:action="@{/projects/{p}/artifacts/screen-designs(p=${projectId})}">
+      <div class="field">
+        <label class="field__label" for="screen-design-system">시스템</label>
+        <select class="field__control" id="screen-design-system" name="system">
+          <option value="">전체</option>
+          <option th:each="item : ${systems}" th:value="${item.code}" th:text="${item.label}"
+                  th:selected="${item.code == systemFilter}"></option>
+        </select>
+      </div>
+      <div class="field">
+        <label class="field__label" for="screen-design-state">생성여부</label>
+        <select class="field__control" id="screen-design-state" name="design">
+          <option value="">전체</option>
+          <option th:each="state : ${designStates}" th:value="${state}" th:text="${state}"
+                  th:selected="${state == designFilter}"></option>
+        </select>
+      </div>
+      <div class="field screen-design-filter-search">
+        <label class="field__label" for="screen-design-search">화면 검색</label>
+        <input class="field__control" id="screen-design-search" name="query" type="search"
+               placeholder="화면명, 화면관리번호, 화면 ID 또는 IA 메뉴 경로" th:value="${query}">
+      </div>
+      <button class="button" type="submit">조회</button>
+    </form>
+
+    <section class="state-panel list-empty-state" role="status" th:if="${matchedCount == 0}">
+      <span class="list-empty-state__icon" aria-hidden="true">
+        <svg viewBox="0 0 32 32" fill="none"><path d="M6.5 7.5h19v17h-19z"/><path d="M6.5 19.5h5l2.2 3h4.6l2.2-3h5"/><path d="M11 12h10M11 15.5h7"/></svg>
+      </span>
+      <strong>조회된 내용이 없습니다.</strong>
+    </section>
+
+    <div class="table-wrap artifact-list-table-wrap screen-design-table-wrap" tabindex="0"
+         aria-label="화면설계서 화면 목록" th:if="${matchedCount > 0}">
+      <table class="data-table data-table--dense screen-design-table">
+        <colgroup>
+          <col class="screen-design-col-name">
+          <col class="screen-design-col-management">
+          <col class="screen-design-col-id">
+          <col class="screen-design-col-menu">
+          <col class="screen-design-col-system">
+          <col class="screen-design-col-state">
+          <col class="screen-design-col-date">
+          <col class="screen-design-col-date">
+        </colgroup>
+        <thead>
+          <tr>
+            <th scope="col">화면명</th>
+            <th scope="col">화면관리번호</th>
+            <th scope="col">화면 ID</th>
+            <th scope="col">IA 메뉴 경로</th>
+            <th scope="col">시스템</th>
+            <th scope="col">생성여부</th>
+            <th scope="col">운영 화면 수정일</th>
+            <th scope="col">문서 작성일</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr th:each="row : ${rows}">
+            <td class="screen-design-screen-cell">
+              <a class="artifact-list-link"
+                 th:href="@{/projects/{p}/artifacts/screen-designs(p=${projectId},query=${query},system=${systemFilter},design=${designFilter},page=${page},pageSize=${pageSize},selectedSystem=${row.screen.system},selectedScreen=${row.screen.screenId})}"
+                 th:title="${row.displayName}" th:text="${row.displayName}"></a>
+            </td>
+            <td class="num nowrap" th:text="${row.managementNumber}"></td>
+            <td class="num nowrap" th:text="${row.screen.screenId}"></td>
+            <td class="screen-design-menu-cell">
+              <span th:if="${!#strings.isEmpty(row.screen.menuPath)}" th:text="${row.screen.menuPath}"
+                    th:title="${row.screen.menuPath}"></span>
+              <span class="cell__sub" th:if="${#strings.isEmpty(row.screen.menuPath)}">메뉴 경로 없음</span>
+            </td>
+            <td th:text="${row.systemLabel}"></td>
+            <td>
+              <span class="status-badge"
+                    th:classappend="${row.ready} ? 'status-badge--complete' : 'status-badge--waiting'"
+                    th:text="${row.statusLabel}"></span>
+            </td>
+            <td class="num nowrap" th:text="${row.sourceDate}"></td>
+            <td class="num nowrap" th:text="${row.documentDate}"></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="list-table-foot" th:if="${matchedCount > 0}">
+      <span aria-hidden="true"></span>
+      <nav class="list-pagination" aria-label="화면설계서 페이지 이동" data-list-loading-links>
+        <span th:if="${page == 1}" class="list-page-button" aria-disabled="true" aria-label="이전 페이지">&lsaquo;</span>
+        <a th:unless="${page == 1}" class="list-page-button" aria-label="이전 페이지"
+           th:href="@{/projects/{p}/artifacts/screen-designs(p=${projectId},query=${query},system=${systemFilter},design=${designFilter},pageSize=${pageSize},page=${page - 1})}">&lsaquo;</a>
+        <a th:each="number : ${pageNumbers}" class="list-page-button"
+           th:classappend="${number == page} ? 'is-current' : ''"
+           th:attr="aria-current=${number == page} ? 'page' : null, aria-label=${number} + ' 페이지'"
+           th:text="${number}"
+           th:href="@{/projects/{p}/artifacts/screen-designs(p=${projectId},query=${query},system=${systemFilter},design=${designFilter},pageSize=${pageSize},page=${number})}"></a>
+        <span th:if="${page == pageCount}" class="list-page-button" aria-disabled="true" aria-label="다음 페이지">&rsaquo;</span>
+        <a th:unless="${page == pageCount}" class="list-page-button" aria-label="다음 페이지"
+           th:href="@{/projects/{p}/artifacts/screen-designs(p=${projectId},query=${query},system=${systemFilter},design=${designFilter},pageSize=${pageSize},page=${page + 1})}">&rsaquo;</a>
+      </nav>
+      <form class="list-page-size" method="get" data-list-loading-trigger
+            th:action="@{/projects/{p}/artifacts/screen-designs(p=${projectId})}">
+        <input type="hidden" name="query" th:value="${query}">
+        <input type="hidden" name="system" th:value="${systemFilter}">
+        <input type="hidden" name="design" th:value="${designFilter}">
+        <label class="sr-only" for="screen-design-page-size">목록 크기</label>
+        <select class="field__control" id="screen-design-page-size" name="pageSize" data-list-loading-page-size>
+          <option th:each="option : ${pageSizes}" th:value="${option}" th:text="${option} + '개씩'"
+                  th:selected="${option == pageSize}"></option>
+        </select>
+      </form>
+    </div>
+  </div>
+
+  <th:block th:if="${layerOpen}">
+    <div th:replace="~{artifacts/screen-design :: layer}"></div>
+  </th:block>
+  <script defer th:src="@{/js/screen-design.js}"></script>
+</div>
+</body>
+</html>

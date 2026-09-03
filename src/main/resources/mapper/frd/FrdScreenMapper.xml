@@ -1,0 +1,157 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<!--
+    FRD 하나가 고치는 화면 한 장. 표 설명의 정본은 V17__frd.sql 이다.
+    ⚠ 표 이름 앞의 `builder.` 를 지우지 마라 — MyBatis 는 Flyway 의 default-schema 를 안 물려받는다.
+-->
+<mapper namespace="com.bizplay.builder.frd.FrdScreenMapper">
+
+    <!-- ⛔ 인자 순서를 바꾸지 마라 — FrdScreen 의 생성자와 자리로 맞춘다. -->
+    <resultMap id="frdScreen" type="com.bizplay.builder.frd.FrdScreen">
+        <constructor>
+            <idArg column="id"             javaType="java.lang.String"/>
+            <arg   column="frd_id"         javaType="java.lang.String"/>
+            <arg   column="screen_id"      javaType="java.lang.String"/>
+            <arg   column="screen_name"    javaType="java.lang.String"/>
+            <arg   column="base_screen_id" javaType="java.lang.String"/>
+            <arg   column="facet"          javaType="java.lang.String"/>
+            <arg   column="pick_reason"    javaType="java.lang.String"/>
+            <arg   column="state"          javaType="com.bizplay.builder.frd.FrdScreen$State"/>
+            <arg   column="html"           javaType="java.lang.String"/>
+            <arg   column="changes"        javaType="java.lang.String"/>
+            <arg   column="failure"        javaType="java.lang.String"/>
+            <arg   column="generated_at"   javaType="java.time.Instant"/>
+            <arg   column="created_at"     javaType="java.time.Instant"/>
+            <arg   column="system_code"    javaType="java.lang.String"/>
+            <arg   column="screen_type"    javaType="java.lang.String"/>
+            <arg   column="scope_change"   javaType="java.lang.String"/>
+        </constructor>
+    </resultMap>
+
+    <sql id="columns">
+        id, frd_id, screen_id, screen_name, base_screen_id, facet, pick_reason, state,
+        html, changes, failure, generated_at, created_at, system_code, screen_type, scope_change
+    </sql>
+
+    <!-- ⚠ 널이 올 수 있는 칸은 jdbcType 을 박는다 — 안 박으면 PostgreSQL 이 setNull 을 거절한다. -->
+    <insert id="insert" parameterType="com.bizplay.builder.frd.FrdScreen">
+        insert into builder.adk_builder_frd_screen
+               (id, frd_id, screen_id, screen_name, base_screen_id, facet, pick_reason, state,
+                system_code, screen_type, scope_change)
+        values (#{id}, #{frdId}, #{screenId}, #{screenName,jdbcType=VARCHAR},
+                #{baseScreenId,jdbcType=VARCHAR}, #{facet,jdbcType=VARCHAR},
+                #{pickReason,jdbcType=VARCHAR}, #{state}, #{systemCode,jdbcType=VARCHAR},
+                #{screenType,jdbcType=VARCHAR}, #{scopeChange,jdbcType=VARCHAR})
+    </insert>
+
+    <select id="selectByFrdId" parameterType="java.lang.String" resultMap="frdScreen">
+        select <include refid="columns"/>
+         from builder.adk_builder_frd_screen
+         where frd_id = #{frdId}
+           and excluded_at is null
+         order by created_at, screen_id
+    </select>
+
+    <select id="selectById" parameterType="java.lang.String" resultMap="frdScreen">
+        select <include refid="columns"/>
+         from builder.adk_builder_frd_screen
+         where id = #{id}
+           and excluded_at is null
+    </select>
+
+    <select id="selectIncludingExcludedById" parameterType="java.lang.String" resultMap="frdScreen">
+        select <include refid="columns"/>
+          from builder.adk_builder_frd_screen
+         where id = #{id}
+    </select>
+
+    <delete id="deleteById" parameterType="java.lang.String">
+        delete from builder.adk_builder_frd_screen
+         where id = #{id}
+    </delete>
+
+    <update id="excludeById" parameterType="java.lang.String">
+        update builder.adk_builder_frd_screen
+           set excluded_at = now()
+         where id = #{id}
+           and excluded_at is null
+    </update>
+
+    <update id="restoreExcluded">
+        update builder.adk_builder_frd_screen
+           set excluded_at = null
+         where frd_id = #{frdId}
+           and screen_id = #{screenId}
+           and excluded_at is not null
+    </update>
+
+    <update id="updateState">
+        update builder.adk_builder_frd_screen
+           set state = #{state}
+         where id = #{id}
+    </update>
+
+    <update id="updateGenerated">
+        update builder.adk_builder_frd_screen
+           set html = #{html}, changes = #{changes,jdbcType=VARCHAR},
+               failure = null, state = 'GENERATED', generated_at = #{generatedAt}
+         where id = #{id}
+    </update>
+
+    <update id="updateFailed">
+        update builder.adk_builder_frd_screen
+           set failure = #{failure,jdbcType=VARCHAR}, state = 'FAILED'
+         where id = #{id}
+    </update>
+
+    <update id="resetByFrdId" parameterType="java.lang.String">
+        update builder.adk_builder_frd_screen
+           set state = 'WAITING', html = null, changes = null,
+               failure = null, generated_at = null
+         where frd_id = #{frdId}
+    </update>
+
+    <update id="failInterruptedGenerations">
+        update builder.adk_builder_frd_screen
+           set failure = #{failure,jdbcType=VARCHAR}, state = 'FAILED'
+         where state = 'GENERATING'
+    </update>
+
+    <!--
+        ⚠ AI 가 목업을 만들면서 고른 기준 화면을 그때 적는다 — 신규 화면은 만들어질 때 비어 있다.
+          ⛔ 사람이 고치는 값이 아니다. 한 번 정해지면 다음 목업도 같은 시작점을 쓴다.
+    -->
+    <update id="updateBaseScreenId">
+        update builder.adk_builder_frd_screen
+           set base_screen_id = #{baseScreenId}
+         where id = #{id}
+           and base_screen_id is null
+    </update>
+
+    <update id="updateSystemCodeIfMissing">
+        update builder.adk_builder_frd_screen
+           set system_code = #{systemCode}
+         where id = #{id}
+           and (system_code is null or btrim(system_code) = '')
+    </update>
+
+    <update id="updateScopeChange">
+        update builder.adk_builder_frd_screen
+           set scope_change = #{scopeChange,jdbcType=VARCHAR}
+         where id = #{id}
+    </update>
+
+    <update id="convertDiscoveredToDraft">
+        update builder.adk_builder_frd_screen
+           set screen_id = #{screenId}, base_screen_id = null,
+               screen_type = #{screenType}, state = 'WAITING',
+               html = null, changes = null, failure = null, generated_at = null
+         where id = #{id}
+           and screen_id = base_screen_id
+           and pick_reason is not null
+           and btrim(pick_reason) &lt;&gt; ''
+    </update>
+
+</mapper>

@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.bizplay.builder.srt.SrtMapper">
+    <resultMap id="srt" type="com.bizplay.builder.srt.Srt">
+        <constructor>
+            <idArg column="id" javaType="java.lang.String"/>
+            <arg column="project_id" javaType="java.lang.String"/>
+            <arg column="number" javaType="_int"/>
+            <arg column="source_kind" javaType="com.bizplay.builder.srt.Srt$SourceKind"/>
+            <arg column="flow_task_number" javaType="java.lang.String"/>
+            <arg column="title" javaType="java.lang.String"/>
+            <arg column="content" javaType="java.lang.String"/>
+            <arg column="source_json" javaType="java.lang.String"/>
+            <arg column="owner_account_id" javaType="java.lang.String"/>
+            <arg column="bridge_frd_id" javaType="java.lang.String"/>
+            <arg column="dev_request_id" javaType="java.lang.String"/>
+            <arg column="analysis_state" javaType="com.bizplay.builder.srt.Srt$AnalysisState"/>
+            <arg column="analysis_message" javaType="java.lang.String"/>
+            <arg column="created_at" javaType="java.time.Instant"/>
+            <arg column="updated_at" javaType="java.time.Instant"/>
+        </constructor>
+    </resultMap>
+
+    <sql id="columns">id, project_id, number, source_kind, flow_task_number, title, content,
+        source_json, owner_account_id, bridge_frd_id, dev_request_id,
+        analysis_state, analysis_message, created_at, updated_at</sql>
+
+    <select id="allocateNumber" parameterType="java.lang.String" resultType="_int" flushCache="true">
+        update builder.adk_builder_project
+           set srt_seq = srt_seq + 1
+         where id = #{projectId}
+        returning srt_seq
+    </select>
+
+    <insert id="insert" parameterType="com.bizplay.builder.srt.Srt">
+        insert into builder.adk_builder_srt
+               (id, project_id, number, source_kind, flow_task_number, title, content,
+                source_json, owner_account_id, bridge_frd_id, dev_request_id)
+        values (#{id}, #{projectId}, #{number}, #{sourceKind}, #{flowTaskNumber,jdbcType=VARCHAR},
+                #{title}, #{content}, #{sourceJson,jdbcType=VARCHAR}, #{ownerAccountId},
+                #{bridgeFrdId,jdbcType=VARCHAR}, #{devRequestId,jdbcType=VARCHAR})
+    </insert>
+
+    <select id="selectById" parameterType="java.lang.String" resultMap="srt">
+        select <include refid="columns"/> from builder.adk_builder_srt where id = #{id}
+    </select>
+
+    <select id="selectByIdForUpdate" parameterType="java.lang.String" resultMap="srt">
+        select <include refid="columns"/> from builder.adk_builder_srt where id = #{id} for update
+    </select>
+
+    <select id="selectByProjectId" parameterType="java.lang.String" resultMap="srt">
+        select <include refid="columns"/> from builder.adk_builder_srt
+         where project_id = #{projectId} order by number desc
+    </select>
+
+    <update id="connectBridge">
+        update builder.adk_builder_srt
+           set bridge_frd_id = #{bridgeFrdId}, updated_at = now()
+         where id = #{id} and bridge_frd_id is null
+    </update>
+
+    <update id="connectRequest">
+        update builder.adk_builder_srt
+           set dev_request_id = #{devRequestId}, updated_at = now()
+         where id = #{id} and dev_request_id is null
+    </update>
+
+    <update id="updateAnalysisState">
+        update builder.adk_builder_srt
+           set analysis_state = #{state}, analysis_message = #{message,jdbcType=VARCHAR}, updated_at = now()
+         where id = #{id} and dev_request_id is null
+    </update>
+
+    <update id="updateDirect">
+        update builder.adk_builder_srt
+           set title = #{title}, content = #{content}, updated_at = now()
+         where id = #{id} and source_kind = 'DIRECT' and dev_request_id is null
+    </update>
+
+    <delete id="deleteUnprepared">
+        delete from builder.adk_builder_srt
+         where project_id = #{projectId} and id = #{id} and dev_request_id is null
+    </delete>
+</mapper>

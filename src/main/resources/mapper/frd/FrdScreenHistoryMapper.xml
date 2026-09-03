@@ -1,0 +1,89 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.bizplay.builder.frd.FrdScreenHistoryMapper">
+
+    <resultMap id="history" type="com.bizplay.builder.frd.FrdScreenHistory">
+        <constructor>
+            <idArg column="id" javaType="long"/>
+            <arg column="frd_screen_id" javaType="java.lang.String"/>
+            <arg column="screen_id" javaType="java.lang.String"/>
+            <arg column="screen_name" javaType="java.lang.String"/>
+            <arg column="html" javaType="java.lang.String"/>
+            <arg column="md" javaType="java.lang.String"/>
+            <arg column="changes" javaType="java.lang.String"/>
+            <arg column="operation_id" javaType="java.lang.String"/>
+            <arg column="source" javaType="java.lang.String"/>
+            <arg column="created_at" javaType="java.time.Instant"/>
+        </constructor>
+    </resultMap>
+
+    <select id="insert" resultType="long" affectData="true" flushCache="true">
+        insert into builder.adk_builder_frd_screen_history (frd_screen_id, html, changes)
+        values (#{frdScreenId}, #{html}, #{changes,jdbcType=VARCHAR})
+        returning id
+    </select>
+
+    <select id="insertCanvas" resultType="long" affectData="true" flushCache="true">
+        insert into builder.adk_builder_frd_screen_history
+               (frd_screen_id, html, md, changes, operation_id, source,
+                tobe_document_state, tobe_document_updated_at)
+        values (#{frdScreenId}, #{html}, #{md,jdbcType=VARCHAR}, #{changes,jdbcType=VARCHAR},
+                #{operationId}, 'FRD_CANVAS_AI',
+                case when #{md,jdbcType=VARCHAR} is null or btrim(#{md,jdbcType=VARCHAR}) = ''
+                     then 'NOT_REQUESTED' else 'SUCCEEDED' end,
+                case when #{md,jdbcType=VARCHAR} is null or btrim(#{md,jdbcType=VARCHAR}) = ''
+                     then null else now() end)
+        returning id
+    </select>
+
+    <select id="selectByFrdId" resultMap="history">
+        select h.id, h.frd_screen_id, s.screen_id, s.screen_name,
+               h.html, h.md, h.changes, h.operation_id, h.source, h.created_at
+          from builder.adk_builder_frd_screen_history h
+          join builder.adk_builder_frd_screen s on s.id = h.frd_screen_id
+         where s.frd_id = #{frdId}
+         order by h.created_at desc, h.id desc
+    </select>
+
+    <select id="selectById" resultMap="history">
+        select h.id, h.frd_screen_id, s.screen_id, s.screen_name,
+               h.html, h.md, h.changes, h.operation_id, h.source, h.created_at
+          from builder.adk_builder_frd_screen_history h
+          join builder.adk_builder_frd_screen s on s.id = h.frd_screen_id
+         where h.id = #{id}
+    </select>
+
+    <select id="selectLatestByScreenId" resultMap="history">
+        select h.id, h.frd_screen_id, s.screen_id, s.screen_name,
+               h.html, h.md, h.changes, h.operation_id, h.source, h.created_at
+          from builder.adk_builder_frd_screen_history h
+          join builder.adk_builder_frd_screen s on s.id = h.frd_screen_id
+         where h.frd_screen_id = #{frdScreenId}
+         order by h.created_at desc, h.id desc
+         limit 1
+    </select>
+    <update id="fillMd">
+        update builder.adk_builder_frd_screen_history
+           set md = #{md},
+               tobe_document_state = 'SUCCEEDED',
+               tobe_document_failure = null,
+               tobe_document_updated_at = now()
+         where id = #{id} and md is null
+    </update>
+    <select id="selectTobeDocumentStatus"
+            resultType="com.bizplay.builder.frd.FrdScreenHistoryMapper$TobeDocumentStatus">
+        select tobe_document_state as state,
+               tobe_document_failure as failure,
+               tobe_document_updated_at as "updatedAt"
+          from builder.adk_builder_frd_screen_history
+         where id = #{id}
+    </select>
+    <update id="updateTobeDocumentStatus">
+        update builder.adk_builder_frd_screen_history
+           set tobe_document_state = #{state},
+               tobe_document_failure = #{failure,jdbcType=VARCHAR},
+               tobe_document_updated_at = now()
+         where id = #{id}
+    </update>
+</mapper>

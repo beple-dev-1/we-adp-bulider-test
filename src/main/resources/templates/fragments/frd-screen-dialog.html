@@ -1,0 +1,132 @@
+<!doctype html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<body>
+<dialog th:fragment="dialog" class="dialog dialog--layer fi-screen-dialog"
+        id="analysis-screen-dialog" aria-labelledby="analysis-screen-title">
+  <header class="dialog__header">
+    <div class="dialog__header-copy">
+      <h2 class="dialog__title" id="analysis-screen-title">화면 추가</h2>
+      <p class="dialog__description" id="screen-add-description">현재 운영 화면에서 수정할 화면을 선택해 주세요.</p>
+    </div>
+    <button class="dialog__close" id="close-analysis-screen" type="button"
+            aria-label="화면 추가 레이어 닫기" onclick="this.closest('dialog').close()"></button>
+  </header>
+  <div class="dialog__body">
+    <div class="fi-screen-add-tabs" role="tablist" aria-label="화면 추가 유형">
+      <button class="fi-screen-add-tab is-active" id="existing-screen-tab" type="button" role="tab"
+              aria-selected="true" aria-controls="existing-screen-panel" data-screen-add-mode="existing">
+        <i>1</i><span><strong>기존 화면 추가</strong><small>현재 운영 화면을 수정합니다.</small></span>
+      </button>
+      <button class="fi-screen-add-tab" id="new-screen-tab" type="button" role="tab"
+              aria-selected="false" aria-controls="new-screen-panel" data-screen-add-mode="new">
+        <i>2</i><span><strong>신규 화면 개발</strong><small>시스템과 유형을 정하면 AI가 만듭니다.</small></span>
+      </button>
+    </div>
+
+    <section class="fi-screen-add-panel" id="existing-screen-panel" role="tabpanel" aria-labelledby="existing-screen-tab">
+      <header class="fi-screen-add-panel__head"><h3>현재 운영 화면 선택</h3><p>수정할 화면을 선택하면 프론트 개발 범위에 바로 추가됩니다.</p></header>
+      <div class="fi-existing-screen-tools">
+        <label class="sr-only" for="existing-screen-system">시스템 선택</label>
+        <select class="field__control" id="existing-screen-system">
+          <option value="">전체 시스템</option>
+          <option th:each="system : ${candidateSystems}" th:value="${system}" th:text="${systemLabels.label(system)}"></option>
+        </select>
+        <label class="sr-only" for="existing-screen-search">화면 검색</label>
+        <input class="field__control" id="existing-screen-search" type="search" placeholder="화면명 또는 화면 ID 검색">
+      </div>
+      <div class="fi-existing-screen-summary"><span>검색 결과 <b id="existing-screen-count" th:text="${#lists.size(candidates)}">0</b>개</span><small>이미 추가한 화면은 다시 선택할 수 없습니다.</small></div>
+      <ul class="fi-existing-screen-list" id="existing-screen-list" th:hidden="${#lists.isEmpty(candidates)}">
+        <li class="fi-existing-screen-item" th:each="candidate : ${candidates}"
+            th:classappend="${frd != null and selectedScreenIds.contains(candidate.screenId())} ? ' is-added'"
+            th:attr="data-screen-name=${#strings.toLowerCase(candidate.screenName())},data-screen-id=${#strings.toLowerCase(candidate.screenId())},data-screen-system=${candidate.system()},data-screen-facets=${#strings.listJoin(candidate.applicationNames(), '|')}">
+          <div class="fi-existing-screen-thumb"
+               th:title="${candidate.screenName()} + ' 현재 운영 화면 썸네일'"
+               th:attr="data-preview-src=@{/projects/{p}/artifacts/solution-mockups/files/{f}(p=${projectId},f=${candidatePreviewPaths.get(candidate.screenId())},skin=${previewSkin})}">
+            <div class="fi-screen-thumbnail__sample" aria-hidden="true"><i></i><b></b><b></b><b></b></div>
+            <span class="fi-screen-preview-loading" aria-hidden="true"><i></i></span>
+          </div>
+          <div class="fi-existing-screen-copy">
+            <div><strong th:text="${candidate.screenName()}"></strong><span class="badge badge--outline" th:text="${candidate.system()}"></span></div>
+            <small class="num" th:text="${candidate.screenId()}"></small>
+            <p th:text="${candidate.menuPath() == null or candidate.menuPath().isBlank() ? '현재 운영 화면' : candidate.menuPath()}"></p>
+          </div>
+          <button class="button setup-add-existing-screen" type="button" th:if="${frd == null}"
+                  th:attr="data-screen-id=${candidate.screenId()},data-screen-name=${candidate.screenName()},data-screen-system=${candidate.system()},data-preview-src=@{/projects/{p}/artifacts/solution-mockups/files/{f}(p=${projectId},f=${candidatePreviewPaths.get(candidate.screenId())},skin=${previewSkin})}">화면 추가</button>
+          <button class="button" type="button" disabled
+                  th:if="${frd != null and selectedScreenIds.contains(candidate.screenId())}">추가됨</button>
+          <form method="post" th:if="${frd != null and !selectedScreenIds.contains(candidate.screenId())}"
+                th:action="@{/projects/{p}/artifacts/frds/{f}/screens(p=${projectId},f=${frd.id()})}">
+            <input type="hidden" name="screenId" th:value="${candidate.screenId()}">
+            <input type="hidden" name="screenName" th:value="${candidate.screenName()}">
+            <input type="hidden" name="baseScreenId" th:value="${candidate.screenId()}">
+            <button class="button" type="submit">기존 화면 추가</button>
+          </form>
+        </li>
+      </ul>
+      <div class="fi-existing-screen-empty" id="existing-screen-empty" role="status" aria-live="polite"
+           th:hidden="${!#lists.isEmpty(candidates)}">
+        <strong id="existing-screen-empty-title">추가할 수 있는 현재 운영 화면이 없습니다</strong>
+        <p id="existing-screen-empty-description">솔루션 목업에 등록된 화면을 확인해 주세요.</p>
+      </div>
+    </section>
+
+    <section class="fi-screen-add-panel" id="new-screen-panel" role="tabpanel" aria-labelledby="new-screen-tab" hidden>
+      <header class="fi-screen-add-panel__head"><h3>신규 화면 정보</h3><p>화면명, 시스템, 화면 유형만 입력해 주세요. IA 위치와 생김새는 AI가 분석합니다.</p></header>
+      <div class="fi-new-screen-form" th:if="${frd == null}">
+        <label class="field fi-new-screen-form__name" for="new-screen-name"><span class="field__label">새 화면명</span><input class="field__control" id="new-screen-name" type="text" placeholder="예: 임시 저장 문서함"></label>
+        <label class="field fi-new-screen-form__system" for="new-screen-system">
+          <span class="field__label">시스템</span>
+          <select class="field__control" id="new-screen-system" name="newScreenSystem" required>
+            <option value="" th:selected="${#sets.size(candidateSystems) != 1}" th:disabled="${#sets.size(candidateSystems) > 1}">시스템을 선택하세요</option>
+            <option th:each="system : ${candidateSystems}" th:value="${system}" th:text="${systemLabels.label(system)}"
+                    th:selected="${#sets.size(candidateSystems) == 1}">백오피스</option>
+          </select>
+          <small class="field__hint">화면이 속할 시스템을 지정합니다.</small>
+        </label>
+        <label class="field fi-new-screen-form__type" for="new-screen-type">
+          <span class="field__label">화면 유형</span>
+          <select class="field__control" id="new-screen-type" name="newScreenType" required>
+            <option value="" selected disabled>화면 유형을 선택하세요</option>
+            <option th:each="type : ${newScreenTypes}" th:value="${type}" th:text="${type}">목록</option>
+          </select>
+          <small class="field__hint">이 유형의 현재 운영 화면을 보고 만듭니다.</small>
+        </label>
+        <!--
+          ⛔ 「새 화면 ID」 칸을 되살리지 마라 (2026-08-22 병주 지시) — 화면ID 는 빌더가 짓는다.
+             읽기 전용 표시도 두지 않는다: 기획자가 확인할 재료가 없다.
+             정본 docs/superpowers/specs/2026-08-22-new-screen-id-design.md
+        -->
+        <div class="fi-new-screen-form__actions"><p class="source-error" id="new-screen-error" hidden></p><button class="button button--primary" id="setup-add-new-screen" type="button">신규 화면 추가</button></div>
+      </div>
+      <form class="fi-new-screen-form" method="post" th:if="${frd != null}"
+            th:action="@{/projects/{p}/artifacts/frds/{f}/screens(p=${projectId},f=${frd.id()})}">
+        <label class="field fi-new-screen-form__name" for="new-screen-name"><span class="field__label">새 화면명</span><input class="field__control" id="new-screen-name" name="screenName" type="text" placeholder="예: 임시 저장 문서함" required></label>
+        <label class="field fi-new-screen-form__system" for="new-screen-system">
+          <span class="field__label">시스템</span>
+          <select class="field__control" id="new-screen-system" name="systemCode" required>
+            <option value="" th:selected="${#sets.size(candidateSystems) != 1}" th:disabled="${#sets.size(candidateSystems) > 1}">시스템을 선택하세요</option>
+            <option th:each="system : ${candidateSystems}" th:value="${system}" th:text="${systemLabels.label(system)}"
+                    th:selected="${#sets.size(candidateSystems) == 1}">백오피스</option>
+          </select>
+          <small class="field__hint">화면이 속할 시스템을 지정합니다.</small>
+        </label>
+        <label class="field fi-new-screen-form__type" for="new-screen-type">
+          <span class="field__label">화면 유형</span>
+          <select class="field__control" id="new-screen-type" name="screenType" required>
+            <option value="" selected disabled>화면 유형을 선택하세요</option>
+            <option th:each="type : ${newScreenTypes}" th:value="${type}" th:text="${type}">목록</option>
+          </select>
+          <small class="field__hint">이 유형의 현재 운영 화면을 보고 만듭니다.</small>
+        </label>
+        <!--
+          ⛔ 「새 화면 ID」 칸을 되살리지 마라 (2026-08-22 병주 지시) — 화면ID 는 빌더가 짓는다.
+             ⚠ name="screenId" 를 여기 두면 서버가 「이미 있는 화면」으로 읽고 거절한다.
+             정본 docs/superpowers/specs/2026-08-22-new-screen-id-design.md
+        -->
+        <div class="fi-new-screen-form__actions"><p>추가한 화면은 사용자 선택 · 신규 화면으로 표시됩니다.</p><button class="button button--primary" type="submit">신규 화면 추가</button></div>
+      </form>
+    </section>
+  </div>
+</dialog>
+</body>
+</html>

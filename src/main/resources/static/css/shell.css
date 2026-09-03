@@ -1,0 +1,1153 @@
+/* 빌더 껍데기 — 머리 · 메뉴 열 · 본문 · 카드
+ *
+ * 정본: docs/superpowers/specs/2026-08-09-screen-shell-design.md
+ *
+ * 퍼블리셔에서 복사한 넷(tokens · reset · typography · components)은 손대지 않는다.
+ * 빌더 몫 스타일은 전부 이 파일에 있다 — 그래서 어느 줄이 누구 것인지 파일로 갈린다.
+ * 고칠 것이 생기면 퍼블리셔 쪽을 고치고 다시 복사한다.
+ *
+ * 색이 보이는 자리는 두 곳뿐이다 — 라일락(지금 여기 · 지금 돈다) · 빨강(막혔다).
+ * 상태는 글자가 정본이고 색은 거들기다.
+ */
+
+:root {
+  --builder-sidebar-width: 232px;
+  --builder-topbar-height: 56px;
+  --builder-sidebar: #24263b;
+  --builder-sidebar-hover: #32354d;
+  --builder-sidebar-active: #434663;
+}
+
+/* ── Admin 과 맞춘 업무 화면 글자 위계 ──────────────────────────
+ * 퍼블리셔 typography.css 의 본문 15px 을 유지하고, 표는 본문 13px · 머리 12px,
+ * 메뉴는 14px 로 맞춘다. 필드 컨트롤은 Admin 과 같은 40px · 13px 규격을 쓴다.
+ */
+body {
+  font-size: 0.9375rem;
+  line-height: 1.65;
+}
+
+.data-table {
+  font-size: 0.8125rem;
+  line-height: 1.5;
+}
+
+.data-table thead th {
+  font-size: 0.75rem;
+  line-height: 1.4;
+  font-weight: 700;
+}
+
+/* 상태판 안의 문장도 본문이다. 퍼블 컴포넌트가 13px 로 두는데 아직 쓰는 화면이 없다 —
+ * 쓰는 순간 하한을 어기게 되어 있어서 미리 덮는다(2026-08-09 코덱스 적대검증이 짚었다). */
+.state-panel p {
+  font-size: 0.9375rem;
+  line-height: 1.65;
+}
+
+/* 배지는 라벨이라 12px 이 하한인데 퍼블 컴포넌트가 0.72rem(11.52px)로 둔다.
+ * 위의 셋과 같은 이유로 여기서 덮는다 — 상태 배지는 목록에서 제일 많이 읽는 글자다.
+ * (2026-08-10 실측: 덮개가 없는 유일한 하한 위반이었다.) */
+.badge,
+.status-badge {
+  font-size: 0.75rem;
+}
+
+/* ── 머리 — 아홉 화면 전부에 붙는다 ───────────────────────────── */
+
+.app-header {
+  position: fixed;
+  left: var(--builder-sidebar-width);
+  right: 0;
+  top: 0;
+  z-index: 15;
+  height: var(--builder-topbar-height);
+  /* 프로젝트 글자는 본문 시작선(28px)에 맞추고, 앞의 10px은 선택 영역으로 남긴다. */
+  padding: 0 28px 0 18px;
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  border-bottom: 1px solid var(--color-line);
+  background: rgb(255 255 255 / 96%);
+}
+
+.app-header__brand {
+  position: fixed;
+  left: 0;
+  top: 0;
+  z-index: 21;
+  width: var(--builder-sidebar-width);
+  height: var(--builder-topbar-height);
+  padding: 0 20px;
+  display: flex;
+  align-items: center;
+  border-bottom: 1px solid rgb(255 255 255 / 8%);
+  background: var(--builder-sidebar);
+  color: #fff;
+  font-size: 1rem;
+  font-weight: 750;
+  letter-spacing: -0.0125em;
+  white-space: nowrap;
+  text-decoration: none;
+}
+
+.app-header__version {
+  margin-left: 6px;
+  color: rgb(255 255 255 / 62%);
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0;
+  transform: translateY(1px);
+}
+
+.app-nav-toggle {
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  display: grid;
+  place-items: center;
+  flex: none;
+  border: 1px solid var(--color-line);
+  border-radius: 8px;
+  color: var(--color-ink);
+  background: #fff;
+  box-shadow: 0 2px 8px rgb(23 24 39 / 6%);
+  cursor: pointer;
+}
+
+.app-nav-toggle:hover {
+  color: var(--color-action-primary);
+  background: var(--color-action-primary-soft);
+}
+
+.app-nav-toggle:focus-visible {
+  outline: 2px solid var(--color-action-primary);
+  outline-offset: 2px;
+}
+
+.app-nav-toggle svg {
+  width: 18px;
+  height: 18px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.app-nav-toggle__expand {
+  display: none;
+}
+
+/* 오른쪽 끝으로 밀어내는 빈 칸 */
+.app-header__gap {
+  flex: 1 1 auto;
+}
+
+.app-header__builder-entry {
+  flex: none;
+  padding: 0 var(--space-1);
+  color: var(--color-action-primary);
+  font-size: 0.8125rem;
+  font-weight: 700;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.app-header__builder-entry:hover {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.app-header__builder-entry:focus-visible {
+  border-radius: 4px;
+  outline: 2px solid var(--color-action-primary);
+  outline-offset: 3px;
+}
+
+.pop__body .app-header__builder-menu-entry {
+  display: none;
+}
+
+/* ── 알림 · 사람 — 눌러서 펴는 자리. 자바스크립트를 쓰지 않는다 ── */
+
+.pop {
+  position: relative;
+}
+
+.pop > summary {
+  min-height: 34px;
+  padding: 0 var(--space-3);
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  border-radius: 6px;
+  color: var(--color-ink);
+  font-size: 0.875rem;
+  cursor: pointer;
+  list-style: none;
+}
+
+.pop > summary::-webkit-details-marker {
+  display: none;
+}
+
+.pop > summary:hover {
+  background: var(--color-soft);
+}
+
+.pop[open] > summary {
+  background: var(--color-soft);
+}
+
+.notification-trigger {
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  position: relative;
+  justify-content: center;
+  border: 1px solid var(--color-line);
+  border-radius: var(--radius-control);
+  background: var(--color-canvas);
+  box-shadow: 0 1px 2px rgb(20 16 24 / 5%);
+}
+
+.notification-trigger svg {
+  width: 24px;
+  height: 24px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.notification-trigger:hover {
+  border-color: #c9bfd8;
+  color: var(--color-action-primary);
+  background: var(--color-action-primary-soft);
+}
+
+.pop--notifications[open] > .notification-trigger {
+  border-color: #bba9d6;
+  color: var(--color-action-primary);
+  background: var(--color-action-primary-soft);
+  box-shadow: 0 0 0 3px rgb(98 81 125 / 10%);
+}
+
+/* 오른쪽 마지막 사람 메뉴는 단순 이름이 아니라 펼침 메뉴임을 드러낸다. */
+.app-header > .pop:last-child > summary::after {
+  content: "";
+  width: 5px;
+  height: 5px;
+  margin: -3px 1px 0 2px;
+  border-right: 1.5px solid currentColor;
+  border-bottom: 1.5px solid currentColor;
+  transform-origin: center;
+  transform: rotate(45deg);
+  transition: transform 160ms ease;
+}
+
+.app-header > .pop:last-child[open] > summary::after {
+  transform: rotate(225deg);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .app-header > .pop:last-child > summary::after {
+    transition: none;
+  }
+}
+
+.pop__body {
+  position: absolute;
+  right: 0;
+  top: calc(100% + var(--space-2));
+  z-index: 20;
+  min-width: 280px;
+  padding: var(--space-2);
+  border: 1px solid var(--color-line);
+  border-radius: var(--radius-message);
+  background: var(--color-canvas);
+  box-shadow: var(--shadow-float);
+}
+
+/* 프로젝트 팝업은 머리의 왼쪽 끝에 있는 유일한 .pop 이다. 알림 · 사람은 오른쪽에 있어서
+ * right:0 로 트리거 오른쪽 끝에 대고 왼쪽으로 펼쳐도 항상 화면 안에 남는데, 왼쪽 트리거에
+ * 같은 규칙을 쓰면 몸통(최소 280px)이 트리거보다 왼쪽으로 자란다 — 실측(2026-08-10,
+ * 1440px · 두 글자 프로젝트 이름): 트리거 오른쪽 끝이 약 252px 라 몸통이 [-28, 252] 에 걸쳐
+ * **가로 스크롤 없이** 왼쪽이 잘린다. 그래서 이 자리만 반대로 왼쪽에 대고 오른쪽으로 펼친다.
+ * ⚠ 767px 이하는 안 건드린다 — 아래 좁은 창 규칙이 이미 .pop 을 static 으로 되돌려서
+ *    이 규칙의 대상이 아니고, 그 갈래는 이 검토의 범위 밖이다(「기능은 하되 보기엔 어긋난다」로
+ *    이미 알고 받아들인 것 — 여길 건드리면 오히려 그 규칙과 뒤섞인다).
+ */
+@media (min-width: 768px) {
+  .pop--project .pop__body {
+    left: 0;
+    right: auto;
+    min-width: 220px;
+  }
+}
+
+.pop__body a,
+.pop__body button {
+  width: 100%;
+  min-height: 44px;
+  padding: var(--space-2) var(--space-3);
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  border: 0;
+  border-radius: var(--radius-control);
+  background: transparent;
+  color: var(--color-ink);
+  font-size: 0.875rem;
+  text-align: left;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.pop__body a:hover,
+.pop__body button:hover {
+  background: var(--color-soft);
+}
+
+.pop__body hr {
+  height: 1px;
+  margin: var(--space-2) 0;
+  border: 0;
+  background: var(--color-line);
+}
+
+/* 안 읽은 알림 개수. 0 이면 아예 안 그린다 */
+.unread {
+  min-width: 19px;
+  height: 19px;
+  padding: 0 5px;
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  display: inline-grid;
+  place-items: center;
+  border-radius: var(--radius-pill);
+  border: 2px solid var(--color-canvas);
+  background: var(--color-action-primary);
+  color: var(--color-canvas);
+  font-size: 0.65rem;
+  font-weight: 750;
+  line-height: 1;
+}
+
+.pop--notifications .notification-panel {
+  width: min(380px, calc(100vw - 32px));
+  padding: 0;
+  overflow: hidden;
+}
+
+.notification-panel__head {
+  min-height: 68px;
+  padding: var(--space-3) var(--space-4);
+  display: flex;
+  align-items: center;
+  border-bottom: 1px solid var(--color-line);
+}
+
+.notification-panel__head h2,
+.notification-panel__head p { margin: 0; }
+.notification-panel__head h2 { font-size: 0.9375rem; }
+.notification-panel__head p { margin-top: 3px; color: var(--color-muted); font-size: 0.7rem; }
+.notification-panel__list { max-height: min(420px, calc(100vh - 150px)); overflow-y: auto; }
+
+/* 알림 한 줄.
+ * ⚠ 선택자에 a 를 붙여 둔 이유 — 위의 .pop__body a 가 특이도 0-1-1 이라
+ * 그냥 .notice(0-1-0)로 쓰면 배치와 색을 못 이긴다. 그러면 읽은 알림이 흐려지지 않아
+ * 읽음·안읽음 구분이 사라진다 (2026-08-09 코덱스 적대검증이 잡았다). */
+.pop__body a.notice,
+.notice {
+  min-height: 72px;
+  padding: var(--space-3) var(--space-4);
+  display: grid;
+  grid-template-columns: 8px minmax(0, 1fr);
+  align-items: start;
+  gap: var(--space-3);
+  border-radius: 0;
+  border-bottom: 1px solid var(--color-line);
+}
+
+.pop__body a.notice:last-child { border-bottom: 0; }
+.notice__state { width: 7px; height: 7px; margin-top: 6px; border-radius: 50%; background: transparent; }
+.notice--unread .notice__state { background: var(--color-action-primary); }
+.notice__copy { min-width: 0; display: grid; gap: 5px; }
+.notice__copy strong { font-size: 0.8125rem; font-weight: 650; line-height: 1.45; }
+
+.notice time {
+  color: var(--color-muted);
+  font-size: 0.68rem;
+}
+
+.pop__body a.notice--unread,
+.notice--unread {
+  font-weight: 650;
+}
+
+.pop__body a.notice--read,
+.notice--read {
+  color: var(--color-muted);
+}
+
+.notice--read .notice__copy strong { font-weight: 500; }
+.notification-empty { min-height: 220px; padding: var(--space-8) var(--space-4); display: grid; place-items: center; align-content: center; text-align: center; }
+.notification-empty__icon { width: 44px; height: 44px; margin-bottom: var(--space-3); display: grid; place-items: center; border-radius: 50%; color: var(--color-muted); background: var(--color-soft); }
+.notification-empty__icon svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+.notification-empty strong { font-size: 0.8125rem; }
+.notification-empty p { margin: var(--space-1) 0 0; color: var(--color-muted); font-size: 0.72rem; }
+
+/* ── 틀 — 왼쪽 메뉴 열 + 본문 ─────────────────────────────────── */
+
+.app-shell {
+  min-height: 100vh;
+  display: block;
+}
+
+/* 메뉴 열이 없고 본문이 화면을 꽉 쓰는 화면(작업대) */
+.app-shell--wide {
+  display: block;
+}
+
+/* 메뉴 열이 없고 중앙 카드 하나만 있는 화면(로그인 계열 넷).
+ * 세로로도 가운데 둔다 — 위쪽에 치우치면 아래가 통째로 비고 세로 스크롤까지 생긴다. */
+.app-shell--card {
+  display: grid;
+  /* ⚠ .app-shell 의 248px 열을 반드시 지운다. 안 지우면 카드가 그 첫 칸(248px)에 갇힌다 */
+  grid-template-columns: minmax(0, 1fr);
+  place-items: center;
+  padding: var(--space-8) var(--space-4);
+}
+
+.app-nav {
+  position: fixed;
+  inset: var(--builder-topbar-height) auto 0 0;
+  z-index: 20;
+  width: var(--builder-sidebar-width);
+  min-height: 0;
+  padding: 18px 12px;
+  overflow-y: auto;
+  border-right: 1px solid rgb(255 255 255 / 6%);
+  background: var(--builder-sidebar);
+}
+
+/* 어느 영역에 있는지를 화면에 보인다. 이게 없으면 사람이 드롭다운을 열어봐야 안다 */
+.app-nav__title {
+  margin: 0 10px 7px;
+  color: #7f748d;
+  font-size: 0.6875rem;
+  font-weight: 650;
+  letter-spacing: 0;
+}
+
+.app-nav__project {
+  position: relative;
+  padding-bottom: 18px;
+  margin: 0 0 12px;
+}
+
+.app-nav__project::after {
+  content: "";
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  border-bottom: 1px solid rgb(255 255 255 / 10%);
+  pointer-events: none;
+}
+
+.app-nav__project-combobox {
+  position: relative;
+}
+
+.app-nav__project-label {
+  display: block;
+  margin-bottom: 1px;
+  color: #a9a3b1;
+  font-size: 0.625rem;
+  font-weight: 600;
+}
+
+.app-nav__project-trigger {
+  width: 100%;
+  min-height: 44px;
+  padding: 0 10px 0 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  border: 1px solid rgb(255 255 255 / 18%);
+  border-radius: var(--radius-control);
+  color: #fff;
+  background: transparent;
+  font: inherit;
+  font-size: 0.8125rem;
+  text-align: left;
+  cursor: pointer;
+}
+
+.app-nav__project-trigger:hover,
+.app-nav__project-trigger[aria-expanded="true"] {
+  border-color: rgb(255 255 255 / 32%);
+  background: rgb(255 255 255 / 7%);
+}
+
+.app-nav__project-trigger:focus-visible,
+.app-nav__project-option:focus-visible {
+  outline: 2px solid var(--color-lilac);
+  outline-offset: 2px;
+}
+
+.app-nav__project-copy,
+.app-nav__project-value,
+.app-nav__project-option-label {
+  min-width: 0;
+}
+
+.app-nav__project-value,
+.app-nav__project-option-label {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.app-nav__project-value {
+  font-size: 0.75rem;
+  font-weight: 650;
+}
+
+.app-nav__project-chevron,
+.app-nav__project-option-check {
+  width: 16px;
+  height: 16px;
+  flex: none;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.8;
+}
+
+.app-nav__project-chevron {
+  transition: transform 160ms ease;
+}
+
+.app-nav__project-trigger[aria-expanded="true"] .app-nav__project-chevron {
+  transform: rotate(180deg);
+}
+
+.app-nav__project-list {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  left: 0;
+  z-index: 40;
+  max-height: min(360px, calc(100vh - 180px));
+  padding: 4px;
+  overflow-y: auto;
+  border: 1px solid var(--color-line);
+  border-radius: var(--radius-control);
+  background: var(--color-canvas);
+  box-shadow: var(--shadow-float);
+}
+
+.app-nav__project-list[hidden] {
+  display: none;
+}
+
+.app-nav__project-option {
+  min-height: 36px;
+  padding: 6px 32px 6px 8px;
+  position: relative;
+  display: flex;
+  align-items: center;
+  border-radius: 6px;
+  color: var(--color-ink);
+  font-size: 0.8125rem;
+  cursor: pointer;
+  user-select: none;
+}
+
+.app-nav__project-option:hover,
+.app-nav__project-option[data-highlighted] {
+  color: var(--color-ink);
+  background: var(--color-action-primary-soft);
+}
+
+.app-nav__project-option[aria-selected="true"] {
+  color: var(--color-action-primary);
+  font-weight: 650;
+}
+
+.app-nav__project-option-check {
+  position: absolute;
+  top: 50%;
+  right: 8px;
+  display: none;
+  transform: translateY(-50%);
+}
+
+.app-nav__project-option[aria-selected="true"] .app-nav__project-option-check {
+  display: block;
+}
+
+/* 44px 이 하한이다 — 좁은 창에서 이 링크들이 주요 조작 수단이 된다 */
+.app-nav a {
+  min-height: 40px;
+  padding: 0 11px;
+  margin: 2px 0;
+  display: flex;
+  align-items: center;
+  border-radius: 6px;
+  color: #cfc8d8;
+  font-size: 0.875rem;
+  font-weight: 500;
+  text-decoration: none;
+}
+
+.app-nav a:hover {
+  color: #fff;
+  background: var(--builder-sidebar-hover);
+}
+
+/* 지금 있는 자리. 화면에서 라일락이 쓰이는 첫째 자리다 */
+.app-nav a[aria-current="page"] {
+  color: #fff;
+  background: var(--builder-sidebar-active);
+  font-weight: 650;
+}
+
+/* 산출물 분류 표식 — 흰색은 화이트존, 빨강은 레드존,
+ * 초록은 그린존이다. 배경과 선택 상태가 달라져도 이 뜻은 유지한다. */
+.app-nav .artifact-link::before {
+  content: "";
+  width: 10px;
+  height: 10px;
+  flex: none;
+  margin-right: 10px;
+  border-radius: 2px;
+}
+
+.app-nav .artifact-link--white::before {
+  border: 1px solid rgb(255 255 255 / 55%);
+  background: #fff;
+}
+
+.app-nav .artifact-link--red::before {
+  background: #ff5a5f;
+}
+
+.app-nav .artifact-link--green::before {
+  background: #20c77a;
+}
+
+.app-nav hr {
+  height: 1px;
+  margin: var(--space-3) 0;
+  border: 0;
+  background: rgb(255 255 255 / 8%);
+}
+
+/* ── 본문 ─────────────────────────────────────────────────────── */
+
+.app-main {
+  min-width: 0;
+  min-height: 100vh;
+  margin-left: var(--builder-sidebar-width);
+  padding: calc(var(--builder-topbar-height) + 24px) 28px 48px;
+  background: var(--color-paper);
+}
+
+.app-main > * {
+  width: 100%;
+}
+
+.app-nav,
+.app-header,
+.app-header__brand,
+.app-main {
+  transition: transform .2s ease, left .2s ease, margin-left .2s ease, opacity .15s ease;
+}
+
+body.is-nav-collapsed .app-nav {
+  transform: translateX(-100%);
+}
+
+body.is-nav-collapsed .app-header__brand {
+  transform: translateX(-100%);
+  opacity: 0;
+  pointer-events: none;
+}
+
+body.is-nav-collapsed .app-header {
+  left: 0;
+}
+
+body.is-nav-collapsed .app-main {
+  margin-left: 0;
+}
+
+body.is-nav-collapsed .app-nav-toggle__collapse {
+  display: none;
+}
+
+body.is-nav-collapsed .app-nav-toggle__expand {
+  display: block;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .app-nav,
+  .app-header,
+  .app-header__brand,
+  .app-main {
+    transition: none;
+  }
+}
+
+/* ⚠ 자식 선택자에 별 하나가 끼어 있는 이유 —
+ * 화면이 넘기는 본문 조각은 자기 뿌리 태그(<div th:fragment="본문">)를 데리고 온다.
+ * 그래서 실제 DOM 은 main > div > h1 이고, main > h1 은 어디에서도 안 맞는다.
+ * 이걸 모르고 main > h1 로 썼더니 카드 제목 크기와 표·제목 사이 여백이 통째로 안 먹었다
+ * (2026-08-09 코덱스 적대검증이 잡았다).
+ */
+.app-main > * > h1 {
+  margin-bottom: var(--space-6);
+  font-size: 1.5rem;
+}
+
+/* 표나 폼 뒤에 다음 덩이가 바로 붙지 않게 한다 */
+.app-main > * > h2 {
+  margin-top: var(--space-12);
+  margin-bottom: var(--space-4);
+  font-size: 1.125rem;
+}
+
+.app-main > * > .table-wrap {
+  margin-bottom: var(--space-6);
+}
+
+/* 사람이 읽는 글 덩어리만 폭을 제한한다. 틀과 표는 화면을 꽉 쓴다 */
+.prose {
+  max-width: 70ch;
+}
+
+/* 로그인 계열 넷이 쓰는 중앙 카드. 가운데 두는 것은 감싸는 .app-shell--card 가 한다 */
+.app-card {
+  width: min(380px, 100%);
+  padding: var(--space-8);
+  border: 1px solid var(--color-line);
+  border-radius: var(--radius-panel);
+  background: var(--color-canvas);
+}
+
+.app-card > * > h1 {
+  margin-bottom: var(--space-2);
+  font-size: 1.5rem;
+}
+
+/* 제목 바로 다음 한 줄만 흐리게 한다. p 전체를 잡으면 오류 한 줄까지 흐려진다 */
+.app-card > * > h1 + p {
+  margin-bottom: var(--space-6);
+  color: var(--color-muted);
+}
+
+/* 카드와 본문 안의 폼 — 라벨은 입력칸 위, 한 열로 쌓는다 */
+.stack {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.stack--tight {
+  gap: var(--space-3);
+}
+
+/* ── 상태 — 글자가 정본, 색은 거들기 ──────────────────────────── */
+
+.state {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.state::before {
+  width: 8px;
+  height: 8px;
+  flex: none;
+  border-radius: 50%;
+}
+
+/* 지금 돌고 있거나 사람이 손대야 한다 */
+.state--live::before {
+  content: "";
+  background: var(--color-lilac);
+  box-shadow: 0 0 0 3px var(--color-lilac-soft);
+}
+
+/* 막혔다. 화면에서 빨강이 쓰이는 유일한 자리다 */
+.state--stuck {
+  color: var(--color-error);
+  font-weight: 650;
+}
+
+.state--stuck::before {
+  content: "";
+  background: var(--color-error);
+}
+
+/* 끝났거나 안 할 것. 색을 주지 않는다 */
+.state--done {
+  color: var(--color-muted);
+}
+
+/* ── 나가는 버튼 아래 한 줄 설명 ──────────────────────────────── */
+
+.act {
+  display: grid;
+  justify-items: end;
+  gap: var(--space-2);
+}
+
+.act__why {
+  max-width: 34ch;
+  color: var(--color-muted);
+  font-size: 0.8125rem;
+  text-align: right;
+}
+
+/* 오류 한 줄 — 인라인 색을 여기로 걷어 왔다.
+ * 크기를 본문과 같이 둔다. 오류는 캡션이 아니라 사람이 문제를 풀려고 읽는 본문이다. */
+.error-line {
+  color: var(--color-error);
+  font-size: 0.9375rem;
+}
+
+/* ══ 밀도 — 업무 화면이 쓰는 것 일곱 (2026-08-10) ══════════════════
+ *
+ * 정본: docs/mockups/_style-guide.html (밀도 규칙과 견본이 거기 있다)
+ *
+ * 본문 15px, 표 본문 13px · 머리 12px, 메뉴 14px의 위계 안에서 밀도를 만든다.
+ * 행 안쪽 여백 · 열 개수 · 한 칸에 접는 정보를 함께 조절한다.
+ *
+ * ⛔ 상태에 색을 배정하지 않는다. 글자가 정본이다 — 위 .state 계열과
+ *    2026-08-09-screen-shell-design.md 「상태를 어떤 말로 쓰나」가 그것을 정했다.
+ *    .badge 는 개수·꼬리표에만 쓰고 상태에는 안 쓴다.
+ */
+
+/* 화면 머리 — 제목과 그 화면의 주 조작을 한 줄에 둔다.
+ * 퍼블 h1 아래 24px 를 여기서 걷는다(조작이 제목과 같은 줄에 서야 한다). */
+.page-head {
+  margin-bottom: var(--space-4);
+  padding-bottom: var(--space-3);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-2) var(--space-4);
+  border-bottom: 1px solid var(--color-line);
+}
+
+/* 제목이 page-head 바로 아래에 있거나 설명을 묶은 div 안에 있어도 같은 규격을 쓴다. */
+.page-head .page-head__title {
+  margin-bottom: 0;
+  font-size: 1.5rem;
+}
+
+.page-head__gap {
+  flex: 1 1 auto;
+}
+
+/* 제목 옆 한 줄 — 이 화면이 무엇을 세는 자리인지. 흐린 글자다 */
+.page-head__sub {
+  margin: 0;
+  color: var(--color-muted);
+}
+
+/* ── 표 — 밀도 갈래 ──────────────────────────────────────────── */
+
+/* 한 줄 행이 답답하지 않도록 상하좌우 12px의 업무 화면 밀도를 쓴다. */
+.data-table--dense th,
+.data-table--dense td {
+  padding: var(--space-3);
+}
+
+/* 목록 행은 한 줄로 읽고 셀의 기준선을 가운데에 맞춘다. */
+.data-table--dense td {
+  vertical-align: middle;
+  white-space: nowrap;
+}
+
+/* 번호 열과 상태 열은 줄바꿈하지 않는다 — 접히면 열로 세워 읽을 수 없다.
+ * ⚠ 문장이 들어가는 칸에는 붙이지 마라 — 열이 문장 길이만큼 넓어져 표가 가로로 스크롤되고
+ *   마지막 열이 잘린다(2026-08-10 실측: BRD 목록의 「열기」 열이 그렇게 잘렸다). */
+.data-table--dense .nowrap {
+  white-space: nowrap;
+}
+
+/* 열 이름은 늘 안 접는다 — 「업무 · 시스템」이 「업무 · 시 / 스템」으로 갈라지면
+ * 열 머리가 두 줄이 되면서 표 전체가 위로 밀린다. 열 이름은 원래 짧다. */
+.data-table--dense thead th {
+  white-space: nowrap;
+}
+
+/* 긴 목록에서 표 머리를 붙여 둔다. 스무 줄이 넘으면 열 이름이 화면 밖으로 나간다.
+ * th 배경은 퍼블 컴포넌트가 이미 --color-soft 로 준다 — 없으면 글자가 겹쳐 보인다. */
+.table-wrap--tall {
+  max-height: 64vh;
+  overflow-y: auto;
+}
+
+.table-wrap--tall thead th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+
+/* 첫 열을 왼쪽에 붙여 둔다 — 열이 많은 표를 가로로 스크롤하면
+ * 「어느 줄인가」가 화면 밖으로 나가고, 그러면 나머지 칸이 뜻을 잃는다.
+ * ⚠ 배경을 반드시 준다. 없으면 스크롤한 칸이 밑으로 지나가며 글자가 겹친다. */
+.data-table--pin1 th:first-child,
+.data-table--pin1 td:first-child {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  background: var(--color-canvas);
+}
+
+.data-table--pin1 thead th:first-child {
+  z-index: 2;
+  background: var(--color-soft);
+}
+
+/* ── 표 셀은 한 줄로 읽는다 ───────────────────────────────────────
+ * 주 정보와 곁 정보는 같은 줄에 두고, 표 컨테이너 안에서만 가로로 이동한다. */
+.cell {
+  min-width: 0;
+  display: inline-flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  white-space: nowrap;
+}
+
+.cell__sub {
+  color: var(--color-muted);
+  font-size: 0.75rem;
+  line-height: 1.45;
+}
+
+.cell > .cell__sub::before,
+.document-detail > .cell__sub::before {
+  content: "·";
+  margin-right: var(--space-2);
+  color: var(--color-muted);
+}
+
+/* 본문처럼 긴 글도 목록에서는 한 줄만 보이고 전체 내용은 상세에서 확인한다. */
+.cell__clamp {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ── 열로 세워 읽는 값 — 번호 · 날짜 ────────────────────────────
+ * 자릿수 폭을 고정한다. 크기는 안 준다 — .data-table 의 14px 을 그대로 물려받는다.
+ * (산출물 ID 는 REQ-1000 처럼 자리가 늘어날 수 있어 폭 고정이 정렬의 근거가 된다.) */
+.num {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+}
+
+/* ── 걸음 눈금 — 이 시스템의 유일한 그림 장치 ────────────────────
+ * 두 곳에 같은 것을 쓴다: 접수의 칸 여덟, 산출물 사슬의 층 다섯.
+ * ⛔ 글자가 정본이다. 이 눈금은 「앞으로 몇 칸 남았나」만 거든다 —
+ *    그래서 늘 글자와 짝지어 놓고, 눈금만으로 뜻을 전달하지 않는다.
+ * 빈 칸에 1px 테두리를 주는 이유: --color-line 은 흰 바탕에서 1.2:1 이라
+ * UI 요소 3:1 하한에 못 미친다. --color-muted 테두리는 5.7:1 이다. */
+.steps {
+  display: inline-flex;
+  gap: 2px;
+  vertical-align: middle;
+}
+
+.steps i {
+  width: 10px;
+  height: 9px;
+  border: 1px solid var(--color-muted);
+  border-radius: 2px;
+}
+
+.steps i[data-done] {
+  border-color: var(--color-ink);
+  background: var(--color-ink);
+}
+
+.steps i[data-now] {
+  border-color: var(--color-ink);
+  background: var(--color-lilac);
+}
+
+/* ── 흔적 — 알림은 읽으면 사라지고 이것은 목록에 남는다 ──────────
+ * 색을 안 쓴다(색은 검사 실패·오류 자리다). 굵기와 글자로만 말한다. */
+.mark {
+  font-weight: 700;
+}
+
+/* ── 좁은 창 — 메뉴 열이 위로 눕는다 ─────────────────────────────
+ * 설계 문서는 모바일을 「여기 없는 것」으로 뒀다. 여기서 하는 것은
+ * 가로 스크롤을 막는 최소한이다(가로 스크롤은 접근성 최저선이다).
+ */
+@media (max-width: 767px) {
+  .app-shell {
+    display: block;
+    padding-top: 64px;
+  }
+
+  .app-nav {
+    position: sticky;
+    inset: auto;
+    top: 0;
+    z-index: 10;
+    width: 100%;
+    padding: var(--space-2);
+    display: flex;
+    gap: var(--space-1);
+    overflow-x: auto;
+    border-right: 0;
+    border-bottom: 1px solid var(--color-line);
+    background: var(--color-canvas);
+  }
+
+  .app-nav__project {
+    position: relative;
+    width: min(220px, 72vw);
+    flex: none;
+    padding-bottom: 0;
+    margin: 0 var(--space-2) 0 0;
+  }
+
+  .app-nav__project::after {
+    display: none;
+  }
+
+  .app-nav__project-label {
+    color: var(--color-muted);
+  }
+
+  .app-nav__project-trigger {
+    min-height: 44px;
+    color: var(--color-ink);
+    border-color: var(--color-line);
+    background: var(--color-canvas);
+  }
+
+  .app-nav__project-trigger:hover,
+  .app-nav__project-trigger[aria-expanded="true"] {
+    border-color: var(--color-action-primary);
+    background: var(--color-canvas);
+  }
+
+  .app-nav__project-list {
+    top: calc(100% + 6px);
+    right: auto;
+    width: min(280px, calc(100vw - 16px));
+    max-height: min(360px, calc(100vh - 140px));
+  }
+
+  .app-nav a {
+    flex: none;
+    color: var(--color-ink);
+  }
+
+  .app-nav a:hover {
+    color: var(--color-ink);
+    background: var(--color-soft);
+  }
+
+  .app-nav a[aria-current="page"] {
+    color: var(--color-ink);
+    background: var(--color-lilac);
+    box-shadow: none;
+  }
+
+  .app-nav hr {
+    width: 1px;
+    height: auto;
+    margin: var(--space-2) var(--space-1);
+    flex: none;
+  }
+
+  .app-main {
+    margin-left: 0;
+    padding: var(--space-4);
+  }
+
+  .app-header {
+    left: 0;
+    height: 64px;
+    padding: 0 var(--space-4);
+    /* 아래 .pop__body 가 트리거가 아니라 이 머리를 기준으로 앉게 만든다 */
+    position: fixed;
+  }
+
+  .app-header__brand {
+    display: none;
+  }
+
+  .app-nav-toggle {
+    display: none;
+  }
+
+  body.is-nav-collapsed .app-nav,
+  body.is-nav-collapsed .app-header__brand {
+    transform: none;
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  .app-header__builder-entry {
+    display: none;
+  }
+
+  .pop__body .app-header__builder-menu-entry {
+    display: flex;
+  }
+
+  /*
+   * 좁은 창에서 팝업을 트리거가 아니라 머리 전체에 맞춘다.
+   *
+   * ⛔ 왜: 넓은 창에서는 .pop__body 가 트리거 오른쪽 끝에 붙어 왼쪽으로 280px 펼쳐진다.
+   *    그런데 알림 트리거 뒤에 사람 메뉴가 하나 더 있어서, 좁은 창에서는 알림의 오른쪽 끝이
+   *    화면 왼쪽에 가깝다 — 그래서 팝업 왼쪽이 화면 밖으로 나간다.
+   *    실측(2026-08-09 · Edge 헤드리스): 320px 에서 left = -89px, 360px 에서 -49px.
+   *    480px 부터는 원래대로 괜찮았다. 가로 스크롤은 생기지 않아서 **조용히 잘렸다.**
+   *
+   * .pop 의 position 을 static 으로 되돌려야 팝업의 기준이 머리로 올라간다.
+   */
+  .pop {
+    position: static;
+  }
+
+  .pop__body {
+    left: auto;
+    right: var(--space-4);
+    min-width: 0;
+    width: min(320px, calc(100% - var(--space-4) * 2));
+  }
+
+  .app-header .notification-trigger {
+    width: 44px;
+    padding: 0;
+    font-size: 0;
+  }
+
+  .pop--notifications .notification-panel {
+    left: var(--space-4);
+    right: var(--space-4);
+    width: auto;
+  }
+}

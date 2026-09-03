@@ -1,0 +1,124 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.bizplay.builder.frd.FrdScreenChatMapper">
+
+    <resultMap id="message" type="com.bizplay.builder.frd.FrdScreenChatMessage">
+        <constructor>
+            <idArg column="id" javaType="java.lang.String"/>
+            <arg column="frd_id" javaType="java.lang.String"/>
+            <arg column="frd_screen_id" javaType="java.lang.String"/>
+            <arg column="sequence_no" javaType="int"/>
+            <arg column="role" javaType="com.bizplay.builder.frd.FrdScreenChatMessage$Role"/>
+            <arg column="state" javaType="com.bizplay.builder.frd.FrdScreenChatMessage$State"/>
+            <arg column="content" javaType="java.lang.String"/>
+            <arg column="failure" javaType="java.lang.String"/>
+            <arg column="session_id" javaType="java.lang.String"/>
+            <arg column="created_at" javaType="java.time.Instant"/>
+            <arg column="completed_at" javaType="java.time.Instant"/>
+        </constructor>
+    </resultMap>
+
+    <sql id="columns">
+        id, frd_id, frd_screen_id, sequence_no, role, state,
+        content, failure, session_id, created_at, completed_at
+    </sql>
+
+    <insert id="insert" parameterType="com.bizplay.builder.frd.FrdScreenChatMessage">
+        insert into builder.adk_builder_frd_screen_chat_message
+               (id, frd_id, frd_screen_id, sequence_no, role, state, content, failure, completed_at, channel)
+        values (#{id}, #{frdId}, #{frdScreenId}, #{sequenceNo}, #{role}, #{state},
+                #{content,jdbcType=VARCHAR}, #{failure,jdbcType=VARCHAR}, #{completedAt,jdbcType=TIMESTAMP_WITH_TIMEZONE}, 'SCREEN')
+    </insert>
+
+    <insert id="insertCanvas" parameterType="com.bizplay.builder.frd.FrdScreenChatMessage">
+        insert into builder.adk_builder_frd_screen_chat_message
+               (id, frd_id, frd_screen_id, sequence_no, role, state, content, failure, completed_at, channel)
+        values (#{id}, #{frdId}, #{frdScreenId}, #{sequenceNo}, #{role}, #{state},
+                #{content,jdbcType=VARCHAR}, #{failure,jdbcType=VARCHAR}, #{completedAt,jdbcType=TIMESTAMP_WITH_TIMEZONE}, 'CANVAS')
+    </insert>
+
+    <select id="selectNextSequence" resultType="int">
+        select coalesce(max(sequence_no), 0) + 1
+          from builder.adk_builder_frd_screen_chat_message
+         where frd_screen_id = #{frdScreenId} and channel = 'SCREEN'
+    </select>
+
+    <select id="selectByScreenId" resultMap="message">
+        select <include refid="columns"/>
+          from builder.adk_builder_frd_screen_chat_message
+         where frd_screen_id = #{frdScreenId} and channel = 'SCREEN'
+         order by sequence_no
+    </select>
+
+    <select id="selectNextCanvasSequence" resultType="int">
+        select coalesce(max(sequence_no), 0) + 1
+          from builder.adk_builder_frd_screen_chat_message
+         where frd_id = #{frdId} and channel = 'CANVAS'
+    </select>
+
+    <select id="selectCanvasByFrdId" resultMap="message">
+        select <include refid="columns"/>
+          from builder.adk_builder_frd_screen_chat_message
+         where frd_id = #{frdId} and channel = 'CANVAS'
+         order by sequence_no
+    </select>
+
+    <select id="selectById" resultMap="message">
+        select <include refid="columns"/>
+          from builder.adk_builder_frd_screen_chat_message
+         where id = #{id}
+    </select>
+
+    <select id="selectRunningByFrdId" resultMap="message">
+        select <include refid="columns"/>
+          from builder.adk_builder_frd_screen_chat_message
+         where frd_id = #{frdId} and role = 'AI' and state = 'RUNNING'
+         limit 1
+    </select>
+
+    <select id="selectLatestSessionId" resultType="string">
+        select session_id
+          from builder.adk_builder_frd_screen_chat_message
+         where frd_screen_id = #{frdScreenId}
+           and channel = 'SCREEN'
+           and role = 'AI'
+           and state = 'DONE'
+           and session_id is not null
+           and session_id &lt;&gt; ''
+         order by sequence_no desc
+         limit 1
+    </select>
+
+    <select id="selectLatestCanvasSessionId" resultType="string">
+        select session_id
+          from builder.adk_builder_frd_screen_chat_message
+         where frd_id = #{frdId}
+           and channel = 'CANVAS'
+           and role = 'AI'
+           and state = 'DONE'
+           and session_id is not null
+           and session_id &lt;&gt; ''
+         order by sequence_no desc
+         limit 1
+    </select>
+
+    <update id="updateDone">
+        update builder.adk_builder_frd_screen_chat_message
+           set state = 'DONE', content = #{content}, failure = null,
+               session_id = nullif(#{sessionId}, ''), completed_at = #{completedAt}
+         where id = #{id} and state = 'RUNNING'
+    </update>
+
+    <update id="updateFailed">
+        update builder.adk_builder_frd_screen_chat_message
+           set state = 'FAILED', failure = #{failure}, completed_at = #{completedAt}
+         where id = #{id} and state = 'RUNNING'
+    </update>
+
+    <update id="failInterrupted">
+        update builder.adk_builder_frd_screen_chat_message
+           set state = 'FAILED', failure = #{failure}, completed_at = #{completedAt}
+         where role = 'AI' and state = 'RUNNING'
+    </update>
+</mapper>

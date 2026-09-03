@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.bizplay.builder.devrequest.DevIssueTargetMapper">
+    <resultMap id="target" type="com.bizplay.builder.devrequest.DevIssueTarget">
+        <constructor>
+            <idArg column="project_id" javaType="java.lang.String"/>
+            <arg column="base_url" javaType="java.lang.String"/>
+            <arg column="project_path" javaType="java.lang.String"/>
+            <arg column="token_cipher" javaType="_byte[]"/>
+            <arg column="token_nonce" javaType="_byte[]"/>
+            <arg column="updated_at" javaType="java.time.Instant"/>
+            <arg column="updated_by" javaType="java.lang.String"/>
+        </constructor>
+    </resultMap>
+
+    <select id="selectByProjectId" parameterType="java.lang.String" resultMap="target">
+        select project_id, base_url, project_path, token_cipher, token_nonce, updated_at, updated_by
+          from builder.adk_builder_dev_issue_target
+         where project_id = #{projectId}
+    </select>
+
+    <insert id="upsert" parameterType="com.bizplay.builder.devrequest.DevIssueTarget">
+        insert into builder.adk_builder_dev_issue_target
+               (project_id, base_url, project_path, token_cipher, token_nonce, updated_by)
+        values (#{projectId}, #{baseUrl}, #{projectPath}, #{tokenCipher}, #{tokenNonce},
+                #{updatedBy,jdbcType=VARCHAR})
+        on conflict (project_id) do update
+           set base_url = excluded.base_url,
+               project_path = excluded.project_path,
+               token_cipher = excluded.token_cipher,
+               token_nonce = excluded.token_nonce,
+               updated_at = now(),
+               updated_by = excluded.updated_by
+    </insert>
+</mapper>

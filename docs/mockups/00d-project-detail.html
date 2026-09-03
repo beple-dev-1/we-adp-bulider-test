@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <link rel="stylesheet" href="../../src/main/resources/static/css/tokens.css"><link rel="stylesheet" href="../../src/main/resources/static/css/reset.css"><link rel="stylesheet" href="../../src/main/resources/static/css/typography.css"><link rel="stylesheet" href="../../src/main/resources/static/css/components.css"><link rel="stylesheet" href="../../src/main/resources/static/css/shell.css"><link rel="stylesheet" href="_mock.css"><link rel="stylesheet" href="../../src/main/resources/static/css/screens.css"><link rel="stylesheet" href="_requirement-concepts.css">
+  <title>프로젝트 상세</title>
+</head>
+<body><template id="본문">
+  <div class="requirement-concept">
+    <header class="rq-head">
+      <div class="rq-head__copy"><span class="rq-kicker num">PJT-001</span><h1>법인카드 운영 개선</h1></div><div class="rq-head__actions"><button class="button" type="button" data-open-facet-editor aria-controls="facet-dialog" aria-expanded="false">적용 구분 관리</button><button class="button" type="button" data-open-system-editor aria-controls="system-dialog" aria-expanded="false">시스템 관리</button><button class="button button--primary" type="button" data-submit-loading="저장소 업데이트 요청 중">저장소 업데이트</button></div>
+    </header>
+
+    <main>
+      <section class="rq-card" aria-labelledby="project-information-title">
+        <div class="rq-card__head"><div><span class="rq-kicker">프로젝트 정보</span><h2 id="project-information-title">저장소 및 적용 구분</h2></div><button class="button" type="button" data-open-project-token aria-controls="project-token-form" aria-expanded="false">기획 저장소 토큰 변경</button></div>
+        <div class="rq-card__body"><div id="project-information-view"><dl class="project-info-list"><div><dt>기획 저장소</dt><dd>gitlab.example.com/planning/corporate-card</dd></div><div><dt>기본 브랜치</dt><dd class="num">main</dd></div><div><dt>플랫폼 코드</dt><dd class="num">PS</dd></div><div><dt>적용 구분</dt><dd><span class="facet-badges"><span class="badge badge--outline" title="추출기 코드: iksan">익산</span><span class="badge badge--outline" title="추출기 코드: jeju">제주</span></span></dd></div><div><dt>시스템</dt><dd><span class="facet-badges"><span class="badge badge--outline">백오피스</span><span class="badge badge--outline">웹뷰</span></span></dd></div><div><dt>등록일시</dt><dd class="num">2026-08-10 14:20</dd></div><div><dt>기획 저장소 토큰</dt><dd>등록됨</dd></div></dl><div class="repository-update-status repository-update-status--succeeded" role="status"><span class="repository-update-status__mark" aria-hidden="true"></span><div class="repository-update-status__content"><span class="repository-update-status__eyebrow">저장소 업데이트 상태</span><strong>최신 상태</strong><p>현재 프로젝트가 원격 저장소의 최신 상태와 일치합니다.</p></div><div class="repository-update-status__time"><span>마지막 확인</span><time class="num">2026-08-18 14:40</time></div></div></div><form class="project-token-form" id="project-token-form" data-project-token-form hidden><label class="field"><span class="field__label">새 기획 저장소 토큰</span><input class="field__control" type="password"></label><div class="project-token-form__actions"><button class="button" type="button" data-close-project-token>취소</button><button class="button button--primary" type="button">토큰 변경</button></div></form></div>
+      </section>
+      <section class="rq-card dev-issue-target-card" aria-labelledby="dev-issue-target-title">
+        <div class="rq-card__head"><div><span class="rq-kicker">개발요청 전송</span><h2 id="dev-issue-target-title">GitLab 이슈 등록</h2></div><span class="status-badge status-badge--complete">설정 완료</span></div>
+        <div class="rq-card__body dev-issue-target-summary"><div class="dev-issue-target-summary__copy"><p>완료한 개발요청을 개발팀의 GitLab 프로젝트에 이슈로 등록합니다.</p><dl><div><dt>대상 프로젝트</dt><dd><span>https://gitlab.example.com</span><strong class="num">dev/card-api</strong></dd></div><div><dt>액세스 토큰</dt><dd>토큰 등록됨</dd></div></dl></div><button class="button" type="button" data-open-dev-issue-target aria-controls="dev-issue-target-dialog" aria-expanded="false">설정 변경</button></div>
+      </section>
+    </main>
+  </div>
+  <dialog class="dialog dialog--layer dev-issue-target-dialog" id="dev-issue-target-dialog" aria-labelledby="dev-issue-target-dialog-title" aria-describedby="dev-issue-target-dialog-description"><form>
+    <header class="dialog__header"><div class="dialog__header-copy"><h2 class="dialog__title" id="dev-issue-target-dialog-title">개발요청 전송 설정</h2><p class="dialog__description" id="dev-issue-target-dialog-description">개발 이슈를 등록할 GitLab 프로젝트를 입력해 주세요. 기획 저장소와는 별도입니다.</p></div><button class="dialog__close" type="button" data-close-dev-issue-target aria-label="개발요청 전송 설정 닫기"></button></header>
+    <div class="dialog__body dev-issue-target-dialog__body"><div class="dev-issue-target-field-grid"><div class="field"><label class="field__label" for="dev-issue-base-url">GitLab 주소</label><input class="field__control" id="dev-issue-base-url" type="url" value="https://gitlab.example.com"><p class="field__help">GitLab 기본 주소만 입력하세요. API 경로는 Builder가 자동으로 추가합니다.</p></div><div class="field"><label class="field__label" for="dev-issue-project">GitLab 프로젝트</label><input class="field__control" id="dev-issue-project" value="dev/card-api"><p class="field__help">그룹 경로를 포함한 프로젝트 경로나 숫자 ID를 입력하세요.</p></div><div class="field dev-issue-target-field-grid__wide"><label class="field__label" for="dev-issue-token">새 GitLab 액세스 토큰</label><input class="field__control" id="dev-issue-token" type="password"><p class="field__help">설정을 변경하려면 이슈 생성 권한이 있는 토큰도 다시 입력해 주세요. 저장 후에는 다시 표시되지 않습니다.</p></div></div></div>
+    <div class="dialog__actions"><button class="button" type="button" data-close-dev-issue-target>취소</button><button class="button button--primary" type="button">전송 설정 저장</button></div>
+  </form></dialog>
+  <dialog class="dialog dialog--layer" id="facet-dialog" aria-labelledby="facet-dialog-title"><form id="facet-form">
+    <header class="dialog__header"><div class="dialog__header-copy"><h2 class="dialog__title" id="facet-dialog-title">적용 구분 관리</h2></div><button class="dialog__close" type="button" data-close-facet-editor aria-label="적용 구분 관리 닫기"></button></header>
+    <div class="dialog__body project-facet-dialog__body"><div><div class="facet-setting-table"><div class="facet-setting-table__head" aria-hidden="true"><span>코드</span><span>표시 이름</span><span>관리</span></div><div class="facet-setting-list facet-setting-list--table" id="facet-setting-list"><div class="facet-setting-row"><label><span class="field__label">코드</span><input class="field__control num" value="iksan"></label><label><span class="field__label">표시 이름</span><input class="field__control" value="익산"></label><button class="button button--small" type="button">삭제</button></div><div class="facet-setting-row"><label><span class="field__label">코드</span><input class="field__control num" value="jeju"></label><label><span class="field__label">표시 이름</span><input class="field__control" value="제주"></label><button class="button button--small" type="button">삭제</button></div></div></div><button class="button facet-setting-add" type="button">적용 구분 추가</button></div></div>
+    <div class="dialog__actions"><button class="button" type="button" data-close-facet-editor>취소</button><button class="button button--primary" type="button" data-submit-loading="적용 구분 저장 중">변경 내용 저장</button></div>
+  </form></dialog>
+  <dialog class="dialog dialog--layer" id="system-dialog" aria-labelledby="system-dialog-title"><form id="system-form">
+    <header class="dialog__header"><div class="dialog__header-copy"><h2 class="dialog__title" id="system-dialog-title">시스템 관리</h2></div><button class="dialog__close" type="button" data-close-system-editor aria-label="시스템 관리 닫기"></button></header>
+    <div class="dialog__body project-facet-dialog__body"><div><div class="system-setting-table"><div class="system-setting-table__head" aria-hidden="true"><span>코드</span><span>표시 이름</span></div><div class="system-setting-list system-setting-list--table"><div class="system-setting-row"><label><span class="field__label">코드</span><input class="field__control num" value="backoffice" readonly></label><label><span class="field__label">표시 이름</span><input class="field__control" value="백오피스"></label></div><div class="system-setting-row"><label><span class="field__label">코드</span><input class="field__control num" value="webview" readonly></label><label><span class="field__label">표시 이름</span><input class="field__control" value="웹뷰"></label></div></div></div><p class="cell__sub">코드는 기획 저장소의 manifest.json 이 정본이라 여기서 고칠 수 없습니다.</p></div></div>
+    <div class="dialog__actions"><button class="button" type="button" data-close-system-editor>취소</button><button class="button button--primary" type="button" data-submit-loading="시스템 이름 저장 중">변경 내용 저장</button></div>
+  </form></dialog>
+</template><script src="_shell.js"></script><script>
+틀({제목:'프로젝트 상세',모양:'관리',지금:'projects',사람:'슈퍼관리자',슈퍼계정:true,안읽은알림:0});
+const facetTrigger=document.querySelector('[data-open-facet-editor]');
+const facetDialog=document.getElementById('facet-dialog');
+function facetMode(open){if(open&&!facetDialog.open){facetDialog.showModal();facetDialog.querySelector('input')?.focus();}if(!open&&facetDialog.open)facetDialog.close();facetTrigger.setAttribute('aria-expanded',String(open));}
+facetTrigger.addEventListener('click',()=>facetMode(true));
+document.querySelectorAll('[data-close-facet-editor]').forEach(button=>button.addEventListener('click',()=>facetMode(false)));
+facetDialog.addEventListener('close',()=>facetTrigger.setAttribute('aria-expanded','false'));
+if(new URLSearchParams(location.search).get('mode')==='facet')facetMode(true);
+const systemTrigger=document.querySelector('[data-open-system-editor]');
+const systemDialog=document.getElementById('system-dialog');
+function systemMode(open){if(open&&!systemDialog.open){systemDialog.showModal();systemDialog.querySelector('input:not([readonly])')?.focus();}if(!open&&systemDialog.open)systemDialog.close();systemTrigger.setAttribute('aria-expanded',String(open));}
+systemTrigger.addEventListener('click',()=>systemMode(true));
+document.querySelectorAll('[data-close-system-editor]').forEach(button=>button.addEventListener('click',()=>systemMode(false)));
+systemDialog.addEventListener('close',()=>systemTrigger.setAttribute('aria-expanded','false'));
+if(new URLSearchParams(location.search).get('mode')==='system')systemMode(true);
+const projectTokenTrigger=document.querySelector('[data-open-project-token]');
+const projectTokenForm=document.querySelector('[data-project-token-form]');
+function projectTokenMode(open){projectTokenForm.hidden=!open;projectTokenTrigger.setAttribute('aria-expanded',String(open));if(open)projectTokenForm.querySelector('input')?.focus();}
+projectTokenTrigger.addEventListener('click',()=>projectTokenMode(true));
+document.querySelector('[data-close-project-token]').addEventListener('click',()=>projectTokenMode(false));
+if(new URLSearchParams(location.search).get('mode')==='token')projectTokenMode(true);
+const devIssueTrigger=document.querySelector('[data-open-dev-issue-target]');
+const devIssueDialog=document.getElementById('dev-issue-target-dialog');
+function devIssueMode(open){if(open&&!devIssueDialog.open){devIssueDialog.showModal();devIssueDialog.querySelector('input')?.focus();}if(!open&&devIssueDialog.open)devIssueDialog.close();devIssueTrigger.setAttribute('aria-expanded',String(open));}
+devIssueTrigger.addEventListener('click',()=>devIssueMode(true));
+document.querySelectorAll('[data-close-dev-issue-target]').forEach(button=>button.addEventListener('click',()=>devIssueMode(false)));
+devIssueDialog.addEventListener('close',()=>devIssueTrigger.setAttribute('aria-expanded','false'));
+if(new URLSearchParams(location.search).get('mode')==='dev-issue')devIssueMode(true);
+</script></body>
+</html>

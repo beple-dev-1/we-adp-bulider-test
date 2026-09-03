@@ -1,0 +1,128 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" href="../../src/main/resources/static/css/tokens.css">
+  <link rel="stylesheet" href="../../src/main/resources/static/css/reset.css">
+  <link rel="stylesheet" href="../../src/main/resources/static/css/typography.css">
+  <link rel="stylesheet" href="../../src/main/resources/static/css/components.css">
+  <link rel="stylesheet" href="../../src/main/resources/static/css/shell.css">
+  <link rel="stylesheet" href="_mock.css">
+  <link rel="stylesheet" href="../../src/main/resources/static/css/screens.css">
+  <link rel="stylesheet" href="_requirement-concepts.css">
+  <link rel="stylesheet" href="_definition-concepts.css">
+  <title>요구사항정의서 상세</title>
+</head>
+<body>
+<template id="본문">
+  <div class="definition-concept">
+    <header class="rq-head">
+      <div class="rq-head__copy">
+        <span class="rq-kicker num" id="definition-status">RD-031</span>
+        <h1>작성 내용 자동 저장 주기</h1>
+      </div>
+      <div class="rq-head__actions">
+        <button class="button" id="retire-definition" type="button">정의서 폐기</button>
+        <button class="button button--primary" id="save-definition" type="button">변경 내용 저장</button>
+      </div>
+    </header>
+
+    <dl class="rq-meta rq-meta--five">
+      <div><dt>정의서</dt><dd class="num">RD-031</dd></div>
+      <div><dt>적용 구분</dt><dd><span class="badge badge--outline">익산</span></dd></div>
+      <div><dt>출처 요구사항</dt><dd class="num">REQ-042</dd></div>
+      <div><dt>출처 문서</dt><dd>8/12 전자결재 회의록</dd></div>
+      <div><dt>마지막 수정</dt><dd class="num">08-13 10:24</dd></div>
+    </dl>
+
+    <main class="df-summary">
+      <article class="rq-card">
+        <div class="rq-card__head">
+          <div><span class="rq-kicker">현재 정의</span><h2>정의 내용</h2></div>
+          <button class="button button--small" type="button">내용 수정</button>
+        </div>
+        <div class="rq-card__body">
+          <p class="rq-lead">작성 중인 결재 문서의 변경 내용을 자동으로 저장해야 합니다.</p>
+          <p class="rq-copy">사용자가 내용을 마지막으로 변경한 시점부터 30초가 지나면 현재 작성 내용을 임시 저장 문서에 반영합니다.</p>
+          <div class="rq-note">저장 후 작성 상태 유지는 <span class="num">RD-032</span>에서 다루며, 저장 실패 처리는 별도 정의가 필요합니다.</div>
+        </div>
+      </article>
+
+      <section class="rq-card">
+        <div class="rq-card__head">
+          <div><h2>상세 조건</h2><p>정의 내용을 개발 가능한 조건과 결과로 구분합니다.</p></div>
+        </div>
+        <div class="rq-card__body df-facts">
+          <section class="df-fact"><h3>적용 조건</h3><p>사용자가 결재 문서를 작성 중이고 마지막 내용 변경 후 30초가 지난 경우</p></section>
+          <section class="df-fact"><h3>기대 결과</h3><p>마지막 변경 내용이 임시 저장 문서에 반영됨</p></section>
+          <section class="df-fact"><h3>포함 범위</h3><p>자동 저장 실행 조건과 30초 저장 주기</p></section>
+          <section class="df-fact"><h3>제외 범위</h3><p>저장 실패 처리와 저장 후 작성 상태 유지</p></section>
+        </div>
+      </section>
+
+      <section class="rq-card">
+        <div class="rq-card__head">
+          <div><h2>출처 요구사항</h2><p class="num">REQ-042 · 작성 내용 자동 저장</p></div>
+          <a class="button button--small" href="02a-requirement-detail.html">요구사항 확인</a>
+        </div>
+        <div class="rq-card__body"><blockquote class="rq-source">작성 중인 결재 문서를 자동으로 저장해 주세요.</blockquote></div>
+      </section>
+
+      <section class="rq-card">
+        <div class="rq-card__head"><h2>같은 요구사항에서 분리된 정의서</h2><span class="badge badge--outline">2건</span></div>
+        <div class="rq-card__body">
+          <ul class="rq-list">
+            <li><strong><span class="num">RD-031</span> 작성 내용 자동 저장 주기</strong><span class="badge badge--active">현재 정의서</span></li>
+            <li><strong><span class="num">RD-032</span> 자동 저장 후 작성 상태 유지</strong><span class="badge badge--outline">다른 정의서</span></li>
+          </ul>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <dialog class="dialog" id="retire-definition-dialog" aria-labelledby="retire-definition-title">
+    <form method="dialog">
+      <div class="dialog__body definition-retire-dialog-body">
+        <h2 id="retire-definition-title">정의서를 폐기하시겠습니까?</h2>
+        <p><span class="num">RD-031</span> 번호와 변경 이력은 유지됩니다. 이 요구사항에서 사용하는 정의서는 2건에서 1건으로 줄어듭니다.</p>
+        <div class="field">
+          <label class="field__label" for="retire-reason">폐기 사유</label>
+          <textarea class="field__control compact-textarea" id="retire-reason" rows="4" required placeholder="예: RD-032와 구현 범위가 중복됨"></textarea>
+          <p class="field__help">폐기는 Claude Code가 실행하지 않으며 입력한 사유와 실행한 사용자가 이력에 남습니다.</p>
+        </div>
+      </div>
+      <div class="dialog__actions">
+        <button class="button" type="submit" value="cancel">취소</button>
+        <button class="button button--danger" id="confirm-retire-definition" type="submit" value="retire">정의서 폐기</button>
+      </div>
+    </form>
+  </dialog>
+</template>
+<script src="_shell.js"></script>
+<script>
+  틀({제목:'요구사항정의서 상세',모양:'산출물',지금:'definitions',프로젝트이름:'G2C',프로젝트번호:1,프로젝트들:['G2C','서울페이'],사람:'이영희',안읽은알림:2});
+
+  document.getElementById('save-definition').addEventListener('click', event => {
+    event.currentTarget.textContent = '저장 완료';
+    event.currentTarget.disabled = true;
+  });
+
+  const retireDialog = document.getElementById('retire-definition-dialog');
+  document.getElementById('retire-definition').addEventListener('click', () => retireDialog.showModal());
+  document.getElementById('confirm-retire-definition').addEventListener('click', event => {
+    if (!document.getElementById('retire-reason').reportValidity()) {
+      event.preventDefault();
+      return;
+    }
+    document.getElementById('definition-status').textContent = '폐기 완료';
+    document.getElementById('save-definition').disabled = true;
+    const retireButton = document.getElementById('retire-definition');
+    retireButton.textContent = '폐기 완료';
+    retireButton.disabled = true;
+  });
+</script>
+<script src="_claude-window.js"></script>
+<script src="_definition-concepts.js"></script>
+</body>
+</html>

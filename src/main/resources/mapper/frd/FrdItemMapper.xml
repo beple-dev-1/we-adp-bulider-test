@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<!--
+    요구사항 항목 하나와 그 판정. 표 설명의 정본은 V20__frd_item.sql 이다.
+    ⚠ 표 이름 앞의 `builder.` 를 지우지 마라 — MyBatis 는 Flyway 의 default-schema 를 안 물려받는다.
+-->
+<mapper namespace="com.bizplay.builder.frd.FrdItemMapper">
+
+    <!-- ⛔ 인자 순서를 바꾸지 마라 — FrdItem 의 생성자와 자리로 맞춘다. -->
+    <resultMap id="frdItem" type="com.bizplay.builder.frd.FrdItem">
+        <constructor>
+            <idArg column="id"          javaType="java.lang.String"/>
+            <arg   column="frd_id"      javaType="java.lang.String"/>
+            <arg   column="seq"         javaType="_int"/>
+            <arg   column="requirement" javaType="java.lang.String"/>
+            <arg   column="nature"      javaType="com.bizplay.builder.frd.FrdItem$Nature"/>
+            <arg   column="verdict"     javaType="com.bizplay.builder.frd.FrdItem$Verdict"/>
+            <arg   column="screen_ids"  javaType="java.lang.String"/>
+            <arg   column="note"        javaType="java.lang.String"/>
+            <arg   column="created_at"  javaType="java.time.Instant"/>
+        </constructor>
+    </resultMap>
+
+    <!-- ⚠ 널이 올 수 있는 칸은 jdbcType 을 박는다 — 안 박으면 PostgreSQL 이 setNull 을 거절한다. -->
+    <insert id="insert" parameterType="com.bizplay.builder.frd.FrdItem">
+        insert into builder.adk_builder_frd_item
+               (id, frd_id, seq, requirement, nature, verdict, screen_ids, note)
+        values (#{id}, #{frdId}, #{seq}, #{requirement}, #{nature}, #{verdict},
+                #{screenIds,jdbcType=VARCHAR}, #{note,jdbcType=VARCHAR})
+    </insert>
+
+    <select id="selectByFrdId" parameterType="java.lang.String" resultMap="frdItem">
+        select id, frd_id, seq, requirement, nature, verdict, screen_ids, note, created_at
+          from builder.adk_builder_frd_item
+         where frd_id = #{frdId}
+         order by seq
+    </select>
+
+    <delete id="deleteByFrdId" parameterType="java.lang.String">
+        delete from builder.adk_builder_frd_item
+         where frd_id = #{frdId}
+    </delete>
+
+    <update id="replaceScreenId">
+        update builder.adk_builder_frd_item
+           set screen_ids = array_to_string(
+                   array_replace(string_to_array(screen_ids, ','), #{oldScreenId}, #{newScreenId}), ',')
+         where frd_id = #{frdId}
+           and #{oldScreenId} = any(string_to_array(screen_ids, ','))
+    </update>
+
+</mapper>

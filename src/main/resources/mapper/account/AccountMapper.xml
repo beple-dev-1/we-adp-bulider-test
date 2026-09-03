@@ -1,0 +1,120 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<!--
+    계정 — 빌더에 로그인하는 사람 한 줄. 표의 뜻은 V1__account.sql 의 COMMENT 가 정본이다.
+
+    ⚠ 표 이름 앞의 `builder.` 를 지우지 마라. 이 저장소의 표는 public 이 아니라 builder 스키마에 산다.
+      MyBatis 는 Hibernate 의 default_schema 를 안 물려받는다 — 지우면 「표가 없다」로 죽는다.
+
+    ⚠ jdbcType 이 하나도 없는 것은 빠뜨린 것이 아니다 — 이 표의 열은 created_at 까지 전부 not null 이고
+      Account.create 가 그 전부를 받아 채운다. null 이 올 자리가 없으니 종류를 못 정할 일도 없다.
+      나중에 널을 받는 열을 더하면 그 인자에는 반드시 #{x,jdbcType=...} 을 박아라.
+
+    ⛔ 이미 앉은 줄을 고치는 문은 아래 둘뿐이다 (updatePassword · updateToTemporaryPassword).
+      2026-08-15 이전에는 그 자리가 엔티티의 changePassword · resetToTemporary + JPA 더티 체킹이었다 —
+      save() 없이 고치면 저장되던 것이 MyBatis 에서는 아무 일도 안 일어나고 예외도 안 난다.
+      셋째 UPDATE 를 더하기 전에 Account.java 머리의 경고를 먼저 읽어라.
+-->
+<mapper namespace="com.bizplay.builder.account.AccountMapper">
+
+    <!--
+        setter 가 없는 값 묶음이라 생성자로 담는다.
+        ⛔ 인자 순서를 바꾸지 마라 — Account 의 생성자와 자리로 맞춘다.
+           login_id·name·email·password_hash 는 넷 다 글자고 super_account·must_change_password 는
+           둘 다 boolean 이라, 뒤바뀌어도 컴파일도 되고 예외도 안 난다.
+           엉뚱한 이름이 화면에 뜨거나 권한이 뒤집히는 것으로만 드러난다.
+        ⚠ 원시형 boolean 의 별칭은 `_boolean` 이다(`boolean` 은 래퍼 Boolean 을 가리킨다).
+    -->
+    <resultMap id="account" type="com.bizplay.builder.account.Account">
+        <constructor>
+            <idArg column="id"                   javaType="java.lang.String"/>
+            <arg   column="login_id"             javaType="java.lang.String"/>
+            <arg   column="name"                 javaType="java.lang.String"/>
+            <arg   column="email"                javaType="java.lang.String"/>
+            <arg   column="password_hash"        javaType="java.lang.String"/>
+            <arg   column="super_account"        javaType="_boolean"/>
+            <arg   column="must_change_password" javaType="_boolean"/>
+            <arg   column="created_at"           javaType="java.time.Instant"/>
+        </constructor>
+    </resultMap>
+
+    <sql id="columns">
+        id, login_id, name, email, password_hash,
+        super_account, must_change_password, created_at
+    </sql>
+
+    <select id="selectById" parameterType="java.lang.String" resultMap="account">
+        select <include refid="columns"/>
+          from builder.adk_builder_account
+         where id = #{id}
+    </select>
+
+    <!-- 로그인과 「같은 아이디가 이미 있나」가 쓴다. 로그인 아이디는 unique 라 많아야 한 줄이다. -->
+    <select id="selectByLoginId" parameterType="java.lang.String" resultMap="account">
+        select <include refid="columns"/>
+          from builder.adk_builder_account
+         where login_id = #{loginId}
+    </select>
+
+    <!--
+        ⚠ order by 를 지우지 마라 — 관리 목록이 이 순서 그대로 그린다.
+          JPA 의 findAll() 은 순서를 약속하지 않아 실행마다 뒤집힐 수 있었다. 여기서 못 박는다.
+    -->
+    <select id="selectAll" resultMap="account">
+        select <include refid="columns"/>
+          from builder.adk_builder_account
+         order by login_id
+    </select>
+
+    <!-- ⛔ 빈 목록으로 부르면 `in ()` 이 되어 SQL 이 깨진다. 부르는 쪽이 먼저 비었나를 본다. -->
+    <select id="selectByIdIn" resultMap="account">
+        select <include refid="columns"/>
+          from builder.adk_builder_account
+         where id in
+        <foreach item="id" collection="ids" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+    </select>
+
+    <!--
+        ⚠ created_at 을 넣지 않는다 — DB 의 default now() 가 채운다.
+          그래서 새로 만든 계정의 등록일시가 필요하면 넣은 뒤 selectById 로 한 번 되읽는다.
+        ⚠ id 는 넣는다. DB 에도 default 가 있지만 채번은 IdSequence 가 한다.
+        ⚠ must_change_password 는 DB 에도 default true 가 있지만 넣는다 — 「처음 값이 무엇인가」는
+          업무가 정하는 것이라 자바 쪽 Account.create 가 정본이다.
+          (시각처럼 DB 만 알 수 있는 값과 다른 자리다.)
+    -->
+    <insert id="insert" parameterType="com.bizplay.builder.account.Account">
+        insert into builder.adk_builder_account
+               (id, login_id, name, email, password_hash, super_account, must_change_password)
+        values (#{id}, #{loginId}, #{name}, #{email}, #{passwordHash},
+                #{superAccount}, #{mustChangePassword})
+    </insert>
+
+    <!--
+        본인이 비밀번호를 바꿨다 — 최초 설정 흐름을 빠져나간다.
+        ⛔ 아래 updateToTemporaryPassword 와 합치지 마라. 해시를 간다는 것만 같고 뜻이 정반대다.
+          must_change_password 를 깃발 인자로 받는 한 문으로 뭉개면, 부르는 쪽에서 참·거짓이
+          뒤집혀도 컴파일도 되고 예외도 안 난다 — 사람이 최초 설정 화면에 갇히는 것으로만 드러난다.
+    -->
+    <update id="updatePassword">
+        update builder.adk_builder_account
+           set password_hash        = #{passwordHash},
+               must_change_password = false
+         where id                   = #{accountId}
+    </update>
+
+    <!--
+        슈퍼관리자가 임시 비밀번호를 다시 발급했다 — 최초 로그인 흐름을 한 번 더 밟게 된다.
+        ⛔ 위 updatePassword 와 합치지 마라 — 같은 까닭이다.
+    -->
+    <update id="updateToTemporaryPassword">
+        update builder.adk_builder_account
+           set password_hash        = #{passwordHash},
+               must_change_password = true
+         where id                   = #{accountId}
+    </update>
+
+</mapper>

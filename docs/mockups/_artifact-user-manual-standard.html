@@ -1,0 +1,130 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>사용자 매뉴얼 양식 시안</title>
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="../../src/main/resources/static/css/tokens.css">
+  <link rel="stylesheet" href="../../src/main/resources/static/css/reset.css">
+  <link rel="stylesheet" href="../../src/main/resources/static/css/typography.css">
+  <link rel="stylesheet" href="_artifact-document-standard.css">
+</head>
+<body>
+<main class="artifact-stage">
+  <article class="artifact-paper" aria-labelledby="artifact-title">
+    <header class="artifact-head">
+      <p class="artifact-head__kind">사용자 매뉴얼</p>
+      <h1 id="artifact-title">지출결의 작성 사용 방법</h1>
+      <dl class="artifact-meta">
+        <div>
+          <dt>시스템</dt>
+          <dd>업무관리 시스템</dd>
+        </div>
+        <div>
+          <dt>화면 ID</dt>
+          <dd>EXP-REQ-001</dd>
+        </div>
+        <div>
+          <dt>개정</dt>
+          <dd>3차</dd>
+        </div>
+        <div>
+          <dt>작성일</dt>
+          <dd>2026-08-28</dd>
+        </div>
+      </dl>
+    </header>
+
+    <div class="artifact-body">
+      <section class="artifact-section" aria-labelledby="section-intro">
+        <h2 id="section-intro">화면 소개</h2>
+        <p class="artifact-lead">지출결의 작성 화면에서는 사용한 비용의 내역과 증빙을 등록하고 결재를 요청할 수 있습니다. 작성 중인 내용은 임시 저장한 뒤 나중에 이어서 작성할 수 있습니다.</p>
+      </section>
+
+      <section class="artifact-section" aria-labelledby="section-before">
+        <h2 id="section-before">사용 전 확인</h2>
+        <dl class="artifact-definitions">
+          <dt>이용 대상</dt>
+          <dd>업무 비용을 지출하고 결재를 요청하는 사용자</dd>
+          <dt>메뉴 경로</dt>
+          <dd>경비 관리 &gt; 지출결의 &gt; 지출결의 작성</dd>
+          <dt>준비할 내용</dt>
+          <dd>사용일, 지출 유형, 거래처, 금액과 지출을 확인할 수 있는 증빙</dd>
+        </dl>
+        <p class="artifact-note"><strong>확인:</strong> 지출 유형에 따라 필요한 증빙이 다를 수 있으므로 제출 전에 등록 여부를 확인해 주세요.</p>
+      </section>
+
+      <section class="artifact-section" aria-labelledby="section-steps">
+        <h2 id="section-steps">지출결의 작성 방법</h2>
+        <ol class="manual-steps">
+          <li class="manual-step">
+            <div>
+              <h3>기본 정보를 확인합니다</h3>
+              <p>작성자와 작성일이 맞는지 확인하고 지출결의 제목을 입력합니다.</p>
+            </div>
+          </li>
+          <li class="manual-step">
+            <div>
+              <h3>지출 내역을 입력합니다</h3>
+              <p>사용일, 지출 유형, 거래처와 금액을 입력합니다. 지출 건이 여러 개이면 행을 추가해 각각 입력합니다.</p>
+            </div>
+          </li>
+          <li class="manual-step">
+            <div>
+              <h3>증빙을 등록합니다</h3>
+              <p>지출 내역을 확인할 수 있는 증빙을 해당 내역에 등록합니다.</p>
+            </div>
+          </li>
+          <li class="manual-step">
+            <div>
+              <h3>지출결의를 제출합니다</h3>
+              <p>입력 내용과 합계 금액을 확인한 뒤 <strong>지출결의 제출</strong>을 선택합니다.</p>
+              <p class="manual-step__result"><strong>처리 결과:</strong> 제출이 완료되면 결재 요청 번호가 표시되고 지출결의 상세 화면으로 이동합니다.</p>
+            </div>
+          </li>
+        </ol>
+      </section>
+
+      <section class="artifact-section" aria-labelledby="section-fields">
+        <h2 id="section-fields">입력 항목 안내</h2>
+        <div class="artifact-table-wrap">
+          <table class="artifact-table artifact-table--compact">
+            <thead>
+            <tr>
+              <th scope="col">항목</th>
+              <th scope="col">입력 내용</th>
+              <th scope="col">확인 사항</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr>
+              <td>사용일</td>
+              <td>비용을 사용한 날짜를 선택합니다.</td>
+              <td>오늘보다 늦은 날짜는 선택할 수 없습니다.</td>
+            </tr>
+            <tr>
+              <td>지출 유형</td>
+              <td>회의비, 교통비 등 지출 성격에 맞는 유형을 선택합니다.</td>
+              <td>선택한 유형에 따라 필요한 증빙을 확인합니다.</td>
+            </tr>
+            <tr>
+              <td>금액</td>
+              <td>실제 지출한 금액을 원 단위로 입력합니다.</td>
+              <td>0보다 큰 정수만 입력할 수 있습니다.</td>
+            </tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="artifact-note"><strong>문제가 있을 때:</strong> 제출하지 못한 항목 가까이에 이유가 표시됩니다. 안내된 항목을 수정한 뒤 다시 제출해 주세요.</p>
+      </section>
+    </div>
+
+    <footer class="artifact-foot">
+      <span>운영 화면 · 화면 명세 기준</span>
+      <span>사용자 매뉴얼 3차 · 2026-08-28</span>
+    </footer>
+  </article>
+</main>
+</body>
+</html>

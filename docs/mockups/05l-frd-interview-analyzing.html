@@ -1,0 +1,124 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <link rel="stylesheet" href="../../src/main/resources/static/css/tokens.css">
+  <link rel="stylesheet" href="../../src/main/resources/static/css/reset.css">
+  <link rel="stylesheet" href="../../src/main/resources/static/css/typography.css">
+  <link rel="stylesheet" href="../../src/main/resources/static/css/components.css">
+  <link rel="stylesheet" href="../../src/main/resources/static/css/shell.css">
+  <link rel="stylesheet" href="_mock.css">
+  <link rel="stylesheet" href="../../src/main/resources/static/css/screens.css">
+  <link rel="stylesheet" href="_frd-interview.css">
+  <title>FRD 요구사항 분석 중</title>
+</head>
+<body>
+<template id="본문">
+  <main class="fi-page fi-page--analyzing">
+    <header class="fi-head">
+      <div class="fi-head__copy">
+        <span class="rq-kicker num">FRD-026</span>
+        <h1>[개요]</h1>
+      </div>
+    </header>
+
+    <nav class="fi-steps" aria-label="FRD 작업 만들기 진행 단계">
+      <div class="fi-step is-done"><i>1</i><span>분석 정보 입력</span></div>
+      <div class="fi-step is-current" aria-current="step"><i>2</i><span>AI 인터뷰</span></div>
+      <div class="fi-step"><i>3</i><span>개발 범위 확인</span></div>
+    </nav>
+
+    <div class="fi-analysis-layout">
+      <section class="fi-card fi-analysis-conversation" aria-labelledby="analysis-title">
+        <header class="fi-card__head fi-conversation-head">
+          <div class="fi-interview-brand"><img src="claudecode-color.png" width="32" height="32" alt=""><h2 id="analysis-title">Claude Code</h2></div>
+          <span class="fi-session-state"><i></i><span>분석 중</span></span>
+        </header>
+
+        <div class="fi-analysis-toolbar" aria-label="요구사항 보기">
+          <button class="button" type="button">요구사항 질문</button>
+          <button class="button" type="button">전체 보기</button>
+        </div>
+
+        <div class="fi-analysis-thread" aria-live="polite">
+          <article class="fi-analysis-message">
+            <span class="fi-analysis-avatar" aria-hidden="true">✦</span>
+            <div class="fi-analysis-message__card">
+              <header><h3>분석을 시작했습니다.</h3><time>오전 10:24</time></header>
+              <p>제공해주신 문서를 검토하여 기능의 목적과 범위, 핵심 흐름을 파악하고 있습니다.</p>
+            </div>
+          </article>
+
+          <article class="fi-analysis-message">
+            <span class="fi-analysis-avatar" aria-hidden="true">✦</span>
+            <div class="fi-analysis-message__card">
+              <header><h3>문서를 검토하여 핵심 내용을 정리했습니다.</h3><time>오전 10:25</time></header>
+              <p>4개 문서에서 ‘출근 체크 이벤트 관리’ 기능의 목적과 주요 흐름, 관련 화면 및 정책을 확인했습니다.</p>
+              <ul><li>사용자 출근 이벤트를 등록·수정·조회하는 기능으로 보입니다.</li><li>목록, 상세, 등록·수정 화면이 주요 UI입니다.</li><li>상태 변경 및 알림 정책이 적용됩니다.</li></ul>
+            </div>
+          </article>
+
+          <article class="fi-analysis-message is-running" role="status">
+            <span class="fi-analysis-avatar" aria-hidden="true">✦</span>
+            <div class="fi-analysis-message__card">
+              <div><h3>추가 확인이 필요한 요구사항을 정리하고 있습니다.</h3><p>필요한 질문을 선별하여 곧 안내드리겠습니다.</p></div>
+              <span class="fi-analysis-spinner" aria-hidden="true"></span>
+            </div>
+          </article>
+
+          <details class="fi-analysis-details">
+            <summary>세부 기록 보기</summary>
+            <ol><li><span>완료</span><div><strong>분석 조건 확인</strong><small class="num">분석조건.md</small></div></li><li><span>완료</span><div><strong>요구사항 원문 확인</strong><small class="num">요구사항.md</small></div></li><li><span>진행 중</span><div><strong>관련 화면 탐색</strong><small>화면 후보와 연결된 구현을 확인하고 있습니다.</small></div></li></ol>
+          </details>
+        </div>
+
+        <div class="fi-composer fi-analysis-composer">
+          <label for="analysis-message"><span class="sr-only">메시지 입력</span><textarea id="analysis-message" disabled placeholder="분석이 끝나면 메시지를 입력할 수 있습니다"></textarea></label>
+          <button class="button button--primary" type="button" disabled>전송</button>
+        </div>
+      </section>
+
+      <aside class="fi-card fi-analysis-status" aria-labelledby="analysis-status-title">
+        <header class="fi-card__head"><h2 id="analysis-status-title">분석 현황</h2></header>
+        <div class="fi-analysis-status__body">
+          <section class="fi-analysis-status__progress" aria-labelledby="overall-progress-title">
+            <h3 id="overall-progress-title">전체 진행 상태</h3>
+            <span class="fi-analysis-progress" aria-hidden="true"><i></i></span>
+            <p>분석을 진행하고 있습니다.</p>
+          </section>
+
+          <section class="fi-analysis-status__section" aria-labelledby="checked-inputs-title">
+            <h3 id="checked-inputs-title">완료된 입력</h3>
+            <ul class="fi-analysis-checklist">
+              <li><i>✓</i><span class="num">분석조건.md</span><small>완료</small></li>
+              <li><i>✓</i><span class="num">요구사항.md</span><small>완료</small></li>
+              <li><i>✓</i><span class="num">인터뷰.md</span><small>완료</small></li>
+              <li><i>✓</i><span class="num">화면후보.md</span><small>완료</small></li>
+            </ul>
+          </section>
+
+          <section class="fi-analysis-status__section" aria-labelledby="screen-candidates-title">
+            <h3 id="screen-candidates-title">관련 화면(후보)</h3>
+            <ul class="fi-analysis-candidates">
+              <li><i aria-hidden="true"></i><span class="num">bo-cbck-evt-list</span><small>목록</small></li>
+              <li><i aria-hidden="true"></i><span class="num">bo-cbck-evt-detail</span><small>상세</small></li>
+              <li><i aria-hidden="true"></i><span class="num">bo-cbck-evt-modify</span><small>등록·수정</small></li>
+            </ul>
+            <button class="button fi-analysis-view-all" type="button">전체 보기</button>
+          </section>
+
+          <section class="fi-analysis-next" aria-labelledby="next-result-title">
+            <h3 id="next-result-title">다음 예상 결과</h3>
+            <p>요구사항 질문을 생성하여 확인이 필요한 항목을 안내드리고, 답변을 바탕으로 요구사항을 구체화하겠습니다.</p>
+          </section>
+        </div>
+        <details class="fi-analysis-side-details"><summary>세부 기록 보기</summary><p>파일 확인 및 화면 탐색 내역을 확인합니다.</p></details>
+      </aside>
+    </div>
+  </main>
+</template>
+<script src="_shell.js"></script>
+<script>틀({제목:'FRD 요구사항 분석 중',모양:'산출물',지금:'frds',프로젝트이름:'G2C',프로젝트번호:1,프로젝트들:['G2C','서울페이'],사람:'이영희',안읽은알림:2});</script>
+</body>
+</html>

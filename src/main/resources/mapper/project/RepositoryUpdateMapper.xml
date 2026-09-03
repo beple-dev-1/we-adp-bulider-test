@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.bizplay.builder.project.RepositoryUpdateMapper">
+
+    <resultMap id="repositoryUpdate" type="com.bizplay.builder.project.RepositoryUpdate">
+        <constructor>
+            <idArg column="project_id"     javaType="java.lang.String"/>
+            <arg   column="state"          javaType="com.bizplay.builder.project.RepositoryUpdateState"/>
+            <arg   column="from_commit"    javaType="java.lang.String"/>
+            <arg   column="current_commit" javaType="java.lang.String"/>
+            <arg   column="changed"        javaType="java.lang.Boolean"/>
+            <arg   column="started_at"     javaType="java.time.Instant"/>
+            <arg   column="finished_at"    javaType="java.time.Instant"/>
+            <arg   column="failure_reason" javaType="java.lang.String"/>
+        </constructor>
+    </resultMap>
+
+    <select id="selectByProjectId" parameterType="java.lang.String" resultMap="repositoryUpdate">
+        select project_id, state, from_commit, current_commit, changed,
+               started_at, finished_at, failure_reason
+          from builder.adk_builder_repository_update
+         where project_id = #{projectId}
+    </select>
+
+    <insert id="tryStart">
+        insert into builder.adk_builder_repository_update
+               (project_id, state, started_at, finished_at, failure_reason)
+        values (#{projectId}, 'RUNNING', now(), null, null)
+        on conflict (project_id) do update
+           set state          = 'RUNNING',
+               started_at     = now(),
+               finished_at    = null,
+               failure_reason = null
+         where builder.adk_builder_repository_update.state &lt;&gt; 'RUNNING'
+    </insert>
+
+    <update id="updateSucceeded">
+        update builder.adk_builder_repository_update
+           set state          = 'SUCCEEDED',
+               from_commit    = #{fromCommit},
+               current_commit = #{currentCommit},
+               changed        = #{changed},
+               finished_at    = now(),
+               failure_reason = null
+         where project_id     = #{projectId}
+           and state          = 'RUNNING'
+    </update>
+
+    <update id="updateFailed">
+        update builder.adk_builder_repository_update
+           set state          = 'FAILED',
+               finished_at    = now(),
+               failure_reason = #{failureReason}
+         where project_id     = #{projectId}
+           and state          = 'RUNNING'
+    </update>
+
+</mapper>

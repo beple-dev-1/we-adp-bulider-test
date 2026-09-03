@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title th:text="${frd.label() + ' 전체 화면 대화'}">FRD 전체 화면 대화</title>
+  <link rel="stylesheet" href="/css/tokens.css">
+  <link rel="stylesheet" href="/css/reset.css">
+  <link rel="stylesheet" href="/css/typography.css">
+  <link rel="stylesheet" href="/css/components.css">
+  <link rel="stylesheet" href="/css/screens.css">
+</head>
+<body class="wm-ai-chat-window">
+  <section class="wm-ai-chat wm-ai-chat--window" aria-labelledby="frd-canvas-chat-window-title"
+           th:attr="data-status-url=${chatStatusUrl},data-send-url=${chatSendUrl},data-events-url=${chatEventsUrl},data-frd-id=${frd.id()}">
+    <header class="wm-ai-chat__head">
+      <img src="/images/claudecode-color.png" alt="">
+      <div class="wm-ai-chat__identity">
+        <h1 id="frd-canvas-chat-window-title">Claude Code</h1>
+        <span><b th:text="${frd.label()}">FRD-003</b> 전체 화면 대화</span>
+        <span th:if="${claudeIdentity != null}">계정 <b th:text="${claudeIdentity.email()}">planner@example.com</b><th:block
+              th:if="${claudeIdentity.organizationName() != null}"
+              th:text="${' · ' + claudeIdentity.organizationName()}"> · 기획팀</th:block></span>
+      </div>
+      <div class="wm-ai-chat__actions">
+        <button class="wm-ai-chat__close" type="button" aria-label="창 닫기" onclick="window.close()">×</button>
+      </div>
+    </header>
+    <div class="wm-ai-chat__selection" id="frd-canvas-chat-window-selection" hidden>
+      <div>
+        <small>작업 화면</small>
+        <strong id="frd-canvas-chat-window-selection-label"></strong>
+        <span class="num" id="frd-canvas-chat-window-selection-names"></span>
+      </div>
+      <button type="button" id="clear-frd-canvas-chat-window-selection"
+              aria-label="선택 화면 해제" title="선택 화면 해제">×</button>
+    </div>
+    <div class="wm-ai-chat__log" id="frd-canvas-chat-window-log" aria-live="polite">
+      <article class="wm-ai-chat-message wm-ai-chat-message--ai">
+        <strong>Claude Code</strong>
+        <p>선택한 작업 화면을 질문하거나 여러 화면의 공통 수정·연결 작업을 요청해 주세요.</p>
+      </article>
+    </div>
+    <form class="wm-ai-chat__composer" id="frd-canvas-chat-window-form">
+      <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
+      <div class="wm-ai-chat__message-field">
+        <textarea id="frd-canvas-chat-window-message" aria-label="전체 화면 질문 또는 작업 요청"
+                  placeholder="선택 화면을 질문하거나 공통 수정·연결 작업을 요청해 주세요" maxlength="4000"
+                  title="Enter 전송 · Alt+Enter 줄바꿈"></textarea>
+        <div class="wm-ai-chat__message-tools">
+          <div class="wm-ai-chat__suggestion-control">
+            <button class="wm-ai-chat__reference-button wm-ai-chat__suggestion-button" type="button"
+                    id="frd-canvas-chat-window-suggestion-toggle" aria-expanded="false" disabled
+                    title="검토할 화면을 먼저 선택해 주세요">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m12 3 1.4 4.1L17.5 8.5l-4.1 1.4L12 14l-1.4-4.1-4.1-1.4 4.1-1.4L12 3ZM18.5 14l.8 2.2 2.2.8-2.2.8-.8 2.2-.8-2.2-2.2-.8 2.2-.8.8-2.2Z"/></svg>
+              AI 제안
+            </button>
+            <div class="wm-ai-chat__suggestion-menu" id="frd-canvas-chat-window-suggestion-menu" role="menu" hidden>
+              <button type="button" role="menuitem" data-canvas-suggestion="선택한 화면이 디자인 규칙과 공통 컴포넌트를 올바르게 사용했는지 검토하고, 수정 전에 개선점을 제안해 주세요.">디자인 규칙 검토</button>
+              <button type="button" role="menuitem" data-canvas-suggestion="선택한 화면의 접근성·문구·조작 흐름을 검토하고 우선순위가 높은 개선점을 제안해 주세요.">사용성 개선 제안</button>
+              <button type="button" role="menuitem" data-canvas-suggestion="선택한 화면과 관련 화면의 이동 관계를 검토하고 누락되거나 어색한 흐름을 제안해 주세요.">화면 연결 검토</button>
+            </div>
+          </div>
+          <small class="wm-ai-chat__drop-hint">선택 화면을 기준으로 검토합니다</small>
+        </div>
+      </div>
+      <button class="button button--primary" id="frd-canvas-chat-window-send" type="submit">전송</button>
+    </form>
+  </section>
+  <script src="/js/frd-canvas-chat-window.js"></script>
+</body>
+</html>

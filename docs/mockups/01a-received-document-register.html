@@ -1,0 +1,154 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" href="../../src/main/resources/static/css/tokens.css">
+  <link rel="stylesheet" href="../../src/main/resources/static/css/reset.css">
+  <link rel="stylesheet" href="../../src/main/resources/static/css/typography.css">
+  <link rel="stylesheet" href="../../src/main/resources/static/css/components.css">
+  <link rel="stylesheet" href="../../src/main/resources/static/css/shell.css">
+  <link rel="stylesheet" href="_mock.css">
+  <link rel="stylesheet" href="../../src/main/resources/static/css/screens.css">
+  <title>문서 등록</title>
+</head>
+<body>
+<template id="본문">
+  <div class="page-head document-page-head document-register-head">
+    <div>
+      <h1 class="page-head__title">문서 등록</h1>
+    </div>
+    <div class="document-register-head__actions">
+      <a class="button" href="01-received-docs.html">목록으로</a>
+      <button class="button button--primary" form="document-register-form" type="submit">문서 등록</button>
+    </div>
+  </div>
+
+  <form class="document-register-workspace" id="document-register-form" action="#" method="post" enctype="multipart/form-data">
+    <section class="document-register-meta document-register-meta--pending" aria-labelledby="register-basic-title">
+      <h2 class="sr-only" id="register-basic-title">문서 기본 정보</h2>
+        <div class="field document-register-type-field">
+          <label class="field__label" for="register-document-type">문서 종류 <span aria-hidden="true">*</span></label>
+          <select class="field__control" id="register-document-type" name="documentType" required>
+            <option value="" disabled selected>문서 종류를 선택하세요</option>
+            <option value="FLOW">Flow</option>
+            <option value="MEETING_MINUTES">회의록</option>
+            <option value="OTHER">일반문서</option>
+          </select>
+        </div>
+        <div class="field document-register-meta__name" data-manual-meta hidden>
+          <label class="field__label" for="register-title">문서명 <span aria-hidden="true">*</span></label>
+          <input class="field__control" id="register-title" name="title" type="text" placeholder="예: 8/13 운영회의 회의록" required>
+        </div>
+        <div class="field document-register-flow-post" data-flow-source hidden>
+          <label class="field__label" for="flow-post-id">게시물 ID <span aria-hidden="true">*</span></label>
+          <input class="field__control num" id="flow-post-id" name="postId" type="text"
+                 inputmode="numeric" pattern="[0-9]{1,15}" maxlength="15" placeholder="예: 40001">
+        </div>
+        <fieldset class="field document-register-facets" hidden aria-describedby="register-facet-help register-facet-error">
+          <legend class="field__label">적용 구분 <span aria-hidden="true">*</span></legend>
+          <div class="facet-checks"><label><input name="facets" type="checkbox" value="iksan"> 익산</label><label><input name="facets" type="checkbox" value="jeju"> 제주</label></div>
+          <p class="field__help" id="register-facet-help">두 적용 구분에 공통인 문서는 둘 다 선택하세요.</p>
+          <p class="source-error" id="register-facet-error" hidden>이 문서가 해당하는 적용 구분을 하나 이상 선택해 주세요.</p>
+        </fieldset>
+        <div class="field document-register-meeting" data-meeting-fields hidden>
+          <label class="field__label" for="register-meeting-at">회의 일시 <span class="field__optional">선택</span></label>
+          <input class="field__control" id="register-meeting-at" name="meetingAt" type="datetime-local">
+        </div>
+        <div class="field document-register-meeting" data-meeting-fields hidden>
+          <label class="field__label" for="register-attendees">참석자 <span class="field__optional">선택</span></label>
+          <input class="field__control" id="register-attendees" name="attendees" type="text" placeholder="이름을 쉼표로 구분해 입력">
+        </div>
+    </section>
+
+    <section class="document-register-source" data-manual-source hidden aria-labelledby="register-source-title">
+      <h2 class="sr-only" id="register-source-title">원문 입력</h2>
+      <div class="document-register-source__body">
+        <div class="document-register-file">
+          <label class="document-register-file__picker" for="register-file">
+            <input id="register-file" name="file" type="file">
+            <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M12 16V4m0 0L7.5 8.5M12 4l4.5 4.5M5 14v4a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-4"/></svg>
+            <strong>원본 파일 선택</strong>
+            <span class="file-picker__name">선택된 파일 없음</span>
+            <small>선택한 파일은 변경하지 않고 보존합니다. 파일은 최대 20MB까지 등록할 수 있습니다.</small>
+          </label>
+        </div>
+        <div class="document-register-editor">
+          <label for="register-content"><strong>직접 입력 또는 파일 보충 설명</strong><span>회의 메모나 전달받은 내용을 붙여 넣을 수 있습니다.</span></label>
+          <textarea id="register-content" name="content" placeholder="문서 내용을 입력하거나, 첨부파일에서 AI가 추가로 알아야 할 내용을 적어 주세요."></textarea>
+        </div>
+      </div>
+      <p class="source-error" data-source-error hidden>첨부파일 또는 문서 내용을 하나 이상 입력해 주세요.</p>
+    </section>
+  </form>
+</template>
+<script src="_shell.js"></script>
+<script>
+  틀({제목:'문서 등록',모양:'산출물',지금:'received-docs',프로젝트이름:'G2C',프로젝트번호:1,프로젝트들:['G2C','서울페이'],사람:'이영희',안읽은알림:2});
+
+  const 파일입력 = document.getElementById('register-file');
+  const 파일이름 = document.querySelector('.file-picker__name');
+  const 문서명 = document.getElementById('register-title');
+  const 문서종류입력 = document.getElementById('register-document-type');
+  const 문서내용 = document.getElementById('register-content');
+  const 등록폼 = document.getElementById('document-register-form');
+  const 원문오류 = document.querySelector('[data-source-error]');
+  const 문서정보 = document.querySelector('.document-register-meta');
+  const 회의정보 = document.querySelectorAll('[data-meeting-fields]');
+  const 일반정보 = document.querySelector('[data-manual-meta]');
+  const 일반원문 = document.querySelector('[data-manual-source]');
+  const 플로우원문 = document.querySelector('[data-flow-source]');
+  const 게시물아이디 = document.getElementById('flow-post-id');
+  const 적용구분영역 = document.querySelector('.document-register-facets');
+  const 적용구분입력 = [...document.querySelectorAll('input[name="facets"]')];
+  const 적용구분오류 = document.getElementById('register-facet-error');
+
+  파일입력.addEventListener('change', () => {
+    const 선택파일 = 파일입력.files[0];
+    파일이름.textContent = 선택파일 ? 선택파일.name : '선택된 파일 없음';
+    if (선택파일 && !문서명.value) 문서명.value = 선택파일.name.replace(/\.[^.]+$/, '');
+    if (선택파일) 원문오류.hidden = true;
+  });
+  문서내용.addEventListener('input', () => { if (문서내용.value.trim()) 원문오류.hidden = true; });
+  function 문서종류반영() {
+    const 선택종류 = 문서종류입력.value;
+    const 선택됨 = 선택종류 !== '';
+    const 플로우 = 선택종류 === 'FLOW';
+    일반정보.hidden = !선택됨 || 플로우;
+    일반원문.hidden = !선택됨 || 플로우;
+    플로우원문.hidden = !선택됨 || !플로우;
+    적용구분영역.hidden = !선택됨;
+    문서정보.classList.toggle('document-register-meta--pending', !선택됨);
+    문서정보.classList.toggle('document-register-meta--flow', 플로우);
+    문서명.required = 선택됨 && !플로우;
+    게시물아이디.required = 선택됨 && 플로우;
+    원문오류.hidden = true;
+    회의정보.forEach((field) => { field.hidden = 플로우 || 선택종류 !== 'MEETING_MINUTES'; });
+  }
+  문서종류입력.addEventListener('change', 문서종류반영);
+  문서종류반영();
+  적용구분입력.forEach((input) => input.addEventListener('change', () => { if (적용구분입력.some((item) => item.checked)) 적용구분오류.hidden = true; }));
+  등록폼.addEventListener('submit', (event) => {
+    if (!적용구분입력.some((input) => input.checked)) {
+      event.preventDefault();
+      적용구분오류.hidden = false;
+      적용구분입력[0].focus();
+      return;
+    }
+    if (문서종류입력.value === 'FLOW') {
+      if (!게시물아이디.value.trim()) {
+        event.preventDefault();
+        게시물아이디.focus();
+      }
+      return;
+    }
+    if (!파일입력.files.length && !문서내용.value.trim()) {
+      event.preventDefault();
+      원문오류.hidden = false;
+      document.querySelector('.document-register-source').scrollIntoView({ behavior: 'smooth', block: 'center' });
+      문서내용.focus({ preventScroll: true });
+    }
+  });
+</script>
+</body>
+</html>

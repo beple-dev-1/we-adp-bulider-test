@@ -1,0 +1,164 @@
+<!doctype html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{fragments/shell :: layout(${title}, ${shape}, ${current}, ~{:: content})}">
+<body>
+<div th:fragment="content">
+
+  <div class="list-loading-region" data-list-loading-region>
+    <div class="page-loading-overlay list-loading-overlay" data-list-loading-overlay role="status" aria-label="조회 결과 처리 중" hidden>
+      <span class="page-loading-indicator">
+        <span class="page-loading-spinner" aria-hidden="true"></span>
+      </span>
+    </div>
+
+  <!--/*
+    목업 docs/mockups/08-solution-mockups.html 이 정본이다.
+    ⚠ 버전 산정 기준은 추가 논의 대상이다. 현재 목록은 화면 파일의 Git 변경 순서를 임시 표시한다.
+    ⛔ SOL-W-014 꼴 이름을 짓지 마라 (artifacts.md · 2026-08-13 확정) — 화면ID 는 레포의 것이다.
+  */-->
+
+  <div class="page-head list-page-head">
+    <div>
+      <h1 class="page-head__title">솔루션 템플릿</h1>
+      <p class="page-intro">기획 저장소에서 추출한 운영 화면을 확인합니다. 작업 목업의 기준이 되는 화면입니다.</p>
+    </div>
+  </div>
+
+  <div class="summary-strip solution-summary-strip" aria-label="솔루션 목업 현황" th:if="${totalCount > 0}">
+    <span>전체 <strong class="num" th:text="${totalCount}"></strong></span>
+    <span th:each="entry : ${systemCounts}">
+      <span th:text="${entry.key}"></span> <strong class="num" th:text="${entry.value}"></strong>
+    </span>
+    <span th:if="${mismatchTotal > 0}">실물과 다름 <strong class="num" th:text="${mismatchTotal}"></strong></span>
+  </div>
+
+  <form class="filter-bar filter-bar--solution" th:if="${totalCount > 0}"
+        method="get" role="search"
+        data-list-loading-trigger
+        th:action="@{/projects/{p}/artifacts/solution-mockups(p=${projectId})}">
+    <div class="field">
+      <label class="field__label" for="solution-system">시스템</label>
+      <select class="field__control" id="solution-system" name="system">
+        <option value="">전체</option>
+        <option th:each="name : ${systems}" th:value="${name}" th:text="${name}"
+                th:selected="${name == systemFilter}"></option>
+      </select>
+    </div>
+    <div class="field" th:if="${false}">
+      <label class="field__label" for="solution-facet">적용 구분</label>
+      <select class="field__control" id="solution-facet" name="facet">
+        <option value="">전체</option>
+        <option th:each="name : ${facets}" th:value="${name}" th:text="${name}"
+                th:selected="${name == facetFilter}"></option>
+      </select>
+    </div>
+    <div class="field">
+      <label class="field__label" for="solution-search">화면 검색</label>
+      <input class="field__control" id="solution-search" name="query" type="search"
+             placeholder="화면관리번호, 화면 ID, 화면명 또는 메뉴를 입력하세요" th:value="${query}">
+    </div>
+    <button class="button" type="submit">조회</button>
+  </form>
+
+  <section class="state-panel list-empty-state" role="status" th:if="${matchedCount == 0}">
+    <span class="list-empty-state__icon" aria-hidden="true">
+      <svg viewBox="0 0 32 32" fill="none"><path d="M6.5 7.5h19v17h-19z"/><path d="M6.5 19.5h5l2.2 3h4.6l2.2-3h5"/><path d="M11 12h10M11 15.5h7"/></svg>
+    </span>
+    <strong>조회된 내용이 없습니다.</strong>
+  </section>
+
+  <div class="table-wrap artifact-list-table-wrap solution-mockup-table-wrap" th:if="${matchedCount > 0}">
+    <table class="data-table data-table--dense solution-mockup-table">
+      <colgroup>
+        <col class="solution-col-name">
+        <col class="solution-col-standard-id">
+        <col class="solution-col-file-name">
+        <col class="solution-col-version">
+        <col class="solution-col-system">
+        <col class="solution-col-kind">
+        <col class="solution-col-facet" th:if="${hasFacets}">
+        <col class="solution-col-author">
+        <col class="solution-col-date">
+        <col class="solution-col-date">
+      </colgroup>
+      <thead>
+        <tr>
+          <th scope="col">화면명</th>
+          <th scope="col">화면관리번호</th>
+          <th scope="col">화면 ID</th>
+          <th scope="col">버전</th>
+          <th scope="col">시스템</th>
+          <th scope="col">종류</th>
+          <th scope="col" th:if="${hasFacets}">적용 구분</th>
+          <th scope="col">최종 수정자</th>
+          <th scope="col">최초 작성일</th>
+          <th scope="col">수정일</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr th:each="row : ${rows}">
+          <td>
+            <span class="cell">
+              <a class="artifact-list-link solution-screen-name"
+                 th:href="@{/projects/{p}/artifacts/solution-mockups/{s}(p=${projectId},s=${row.screen.screenId},query=${query},system=${systemFilter},page=${page},pageSize=${pageSize})}"
+                 th:title="${row.screen.screenName}"
+                 th:text="${row.screen.screenName}"></a>
+              <span class="facet-badges">
+                <!--/*
+                  ⛔ 진행 단계 색을 주지 마라 (screen-shell) — 이 둘은 걸음이 아니라 갈래다.
+                     테두리 배지가 그 뜻이다.
+                */-->
+                <span class="badge badge--outline" th:if="${row.hasMismatch}"
+                      th:text="'⚑ 실물과 다름 ' + ${row.mismatchCount}"></span>
+              </span>
+            </span>
+          </td>
+          <td class="num nowrap" th:text="${row.standardId}"></td>
+          <td class="num nowrap" th:text="${row.screen.screenId}"></td>
+          <td class="num nowrap" th:text="${row.screen.history.versionLabel}"></td>
+          <td th:text="${row.systemLabel}"></td>
+          <td><span class="badge" th:text="${row.screen.kind}"></span></td>
+          <td th:if="${hasFacets}">
+            <span class="badge badge--outline" th:text="${row.screen.applicationListSummary}"></span>
+          </td>
+          <!--/* ⚠ 이력이 없으면 「—」다. 얕은 클론이나 git 이 없는 자리에서 그렇게 된다. */-->
+          <td th:text="${row.screen.history.lastAuthor} ?: '—'"></td>
+          <td class="num nowrap" th:text="${row.screen.history.firstDate} ?: '—'"></td>
+          <td class="num nowrap" th:text="${row.screen.history.lastDate} ?: '—'"></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="list-table-foot" th:if="${matchedCount > 0}">
+    <span aria-hidden="true"></span>
+    <nav class="list-pagination" aria-label="솔루션 목업 페이지 이동" data-list-loading-links>
+      <span th:if="${page == 1}" class="list-page-button" aria-disabled="true" aria-label="이전 페이지">&lsaquo;</span>
+      <a th:unless="${page == 1}" class="list-page-button" aria-label="이전 페이지" th:text="'‹'"
+         th:href="@{/projects/{p}/artifacts/solution-mockups(p=${projectId},query=${query},system=${systemFilter},facet=${facetFilter},pageSize=${pageSize},page=${page - 1})}"></a>
+      <a th:each="number : ${pageNumbers}" class="list-page-button"
+         th:classappend="${number == page} ? 'is-current' : ''"
+         th:attr="aria-current=${number == page} ? 'true' : null"
+         th:text="${number}"
+         th:href="@{/projects/{p}/artifacts/solution-mockups(p=${projectId},query=${query},system=${systemFilter},facet=${facetFilter},pageSize=${pageSize},page=${number})}"></a>
+      <span th:if="${page == pageCount}" class="list-page-button" aria-disabled="true" aria-label="다음 페이지">&rsaquo;</span>
+      <a th:unless="${page == pageCount}" class="list-page-button" aria-label="다음 페이지" th:text="'›'"
+         th:href="@{/projects/{p}/artifacts/solution-mockups(p=${projectId},query=${query},system=${systemFilter},facet=${facetFilter},pageSize=${pageSize},page=${page + 1})}"></a>
+    </nav>
+    <form class="list-page-size" method="get" data-list-loading-trigger
+          th:action="@{/projects/{p}/artifacts/solution-mockups(p=${projectId})}">
+      <input type="hidden" name="query" th:value="${query}">
+      <input type="hidden" name="system" th:value="${systemFilter}">
+      <input type="hidden" name="facet" th:value="${facetFilter}">
+      <label class="sr-only" for="solution-page-size">목록 크기</label>
+      <select class="field__control" id="solution-page-size" name="pageSize" data-list-loading-page-size>
+        <option th:each="option : ${pageSizes}" th:value="${option}" th:text="${option} + '개씩'"
+                th:selected="${option == pageSize}"></option>
+      </select>
+    </form>
+  </div>
+  </div>
+
+</div>
+</body>
+</html>

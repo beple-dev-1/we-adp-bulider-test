@@ -1,0 +1,283 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <link rel="stylesheet" href="../../src/main/resources/static/css/tokens.css">
+  <link rel="stylesheet" href="../../src/main/resources/static/css/reset.css">
+  <link rel="stylesheet" href="../../src/main/resources/static/css/typography.css">
+  <link rel="stylesheet" href="../../src/main/resources/static/css/components.css">
+  <link rel="stylesheet" href="../../src/main/resources/static/css/shell.css">
+  <link rel="stylesheet" href="_mock.css">
+  <link rel="stylesheet" href="../../src/main/resources/static/css/screens.css">
+  <link rel="stylesheet" href="_requirement-concepts.css">
+  <link rel="stylesheet" href="_frd-concepts.css">
+  <title>FRD 작업 상세</title>
+</head>
+<body>
+<template id="본문">
+  <div class="wm-concept frd-workbench-page">
+    <header class="rq-head">
+      <div class="rq-head__copy"><span class="rq-kicker num">FRD-003</span><h1>전자결재 · 웹뷰</h1></div>
+      <div class="rq-head__actions">
+        <button class="button button--danger-outline" type="button">작업공간 초기화</button>
+        <button class="button" id="open-frd-overview" type="button" aria-controls="frd-overview-dialog" aria-expanded="false">FRD 내용 보기</button>
+        <form action="06-dev-requests.html" method="get" onsubmit="return confirm('수정한 내용을 커밋하고 FRD 작업을 완료할까요? 완료 후에는 검토 필요 상태로 전환됩니다.')">
+          <button class="button button--primary" id="complete-frd-work" type="submit" title="FRD 작업을 완료합니다">FRD 작업 완료</button>
+        </form>
+      </div>
+    </header>
+
+    <dl class="rq-meta"><div><dt>적용 대상</dt><dd><span class="badge badge--outline">익산</span></dd></div><div><dt>담당자</dt><dd>이영희</dd></div><div><dt>요구사항</dt><dd class="rq-meta__requirement"><button id="open-frd-requirement" type="button" aria-controls="frd-overview-dialog" aria-expanded="false" title="요구사항 전체 보기"><span>상신 화면에서 작성 중인 문서를 임시 저장하고 다시 불러올 수 있어야 합니다.</span><small>보기</small></button></dd></div><div><dt>생성일</dt><dd>2026-08-10</dd></div></dl>
+
+    <main class="wm-summary">
+      <div class="wm-work-layout">
+        <aside class="rq-card wm-screen-sidebar" aria-labelledby="work-contents-title">
+          <div class="rq-card__head"><h2 id="work-contents-title">FRD 화면</h2><div class="wm-panel-icon-actions"><button class="icon-button wm-panel-icon-button button--primary" type="button" aria-label="AI 초안 만들기" title="AI 초안 만들기"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m12 3 1.3 3.7L17 8l-3.7 1.3L12 13l-1.3-3.7L7 8l3.7-1.3L12 3ZM5 14l.8 2.2L8 17l-2.2.8L5 20l-.8-2.2L2 17l2.2-.8L5 14Z"/></svg></button><button class="icon-button wm-panel-icon-button wm-panel-icon-button--danger" type="button" aria-label="작업 초기화" title="작업 초기화"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7L3 8M3 3v5h5"/></svg></button></div></div>
+          <nav class="wm-screen-list" id="work-screen-list" aria-label="FRD 화면"><a href="#screen-preview" aria-current="page"><span><small class="num">wv-appr-write</small><strong>결재 문서 작성</strong></span><span class="status-badge status-badge--review">초안 확인 필요</span></a><a href="#screen-preview"><span><small class="num">wv-appr-draft-list</small><strong>임시 저장 문서함</strong></span><span class="status-badge status-badge--progress">AI 초안 만드는 중</span></a><a href="#screen-preview"><span><small class="num">wv-appr-detail</small><strong>결재 문서 상세</strong></span><span class="status-badge status-badge--complete">저장 완료</span></a><div class="wm-screen-list-row"><span class="wm-screen-list-row__label"><small class="num">wv-appr-attach</small><strong>결재 문서 첨부파일</strong></span><span class="status-badge status-badge--waiting">AI 초안 대기</span></div></nav>
+          <div class="wm-screen-sidebar__action"><button class="button" id="add-work-screen" type="button">FRD 화면 추가</button></div>
+        </aside>
+
+        <section class="wm-stage" id="screen-preview">
+        <header class="wm-stage-head">
+          <h2><span class="num">wv-appr-write</span> · 결재 문서 작성</h2>
+          <div class="wm-stage-actions">
+            <div class="wm-stage-action-group wm-stage-action-group--view" role="group" aria-label="화면 보기">
+              <div class="wm-zoom" role="group" aria-label="미리보기 확대 및 축소"><button type="button" id="zoom-out" aria-label="미리보기 축소">−</button><button type="button" id="zoom-reset" aria-label="미리보기 배율 초기화"><output id="zoom-level">100%</output></button><button type="button" id="zoom-in" aria-label="미리보기 확대">+</button></div>
+              <button class="icon-button wm-panel-icon-button wm-focus-toggle" id="toggle-frd-focus" type="button" aria-label="작업 화면 확대" aria-pressed="false" title="작업 화면 확대"><svg class="wm-focus-toggle__expand" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 3H3v5M16 3h5v5M8 21H3v-5M16 21h5v-5"/></svg><svg class="wm-focus-toggle__restore" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 3v6H3M15 3v6h6M9 21v-6H3M15 21v-6h6"/></svg></button>
+            </div>
+            <div class="wm-stage-action-group" role="group" aria-label="문서와 기록">
+              <button class="icon-button wm-panel-icon-button" id="open-frd-document" type="button" aria-label="기능정의서" title="기능정의서"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 4H6v17h12V4h-3M9 3h6v4H9V3Z"/><path d="m9 12 1.3 1.3L13 10.5M14.5 12H16M9 17h7"/></svg></button>
+              <button class="icon-button wm-panel-icon-button" id="open-screen-memo" type="button" aria-label="메모" title="메모"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v12H9l-5 4V5Z"/><path d="M8 9h8M8 13h5"/></svg></button>
+              <button class="icon-button wm-panel-icon-button" id="open-screen-history" type="button" aria-label="변경 히스토리" title="변경 히스토리"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7L3 8M3 3v5h5M12 7v5l3 2"/></svg></button>
+            </div>
+            <div class="wm-stage-action-group" role="group" aria-label="화면 수정 도구">
+              <button class="button button--small" id="select-mockup-area" type="button" aria-pressed="false" disabled title="다음 판입니다">수정 영역 선택</button>
+              <button class="button button--small" id="add-mockup-marker" type="button" disabled title="다음 판입니다">설명 마커 추가</button>
+              <button class="button button--primary button--small" id="save-work-mockup" type="button">FRD 화면 저장</button>
+            </div>
+          </div>
+        </header>
+        <div class="wm-canvas" id="mockup-canvas" tabindex="0" aria-label="FRD 화면 미리보기 캔버스"><div class="wm-canvas-sheet" id="mockup-canvas-sheet">
+        <article class="wm-product wm-product--markable" aria-label="결재 문서 작성 FRD 화면 미리보기">
+          <button class="wm-marker" type="button" aria-label="화면 설명 1" disabled title="다음 판입니다">1</button>
+          <header class="wm-product__head"><div><span class="rq-kicker">전자결재</span><h3>결재 문서 작성</h3></div><button class="button" type="button" data-mockup-id="temporary-save" data-mockup-label="상단 행동 · 임시 저장 버튼">임시 저장</button></header>
+          <div class="wm-product__body"><div class="wm-product__line" data-mockup-id="approval-line" data-mockup-label="결재선 영역"><strong>결재선</strong> · 홍길동 기안 · 이영희 결재</div><div class="wm-product__line" data-mockup-id="document-title" data-mockup-label="문서 입력 · 제목"><strong>제목</strong> · 8월 정기 구매 품의</div><div class="wm-product__editor" data-mockup-id="document-content" data-mockup-label="문서 입력 · 내용">구매 품의 내용을 입력합니다.</div></div>
+          <footer class="wm-product__foot"><span data-mockup-id="autosave-status" data-mockup-label="하단 안내 · 자동 저장 상태">자동 저장됨 · 14:32</span><div><button class="button" type="button">취소</button><button class="button button--primary" type="button">결재 요청</button></div></footer>
+        </article>
+        </div></div>
+        </section>
+      </div>
+
+    </main>
+  </div>
+
+  <dialog class="dialog dialog--layer wm-screen-document-dialog" id="frd-document-dialog" aria-labelledby="frd-document-title">
+    <section class="wm-screen-document">
+      <header class="dialog__header dialog__header--with-meta wm-screen-document__head"><div class="dialog__header-copy"><h2 class="dialog__title" id="frd-document-title">기능정의서</h2><p class="dialog__description"><strong>결재 문서 작성</strong> · 화면에 연결된 기능과 처리 기준</p></div><span class="dialog__meta num">wv-appr-write</span><button class="dialog__close" id="close-frd-document" type="button" aria-label="기능정의서 닫기"></button></header>
+      <div class="dialog__body wm-screen-document__body">
+        <div class="wm-screen-document__reader">
+          <aside class="wm-screen-document__toc" aria-label="기능정의서 목차"><div class="wm-screen-document__toc-head"><strong>문서 목차</strong><span>5개 항목</span></div><ol><li><button type="button" data-document-target="frd-doc-overview" aria-current="true">기능 개요</button></li><li><button type="button" data-document-target="frd-doc-layout">화면 구성</button></li><li><button type="button" data-document-target="frd-doc-rules">입력 및 처리 기준</button></li><li><button type="button" data-document-target="frd-doc-exceptions">예외 처리</button></li><li><button type="button" data-document-target="frd-doc-links">연계 정보</button></li></ol></aside>
+          <article class="wm-screen-document__content">
+            <section class="wm-screen-document__section"><h3 id="frd-doc-overview">기능 개요</h3><dl class="wm-screen-document__facts"><div><dt>목적</dt><dd>작성 중인 결재 문서를 안전하게 보존하고 이후 작업을 이어갈 수 있도록 합니다.</dd></div><div><dt>사용자</dt><dd>전자결재 문서를 작성하는 임직원</dd></div><div><dt>진입 경로</dt><dd>전자결재 &gt; 문서 작성</dd></div></dl></section>
+            <section class="wm-screen-document__section"><h3 id="frd-doc-layout">화면 구성</h3><h4>주요 영역</h4><ul><li>문서 기본 정보와 결재선을 입력하는 영역</li><li>본문 및 첨부파일을 관리하는 영역</li><li>임시저장 상태와 마지막 저장 시각을 안내하는 영역</li></ul></section>
+            <section class="wm-screen-document__section"><h3 id="frd-doc-rules">입력 및 처리 기준</h3><dl class="wm-screen-document__facts"><div><dt>임시저장</dt><dd>필수 입력값이 완료되지 않아도 현재 입력 내용을 저장합니다.</dd></div><div><dt>저장 시각</dt><dd>저장이 완료된 서버 시각을 분 단위로 표시합니다.</dd></div><div><dt>중복 요청</dt><dd>저장 처리 중에는 버튼을 비활성화하여 중복 요청을 막습니다.</dd></div></dl><h4>사용자 안내</h4><ol><li>저장을 시작하면 진행 상태를 버튼에 표시합니다.</li><li>완료 후 마지막 저장 시각과 성공 안내를 표시합니다.</li><li>실패하면 원인과 다시 시도할 행동을 함께 안내합니다.</li></ol></section>
+            <section class="wm-screen-document__section"><h3 id="frd-doc-exceptions">예외 처리</h3><dl class="wm-screen-document__facts"><div><dt>네트워크 오류</dt><dd>입력 내용을 화면에 유지하고 다시 저장할 수 있도록 안내합니다.</dd></div><div><dt>권한 만료</dt><dd>로그인이 필요하다는 안내 후 재인증 경로를 제공합니다.</dd></div></dl></section>
+            <section class="wm-screen-document__section"><h3 id="frd-doc-links">연계 정보</h3><p>임시 저장 문서함에서 저장된 문서를 선택하면 이 화면으로 돌아와 작성 내용을 복원합니다.</p></section>
+          </article>
+        </div>
+      </div>
+    </section>
+  </dialog>
+  <dialog class="dialog dialog--layer wm-screen-memo-dialog" id="screen-memo-dialog" aria-labelledby="screen-memo-title"><form method="dialog"><header class="dialog__header dialog__header--with-meta wm-screen-memo__head"><div class="dialog__header-copy"><h2 class="dialog__title" id="screen-memo-title">화면 메모</h2></div><span class="dialog__meta num">wv-appr-write</span><button class="dialog__close" id="close-screen-memo" type="button" aria-label="화면 메모 닫기"></button></header><div class="dialog__body wm-screen-memo__body"><div class="wm-screen-memo__context"><span>대상 화면</span><strong>결재 문서 작성</strong></div><section class="wm-screen-memo-thread" aria-labelledby="screen-memo-list-title"><header class="wm-screen-memo-thread__head"><h3 id="screen-memo-list-title">등록된 메모</h3><span>2건</span></header><ol class="wm-screen-memo-list"><li><div><strong>이영희</strong><time datetime="2026-08-21T09:20:00+09:00">2026. 08. 21. 09:20</time></div><p>상품권 결제 금액은 지급액 계산 대상에서 제외합니다.</p></li><li><div><strong>김기획</strong><time datetime="2026-08-21T09:34:00+09:00">2026. 08. 21. 09:34</time></div><p>지급률 변경 시 소수점 이하는 버림 처리합니다.</p></li></ol></section><section class="field wm-screen-memo-composer"><label class="field__label" for="screen-memo-content">새 메모</label><textarea class="field__control" id="screen-memo-content" rows="5" maxlength="10000" placeholder="확인할 내용이나 결정 사항을 입력해 주세요."></textarea></section></div><div class="dialog__actions"><button class="button" type="submit" value="cancel">취소</button><button class="button button--primary" type="submit" value="save">메모 등록</button></div></form></dialog>
+  <dialog class="dialog dialog--layer wm-history-dialog" id="screen-history-dialog" aria-labelledby="screen-history-title"><section class="wm-layer-frame"><header class="dialog__header dialog__header--with-meta"><div class="dialog__header-copy"><span class="dialog__kicker">화면 버전 관리</span><h2 class="dialog__title" id="screen-history-title">변경 히스토리</h2><p class="dialog__description"><strong>결재 문서 작성</strong> 화면의 버전을 확인하거나 복원합니다.</p></div><span class="dialog__meta num">wv-appr-write</span><button class="dialog__close" id="close-screen-history" type="button" aria-label="변경 히스토리 닫기"></button></header><div class="dialog__body"><p class="dialog__notice">버전을 미리보면 작업 화면에 읽기 전용으로 표시됩니다. 복원하기 전까지 현재 파일은 바뀌지 않습니다.</p><ol class="wm-history-list"><li data-history-current="true"><div class="wm-history-list__head"><div><span class="status-badge status-badge--complete">현재 버전</span><time>2026-08-21 13:40</time></div><div class="wm-history-list__actions"><button class="button button--small" type="button">현재 화면으로 돌아가기</button></div></div><ul><li>임시 저장 버튼 문구를 정리했습니다.</li></ul></li><li><div class="wm-history-list__head"><div><span class="status-badge status-badge--waiting">이전 버전</span><time>2026-08-21 11:20</time></div><div class="wm-history-list__actions"><button class="button button--small" type="button">미리보기</button><button class="button button--small" type="button">이 버전 복원</button></div></div><ul><li>임시 저장 버튼을 추가했습니다.</li><li>자동 저장 안내를 표시했습니다.</li></ul></li><li><div class="wm-history-list__head"><div><span class="status-badge status-badge--waiting">작업 시작 전</span><time>솔루션 목업 기준 화면</time></div><div class="wm-history-list__actions"><button class="button button--small" type="button">미리보기</button></div></div><p>FRD 작업을 시작하기 전 솔루션 목업입니다.</p></li></ol></div></section></dialog>
+  <dialog class="dialog" id="mockup-marker-dialog" aria-labelledby="mockup-marker-dialog-title"><form method="dialog"><div class="dialog__body"><h2 id="mockup-marker-dialog-title">화면 설명 추가</h2><div class="field"><label class="field__label" for="mockup-marker-description">설명</label><textarea class="field__control compact-textarea" id="mockup-marker-description" rows="5" required placeholder="이 위치에서 확인하거나 변경할 내용을 입력하세요"></textarea></div></div><div class="dialog__actions"><button class="button" type="submit" value="delete">설명 삭제</button><button class="button" type="submit" value="cancel">취소</button><button class="button" type="submit" value="use-ai">AI 수정에 사용</button><button class="button button--primary" type="submit" value="save">설명 저장</button></div></form></dialog>
+  <dialog class="dialog dialog--layer wm-frd-overview-dialog" id="frd-overview-dialog" aria-labelledby="frd-overview-title" aria-describedby="frd-overview-description">
+    <section class="wm-frd-overview">
+      <header class="dialog__header dialog__header--with-meta wm-frd-overview__head"><div class="dialog__header-copy"><h2 class="dialog__title" id="frd-overview-title">FRD 내용</h2><p class="dialog__description" id="frd-overview-description">전자결재 상신 임시저장 지원 · 웹뷰</p></div><span class="dialog__meta num">FRD-003</span><button class="dialog__close" id="close-frd-overview" type="button" aria-label="FRD 내용 닫기"></button></header>
+      <div class="wm-frd-overview__body"><div class="wm-frd-overview__reader">
+        <aside class="wm-frd-overview__toc" aria-label="FRD 내용 목차"><div class="wm-frd-overview__toc-head"><strong>문서 목차</strong><span>4개 항목</span></div><ol><li><button type="button" data-frd-overview-target="frd-overview-summary-title" aria-current="true">작업 개요</button></li><li><button type="button" data-frd-overview-target="frd-overview-requirement-title">요구사항</button></li><li><button type="button" data-frd-overview-target="frd-overview-scope-title">개발 범위</button></li><li><button type="button" data-frd-overview-target="frd-overview-screen-title">화면별 수정 기록</button></li></ol></aside>
+        <article class="wm-frd-overview__content" id="frd-overview-content">
+          <section class="wm-frd-overview__section" aria-labelledby="frd-overview-summary-title"><h3 id="frd-overview-summary-title">작업 개요</h3><dl class="wm-frd-overview__summary"><div><dt>작업 상태</dt><dd>수정 중</dd></div><div><dt>담당자</dt><dd>이영희</dd></div><div><dt>적용 대상</dt><dd>익산</dd></div></dl></section>
+          <section class="wm-frd-overview__section" aria-labelledby="frd-overview-requirement-title"><h3 id="frd-overview-requirement-title">요구사항</h3><p class="wm-frd-overview__requirement">상신 화면에서 작성 중인 문서를 임시 저장하고 다시 불러올 수 있어야 합니다.</p></section>
+          <section class="wm-frd-overview__section" aria-labelledby="frd-overview-scope-title"><div class="wm-frd-overview__section-head"><h3 id="frd-overview-scope-title">개발 범위</h3><span class="badge badge--outline">2건</span></div><ol class="wm-frd-overview__scope-list"><li><div class="wm-frd-overview__scope-meta"><span class="status-badge">개발</span><span class="badge badge--outline">화면</span></div><strong>작성 중인 결재 문서를 임시 저장한다.</strong><p>저장 버튼과 저장 완료 안내를 추가합니다.</p><div class="wm-frd-overview__linked-screens"><span>연결 화면</span><code>wv-appr-write</code></div></li><li><div class="wm-frd-overview__scope-meta"><span class="status-badge">개발</span><span class="badge badge--outline">화면</span></div><strong>저장한 결재 문서를 다시 불러온다.</strong><p>임시 저장 문서함에서 작성 화면으로 이동합니다.</p><div class="wm-frd-overview__linked-screens"><span>연결 화면</span><code>wv-appr-draft-list</code><code>wv-appr-write</code></div></li></ol></section>
+          <section class="wm-frd-overview__section" aria-labelledby="frd-overview-screen-title"><div class="wm-frd-overview__section-head"><h3 id="frd-overview-screen-title">화면별 수정 기록</h3><span class="badge badge--outline">3개</span></div><ol class="wm-frd-overview__screen-list"><li><div class="wm-frd-overview__screen-head"><span><small class="num">wv-appr-write</small><strong>결재 문서 작성</strong></span><span class="status-badge status-badge--review">확인 필요</span></div><ol class="wm-frd-overview__version-list"><li><time>2026-08-21 13:40</time><ul class="wm-frd-overview__change-list"><li>직접 수정: 임시 저장 → 임시저장</li></ul></li><li><time>2026-08-21 11:20</time><ul class="wm-frd-overview__change-list"><li>임시 저장 버튼을 추가했습니다.</li><li>저장 완료 시간과 자동 저장 안내를 표시했습니다.</li></ul></li></ol></li><li><div class="wm-frd-overview__screen-head"><span><small class="num">wv-appr-draft-list</small><strong>임시 저장 문서함</strong></span><span class="status-badge status-badge--progress">만드는 중</span></div><p class="wm-frd-overview__no-change">아직 화면 수정 내용이 없습니다.</p></li><li><div class="wm-frd-overview__screen-head"><span><small class="num">wv-appr-detail</small><strong>결재 문서 상세</strong></span><span class="status-badge status-badge--complete">완료</span></div><ol class="wm-frd-overview__version-list"><li><time>2026-08-20 18:10</time><ul class="wm-frd-overview__change-list"><li>임시 저장 문서의 상태와 저장 시각을 표시했습니다.</li></ul></li></ol></li></ol></section>
+        </article>
+      </div></div>
+    </section>
+  </dialog>
+  <dialog class="dialog" id="add-work-screen-dialog" aria-labelledby="add-work-screen-title"><form method="dialog"><div class="dialog__body"><h2 id="add-work-screen-title">FRD 화면 추가</h2><p>솔루션 목업에서 이 FRD 작업에 추가할 화면을 선택합니다.</p><div class="field"><label class="field__label" for="work-screen-candidate">추가할 화면</label><select class="field__control" id="work-screen-candidate" required><option value="">화면을 선택하세요</option><option value="wv-appr-attach|결재 문서 첨부파일">wv-appr-attach · 결재 문서 첨부파일</option><option value="wv-appr-line-select|결재선 선택">wv-appr-line-select · 결재선 선택</option><option value="wv-appr-result|결재 요청 완료">wv-appr-result · 결재 요청 완료</option></select></div></div><div class="dialog__actions"><button class="button" type="submit" value="cancel">취소</button><button class="button button--primary" id="confirm-add-work-screen" type="submit" value="add">화면 추가</button></div></form></dialog>
+</template>
+<script src="_shell.js"></script>
+<script>틀({제목:'FRD 작업 상세',모양:'산출물',지금:'frds',프로젝트이름:'G2C',프로젝트번호:1,프로젝트들:['G2C','서울페이'],사람:'이영희',안읽은알림:2});</script>
+<script src="_claude-window.js"></script>
+<script src="_frd-concepts.js"></script>
+<script>
+  const mockupScreen = document.querySelector('.wm-product');
+  const selectAreaButton = document.getElementById('select-mockup-area');
+  const selectionContext = document.getElementById('mockup-selection-context');
+  const selectionLabel = document.getElementById('mockup-selection-label');
+  const messageInput = document.getElementById('work-mockup-claude-message');
+  const canvasSheet = document.getElementById('mockup-canvas-sheet');
+  const zoomLevel = document.getElementById('zoom-level');
+  const zoomOutButton = document.getElementById('zoom-out');
+  const zoomInButton = document.getElementById('zoom-in');
+  let zoom = 100;
+  let selectedElement = null;
+
+  const updateZoom = nextZoom => {
+    zoom = Math.min(150, Math.max(50, nextZoom));
+    canvasSheet.style.setProperty('--mockup-zoom', zoom / 100);
+    zoomLevel.value = `${zoom}%`;
+    zoomLevel.textContent = `${zoom}%`;
+    zoomOutButton.disabled = zoom === 50;
+    zoomInButton.disabled = zoom === 150;
+  };
+  zoomOutButton.addEventListener('click', () => updateZoom(zoom - 10));
+  zoomInButton.addEventListener('click', () => updateZoom(zoom + 10));
+  document.getElementById('zoom-reset').addEventListener('click', () => updateZoom(100));
+
+  const focusButton = document.getElementById('toggle-frd-focus');
+  const setFocusMode = active => {
+    document.body.classList.toggle('is-frd-focus', active);
+    focusButton.setAttribute('aria-pressed', String(active));
+    focusButton.setAttribute('aria-label', active ? '작업 화면 원래 크기로' : '작업 화면 확대');
+    focusButton.title = active ? '작업 화면 원래 크기로 (Esc)' : '작업 화면 확대';
+  };
+  const navToggle = document.querySelector('[data-nav-toggle]');
+  navToggle?.addEventListener('click', event => {
+    if (!document.body.classList.contains('is-frd-focus')) return;
+    event.preventDefault();
+    event.stopImmediatePropagation();
+    setFocusMode(false);
+    document.body.classList.remove('is-nav-collapsed');
+    navToggle.setAttribute('aria-expanded', 'true');
+    navToggle.setAttribute('aria-label', '메뉴 접기');
+    navToggle.title = '메뉴 접기';
+    try { window.localStorage.setItem('builder-nav-collapsed', 'false'); } catch (error) { /* 현재 화면만 펼친다. */ }
+  }, true);
+  focusButton.addEventListener('click', () => setFocusMode(!document.body.classList.contains('is-frd-focus')));
+  document.addEventListener('keydown', event => {
+    if (event.key === 'Escape' && document.body.classList.contains('is-frd-focus')) {
+      setFocusMode(false);
+      focusButton.focus();
+    }
+  });
+
+  const clearSelection = () => {
+    selectedElement?.classList.remove('is-selected');
+    selectedElement = null;
+    selectionContext.hidden = true;
+    selectionLabel.textContent = '';
+  };
+  selectAreaButton.addEventListener('click', () => {
+    const active = !mockupScreen.classList.contains('is-selecting');
+    mockupScreen.classList.toggle('is-selecting', active);
+    selectAreaButton.setAttribute('aria-pressed', String(active));
+    selectAreaButton.textContent = active ? '선택 종료' : '수정 영역 선택';
+  });
+  mockupScreen.addEventListener('click', event => {
+    if (!mockupScreen.classList.contains('is-selecting')) return;
+    const target = event.target.closest('[data-mockup-id]');
+    if (!target) return;
+    event.preventDefault();
+    selectedElement?.classList.remove('is-selected');
+    selectedElement = target;
+    target.classList.add('is-selected');
+    selectionLabel.textContent = target.dataset.mockupLabel;
+    selectionContext.hidden = false;
+    mockupScreen.classList.remove('is-selecting');
+    selectAreaButton.setAttribute('aria-pressed', 'false');
+    selectAreaButton.textContent = '수정 영역 선택';
+    document.querySelector('.claude-fab').click();
+  });
+  document.getElementById('clear-mockup-selection').addEventListener('click', clearSelection);
+  const documentDialog = document.getElementById('frd-document-dialog');
+  const memoDialog = document.getElementById('screen-memo-dialog');
+  const historyDialog = document.getElementById('screen-history-dialog');
+  document.getElementById('open-frd-document').addEventListener('click', () => {
+    document.querySelector('.wm-screen-document__content').scrollTop = 0;
+    documentDialog.showModal();
+  });
+  document.getElementById('close-frd-document').addEventListener('click', () => documentDialog.close());
+  document.querySelector('.wm-screen-document__toc').addEventListener('click', event => {
+    const button = event.target.closest('[data-document-target]');
+    if (!button) return;
+    const target = document.getElementById(button.dataset.documentTarget);
+    if (!target) return;
+    document.querySelectorAll('.wm-screen-document__toc button').forEach(item => item.removeAttribute('aria-current'));
+    button.setAttribute('aria-current', 'true');
+    target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  });
+  document.getElementById('open-screen-memo').addEventListener('click', () => memoDialog.showModal());
+  document.getElementById('close-screen-memo').addEventListener('click', () => memoDialog.close());
+  document.getElementById('open-screen-history').addEventListener('click', () => historyDialog.showModal());
+  document.getElementById('close-screen-history').addEventListener('click', () => historyDialog.close());
+  const layerPreview = new URLSearchParams(window.location.search).get('layer');
+  ({ document: documentDialog, memo: memoDialog, history: historyDialog,
+    overview: document.getElementById('frd-overview-dialog') })[layerPreview]?.showModal();
+  const markerDialog = document.getElementById('mockup-marker-dialog');
+  document.getElementById('add-mockup-marker').addEventListener('click', () => markerDialog.showModal());
+  document.querySelector('.wm-marker').addEventListener('click', event => { event.stopPropagation(); markerDialog.showModal(); });
+  markerDialog.addEventListener('close', () => {
+    if (markerDialog.returnValue !== 'use-ai') return;
+    selectionLabel.textContent = `화면 설명 · ${document.getElementById('mockup-marker-description').value.trim()}`;
+    selectionContext.hidden = false;
+    messageInput.focus();
+    if (document.querySelector('.claude-overlay').hidden) document.querySelector('.claude-fab').click();
+  });
+  document.getElementById('save-work-mockup').addEventListener('click', event => { event.currentTarget.textContent = '저장 완료'; event.currentTarget.disabled = true; });
+  const addScreenDialog = document.getElementById('add-work-screen-dialog');
+  const screenCandidate = document.getElementById('work-screen-candidate');
+  document.getElementById('add-work-screen').addEventListener('click', () => addScreenDialog.showModal());
+  const frdOverviewDialog = document.getElementById('frd-overview-dialog');
+  const frdOverviewButton = document.getElementById('open-frd-overview');
+  const frdRequirementButton = document.getElementById('open-frd-requirement');
+  const frdOverviewToc = frdOverviewDialog.querySelector('.wm-frd-overview__toc');
+  const frdOverviewContent = document.getElementById('frd-overview-content');
+  let frdOverviewReturnFocus = frdOverviewButton;
+  const openFrdOverview = (targetId, opener) => {
+    frdOverviewReturnFocus = opener;
+    const target = document.getElementById(targetId);
+    frdOverviewToc.querySelectorAll('button').forEach(item => item.toggleAttribute('aria-current', item.dataset.frdOverviewTarget === targetId));
+    frdOverviewDialog.showModal();
+    opener.setAttribute('aria-expanded', 'true');
+    if (targetId === 'frd-overview-summary-title') frdOverviewContent.scrollTop = 0;
+    else target.scrollIntoView({ block: 'start' });
+  };
+  frdOverviewButton.addEventListener('click', () => openFrdOverview('frd-overview-summary-title', frdOverviewButton));
+  frdRequirementButton.addEventListener('click', () => openFrdOverview('frd-overview-requirement-title', frdRequirementButton));
+  document.getElementById('close-frd-overview').addEventListener('click', () => {
+    frdOverviewDialog.close();
+    frdOverviewButton.setAttribute('aria-expanded', 'false');
+    frdRequirementButton.setAttribute('aria-expanded', 'false');
+    frdOverviewReturnFocus.focus();
+  });
+  frdOverviewToc.addEventListener('click', event => {
+    const button = event.target.closest('[data-frd-overview-target]');
+    if (!button) return;
+    const target = document.getElementById(button.dataset.frdOverviewTarget);
+    if (!target) return;
+    frdOverviewToc.querySelectorAll('button').forEach(item => item.removeAttribute('aria-current'));
+    button.setAttribute('aria-current', 'true');
+    target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  });
+  document.getElementById('confirm-add-work-screen').addEventListener('click', event => {
+    if (!screenCandidate.reportValidity()) { event.preventDefault(); return; }
+    const [screenId, screenName] = screenCandidate.value.split('|');
+    const link = document.createElement('a');
+    link.href = '#screen-preview';
+    link.innerHTML = `<span><small class="num">${screenId}</small><strong>${screenName}</strong></span><span class="status-badge status-badge--waiting">AI 초안 대기</span>`;
+    document.getElementById('work-screen-list').append(link);
+    screenCandidate.querySelector(`option[value="${screenCandidate.value}"]`).disabled = true;
+    screenCandidate.value = '';
+  });
+  // ⛔ Claude 대화창은 이번 판에 잠근다 — _frd-concepts.js 가 만든 트리거를 여기서 비활성화한다.
+  const claudeTrigger = document.querySelector('.claude-fab');
+  if (claudeTrigger) {
+    claudeTrigger.disabled = true;
+    claudeTrigger.setAttribute('title', '다음 판입니다');
+  }
+</script>
+</body>
+</html>

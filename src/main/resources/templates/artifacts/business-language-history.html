@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{fragments/shell :: layout(${title}, ${shape}, ${current}, ~{:: content})}">
+<body>
+<div th:fragment="content">
+  <link rel="stylesheet" th:href="@{/css/business-language.css}">
+
+  <section class="business-language business-history">
+    <div class="page-head list-page-head">
+      <div>
+        <h1 class="page-head__title">정책·표준용어 수정이력</h1>
+        <p class="page-intro">저장된 개정본과 이전 개정본에서 달라진 내용을 확인합니다.</p>
+      </div>
+    </div>
+
+    <nav class="business-tabs" aria-label="정책·표준용어 수정이력">
+      <a th:href="@{/projects/{p}/artifacts/business-language/history(p=${projectId},tab='policy')}"
+         th:attr="aria-current=${tab == 'policy'} ? 'page' : null">정책서</a>
+      <a th:href="@{/projects/{p}/artifacts/business-language/history(p=${projectId},tab='terms')}"
+         th:attr="aria-current=${tab == 'terms'} ? 'page' : null">표준용어</a>
+    </nav>
+
+    <div class="business-history__layout">
+      <aside class="revision-list" aria-label="개정 목록">
+        <h2 th:text="|${documentLabel} 개정 목록|">정책서 개정 목록</h2>
+        <a class="revision-list__item" th:each="item : ${revisions}"
+           th:href="@{/projects/{p}/artifacts/business-language/history(p=${projectId},tab=${tab},revision=${item.revisionNo})}"
+           th:attr="aria-current=${item.revisionNo == selectedRevision.revisionNo} ? 'true' : null">
+          <span class="revision-list__title"><strong th:text="|${item.revisionNo}차 개정|">2차 개정</strong>
+            <span class="revision-current" th:if="${item.current}">현재</span></span>
+          <span th:text="${item.typeLabel}">직접 수정</span>
+          <span><time th:datetime="${item.createdAt}"
+                      th:text="${#temporals.format(item.createdAt, 'yyyy.MM.dd HH:mm')}">2026.09.01 20:15</time>
+            · <span th:text="${item.editorName}">홍길동</span></span>
+        </a>
+      </aside>
+
+      <section class="revision-detail" aria-labelledby="revision-detail-title">
+        <header class="revision-detail__head">
+          <div>
+            <p class="revision-detail__eyebrow" th:text="${selectedRevision.typeLabel}">직접 수정</p>
+            <h2 id="revision-detail-title" th:text="|${selectedRevision.revisionNo}차 개정 내용|">2차 개정 내용</h2>
+            <p class="business-document-meta">
+              <span><time th:datetime="${selectedRevision.createdAt}"
+                          th:text="${#temporals.format(selectedRevision.createdAt, 'yyyy.MM.dd HH:mm')}">2026.09.01 20:15</time></span>
+              <span>수정자 <span th:text="${selectedRevision.editorName}">홍길동</span></span>
+            </p>
+          </div>
+          <div class="revision-detail__actions">
+            <a class="button button--small"
+               th:href="@{/projects/{p}/artifacts/business-language(p=${projectId},tab=${tab})}"
+               th:text="|${documentLabel}로 돌아가기|">정책서로 돌아가기</a>
+            <form th:unless="${selectedRevision.current}"
+                  th:action="@{/projects/{p}/artifacts/business-language/history/restore(p=${projectId})}"
+                  method="post" onsubmit="return confirm('이 개정본의 내용으로 복원할까요? 복원 내용은 새 수정이력으로 저장됩니다.');">
+              <input type="hidden" name="tab" th:value="${tab}">
+              <input type="hidden" name="revisionNo" th:value="${selectedRevision.revisionNo}">
+              <button class="button button--small" type="submit">이 버전으로 복원</button>
+            </form>
+          </div>
+        </header>
+
+        <p class="revision-summary" th:if="${initialRevision}">이 문서가 처음 생성된 시점의 내용입니다.</p>
+        <p class="revision-summary" th:if="${!initialRevision and #lists.isEmpty(changes)}">이전 개정본과 내용 차이가 없습니다.</p>
+
+        <div class="revision-changes" th:unless="${#lists.isEmpty(changes)}">
+          <article class="revision-change" th:each="change : ${changes}"
+                   th:classappend="|revision-change--${#strings.toLowerCase(change.type.name())}|">
+            <header>
+              <span class="revision-change__type"
+                    th:text="${change.type.name() == 'ADDED' ? '추가' : (change.type.name() == 'REMOVED' ? '삭제' : '수정')}">수정</span>
+              <h3 th:text="${change.title}">회원 가입 기준</h3>
+            </header>
+            <div class="revision-change__compare" th:if="${change.type.name() == 'MODIFIED'}">
+              <section><h4>이전 내용</h4><pre th:text="${change.beforeContent}">이전 내용</pre></section>
+              <section><h4>변경 내용</h4><pre th:text="${change.afterContent}">변경 내용</pre></section>
+            </div>
+            <section class="revision-change__single" th:if="${change.type.name() == 'ADDED'}">
+              <h4>추가된 내용</h4><pre th:text="${change.afterContent}">추가된 내용</pre>
+            </section>
+            <section class="revision-change__single" th:if="${change.type.name() == 'REMOVED'}">
+              <h4>삭제된 내용</h4><pre th:text="${change.beforeContent}">삭제된 내용</pre>
+            </section>
+          </article>
+        </div>
+      </section>
+    </div>
+  </section>
+</div>
+</body>
+</html>

@@ -1,0 +1,313 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.bizplay.builder.devrequest.DevelopmentRequestMapper">
+    <resultMap id="developmentRequest" type="com.bizplay.builder.devrequest.DevelopmentRequest">
+        <constructor>
+            <idArg column="id" javaType="java.lang.String"/>
+            <arg column="project_id" javaType="java.lang.String"/>
+            <arg column="number" javaType="_int"/>
+            <arg column="frd_id" javaType="java.lang.String"/>
+            <arg column="frd_number" javaType="_int"/>
+            <arg column="title" javaType="java.lang.String"/>
+            <arg column="system_code" javaType="java.lang.String"/>
+            <arg column="facets" javaType="java.lang.String"/>
+            <arg column="content_json" javaType="java.lang.String"/>
+            <arg column="delivery_state" javaType="com.bizplay.builder.devrequest.DevelopmentRequest$DeliveryState"/>
+            <arg column="planner_comment" javaType="java.lang.String"/>
+            <arg column="attachment_name" javaType="java.lang.String"/>
+            <arg column="attachment_path" javaType="java.lang.String"/>
+            <arg column="attachment_size" javaType="java.lang.Long"/>
+            <arg column="development_completed_on" javaType="java.time.LocalDate"/>
+            <arg column="deployment_on" javaType="java.time.LocalDate"/>
+            <arg column="previous_request_id" javaType="java.lang.String"/>
+            <arg column="precheck_json" javaType="java.lang.String"/>
+            <arg column="workspace_base_sha" javaType="java.lang.String"/>
+            <arg column="workspace_head_sha" javaType="java.lang.String"/>
+            <arg column="development_state" javaType="com.bizplay.builder.devrequest.DevelopmentState"/>
+            <arg column="development_checked_at" javaType="java.time.Instant"/>
+            <arg column="development_sync_error" javaType="java.lang.String"/>
+            <arg column="development_merged_sha" javaType="java.lang.String"/>
+            <arg column="development_merged_at" javaType="java.time.Instant"/>
+            <arg column="created_at" javaType="java.time.Instant"/>
+            <arg column="updated_at" javaType="java.time.Instant"/>
+        </constructor>
+    </resultMap>
+
+    <resultMap id="developmentStatusCandidate"
+               type="com.bizplay.builder.devrequest.DevelopmentStatusCandidate">
+        <constructor>
+            <idArg column="request_id" javaType="java.lang.String"/>
+            <arg column="project_id" javaType="java.lang.String"/>
+            <arg column="frd_id" javaType="java.lang.String"/>
+            <arg column="request_label" javaType="java.lang.String"/>
+            <arg column="delivery_attempt_id" javaType="java.lang.String"/>
+            <arg column="delivery_key" javaType="java.lang.String"/>
+            <arg column="issue_url" javaType="java.lang.String"/>
+            <arg column="development_state" javaType="com.bizplay.builder.devrequest.DevelopmentState"/>
+            <arg column="workspace_head_sha" javaType="java.lang.String"/>
+        </constructor>
+    </resultMap>
+
+    <sql id="columns">
+        id, project_id, number, frd_id, frd_number, title, system_code, facets, content_json,
+        delivery_state, planner_comment, attachment_name, attachment_path, attachment_size,
+        development_completed_on, deployment_on, previous_request_id, precheck_json,
+        workspace_base_sha, workspace_head_sha, development_state, development_checked_at,
+        development_sync_error, development_merged_sha, development_merged_at, created_at, updated_at
+    </sql>
+
+    <select id="allocateNumber" parameterType="java.lang.String" resultType="_int" flushCache="true">
+        update builder.adk_builder_project
+           set dev_request_seq = dev_request_seq + 1
+         where id = #{projectId}
+        returning dev_request_seq
+    </select>
+
+    <insert id="insert" parameterType="com.bizplay.builder.devrequest.DevelopmentRequest">
+        insert into builder.adk_builder_dev_request
+               (id, project_id, number, frd_id, frd_number, title, system_code, facets, content_json,
+                delivery_state, planner_comment, workspace_base_sha, workspace_head_sha)
+        values (#{id}, #{projectId}, #{number}, #{frdId}, #{frdNumber}, #{title},
+                #{systemCode,jdbcType=VARCHAR}, #{facets,jdbcType=VARCHAR}, #{contentJson},
+                #{deliveryState}, #{plannerComment,jdbcType=VARCHAR},
+                #{workspaceBaseSha,jdbcType=VARCHAR}, #{workspaceHeadSha,jdbcType=VARCHAR})
+    </insert>
+
+    <select id="selectByProjectId" parameterType="java.lang.String" resultMap="developmentRequest">
+        select <include refid="columns"/>
+          from builder.adk_builder_dev_request
+         where project_id = #{projectId}
+         order by number desc
+    </select>
+
+    <select id="selectById" parameterType="java.lang.String" resultMap="developmentRequest">
+        select <include refid="columns"/> from builder.adk_builder_dev_request where id = #{id}
+    </select>
+
+    <select id="selectByFrdId" parameterType="java.lang.String" resultMap="developmentRequest">
+        select <include refid="columns"/> from builder.adk_builder_dev_request where frd_id = #{frdId}
+    </select>
+
+    <select id="selectDevelopmentStatusCandidates" resultMap="developmentStatusCandidate">
+        select d.id as request_id, d.project_id, d.frd_id,
+               'DR-' || lpad(d.number::text, 3, '0') as request_label,
+               sent.id as delivery_attempt_id, sent.delivery_key, sent.response_id as issue_url,
+               d.development_state, d.workspace_head_sha
+          from builder.adk_builder_dev_request d
+          join lateral (select x.id, x.delivery_key, x.response_id
+                          from builder.adk_builder_dev_request_delivery x
+                         where x.dev_request_id = d.id
+                           and x.outcome = 'SENT'
+                           and x.finished_at is not null
+                         order by x.finished_at desc, x.id desc
+                         limit 1) sent on true
+         where d.delivery_state = 'SENT'
+           and d.development_state is distinct from 'DONE'
+         order by d.project_id, d.number
+    </select>
+
+    <select id="selectDevelopmentStatusCandidate" resultMap="developmentStatusCandidate">
+        select d.id as request_id, d.project_id, d.frd_id,
+               'DR-' || lpad(d.number::text, 3, '0') as request_label,
+               sent.id as delivery_attempt_id, sent.delivery_key, sent.response_id as issue_url,
+               d.development_state, d.workspace_head_sha
+          from builder.adk_builder_dev_request d
+          join lateral (select x.id, x.delivery_key, x.response_id
+                          from builder.adk_builder_dev_request_delivery x
+                         where x.dev_request_id = d.id
+                           and x.outcome = 'SENT'
+                           and x.finished_at is not null
+                         order by x.finished_at desc, x.id desc
+                         limit 1) sent on true
+         where d.id = #{requestId}
+           and d.project_id = #{projectId}
+           and d.delivery_state = 'SENT'
+           and d.development_state = 'DONE'
+           and d.development_merged_sha is null
+    </select>
+
+    <select id="isCurrentDevelopmentStatusCandidate" resultType="_int">
+        select count(*)
+          from builder.adk_builder_dev_request d
+         where d.id = #{candidate.requestId}
+           and d.delivery_state = 'SENT'
+           and d.workspace_head_sha is not distinct from #{candidate.workspaceHeadSha,jdbcType=VARCHAR}
+           and exists (select 1
+                         from builder.adk_builder_dev_request_delivery x
+                        where x.id = #{candidate.deliveryAttemptId}
+                          and x.dev_request_id = d.id
+                          and x.outcome = 'SENT'
+                          and x.finished_at is not null
+                          and not exists (select 1
+                                            from builder.adk_builder_dev_request_delivery newer
+                                           where newer.dev_request_id = d.id
+                                             and newer.outcome = 'SENT'
+                                             and newer.finished_at is not null
+                                             and (newer.finished_at, newer.id) > (x.finished_at, x.id)))
+    </select>
+
+    <update id="advanceDevelopmentState">
+        update builder.adk_builder_dev_request as d
+           set development_state = #{state},
+               development_checked_at = now(),
+               development_sync_error = null
+         where d.id = #{candidate.requestId}
+           and d.delivery_state = 'SENT'
+           and d.workspace_head_sha is not distinct from #{candidate.workspaceHeadSha,jdbcType=VARCHAR}
+           and exists (select 1
+                         from builder.adk_builder_dev_request_delivery x
+                        where x.id = #{candidate.deliveryAttemptId}
+                          and x.dev_request_id = d.id
+                          and x.outcome = 'SENT'
+                          and x.finished_at is not null
+                          and not exists (select 1
+                                            from builder.adk_builder_dev_request_delivery newer
+                                           where newer.dev_request_id = d.id
+                                             and newer.outcome = 'SENT'
+                                             and newer.finished_at is not null
+                                             and (newer.finished_at, newer.id) > (x.finished_at, x.id)))
+           and (d.development_state is null
+                or case d.development_state when 'INTAKE' then 1 when 'PROGRESS' then 2 else 3 end
+                   &lt;= case #{state} when 'INTAKE' then 1 when 'PROGRESS' then 2 else 3 end)
+    </update>
+
+    <update id="recordDevelopmentSyncFailure">
+        update builder.adk_builder_dev_request as d
+           set development_checked_at = now(),
+               development_sync_error = #{failure}
+         where d.id = #{candidate.requestId}
+           and d.delivery_state = 'SENT'
+           and d.workspace_head_sha is not distinct from #{candidate.workspaceHeadSha,jdbcType=VARCHAR}
+           and exists (select 1
+                         from builder.adk_builder_dev_request_delivery x
+                        where x.id = #{candidate.deliveryAttemptId}
+                          and x.dev_request_id = d.id
+                          and x.outcome = 'SENT'
+                          and x.finished_at is not null
+                          and not exists (select 1
+                                            from builder.adk_builder_dev_request_delivery newer
+                                           where newer.dev_request_id = d.id
+                                             and newer.outcome = 'SENT'
+                                             and newer.finished_at is not null
+                                             and (newer.finished_at, newer.id) > (x.finished_at, x.id)))
+    </update>
+
+    <update id="markDevelopmentMerged">
+        update builder.adk_builder_dev_request as d
+           set development_merged_sha = #{commitSha},
+               development_merged_at = now(),
+               development_sync_error = null
+         where d.id = #{candidate.requestId}
+           and d.delivery_state = 'SENT'
+           and d.workspace_head_sha is not distinct from #{candidate.workspaceHeadSha,jdbcType=VARCHAR}
+           and d.development_state = 'DONE'
+           and exists (select 1
+                         from builder.adk_builder_dev_request_delivery x
+                        where x.id = #{candidate.deliveryAttemptId}
+                          and x.dev_request_id = d.id
+                          and x.outcome = 'SENT'
+                          and x.finished_at is not null
+                          and not exists (select 1
+                                            from builder.adk_builder_dev_request_delivery newer
+                                           where newer.dev_request_id = d.id
+                                             and newer.outcome = 'SENT'
+                                             and newer.finished_at is not null
+                                             and (newer.finished_at, newer.id) > (x.finished_at, x.id)))
+    </update>
+
+    <!--
+      화면 겹침으로 앞것 후보를 댄다. ⛔ 자동으로 채우는 값이 아니다 — 전송 레이어에서 사람이 고른다.
+      ⚠ 화면이 0장인 개발요청서는 exists 가 거짓이라 자연히 빈 목록이 된다(정상이다).
+    -->
+    <select id="selectPreviousCandidates" resultMap="developmentRequest">
+        select <include refid="columns"/>
+          from builder.adk_builder_dev_request d
+         where d.project_id = #{projectId}
+           and d.id &lt;&gt; #{requestId}
+           and d.number &lt; (select number from builder.adk_builder_dev_request where id = #{requestId})
+           and exists (select 1
+                         from builder.adk_builder_frd_screen mine
+                         join builder.adk_builder_frd_screen theirs
+                           on theirs.screen_id = mine.screen_id
+                        where mine.frd_id = (select frd_id from builder.adk_builder_dev_request
+                                              where id = #{requestId})
+                          and theirs.frd_id = d.frd_id)
+         order by d.number desc
+    </select>
+
+    <update id="updatePlannerComment">
+        update builder.adk_builder_dev_request
+           set planner_comment = #{plannerComment,jdbcType=VARCHAR}, updated_at = now()
+         where id = #{id}
+    </update>
+
+    <!--
+      ⭐ [2026-08-24 병주 교정] 「전송중」에서도 다시 누를 수 있다. 설계는 ⛔ 로 막았지만 그것은
+         「받았나」를 물어볼 길이 없는 API 를 전제로 한 것이고, GitLab 창구는 보내기 전에
+         전송 키로 이슈를 찾는다 — 있으면 그것을 답으로 쓰고 두 번 열지 않는다.
+
+      ⛔ 그래도 잠금은 남긴다: 끝나지 않은 시도가 있으면 안 바꾼다. 이것이 없으면 두 탭이
+         거의 같은 때에 눌러 둘 다 「없다」를 읽고 둘 다 이슈를 연다 — 조건부 갱신 하나로
+         발송을 한 번으로 묶는 그 장치가 헛것이 된다.
+    -->
+    <update id="updatePrecheck">
+        update builder.adk_builder_dev_request
+           set precheck_json = #{precheckJson,jdbcType=VARCHAR}, updated_at = now()
+         where id = #{id}
+    </update>
+
+    <update id="updateContent">
+        update builder.adk_builder_dev_request
+           set content_json = #{contentJson}, updated_at = now()
+         where id = #{id}
+    </update>
+
+    <update id="updateWorkspaceHeadSha">
+        update builder.adk_builder_dev_request
+           set workspace_head_sha = #{workspaceHeadSha}, updated_at = now()
+         where id = #{id}
+    </update>
+
+    <update id="requestDelivery">
+        update builder.adk_builder_dev_request
+           set planner_comment = #{plannerComment,jdbcType=VARCHAR},
+               attachment_name = #{attachmentName,jdbcType=VARCHAR},
+               attachment_path = #{attachmentPath,jdbcType=VARCHAR},
+               attachment_size = #{attachmentSize,jdbcType=BIGINT},
+               development_completed_on = #{developmentCompletedOn,jdbcType=DATE},
+               deployment_on = #{deploymentOn,jdbcType=DATE},
+               previous_request_id = #{previousRequestId,jdbcType=VARCHAR},
+               precheck_json = #{precheckJson,jdbcType=VARCHAR},
+               delivery_state = 'SENDING', updated_at = now()
+         where id = #{id}
+           and delivery_state in ('NOT_SENT', 'SENDING', 'WITHDRAWN')
+           and not exists (select 1
+                             from builder.adk_builder_dev_request_delivery
+                            where dev_request_id = #{id}
+                              and finished_at is null
+                              and started_at > now() - interval '10 minutes')
+    </update>
+
+    <!--
+      ⭐ [2026-08-25] 철회 — 「전송완료」에서만 나간다.
+         ⛔ NOT_SENT 로 되돌리지 않는다: 이슈는 살아 있는데 상태가 「대기」면 다시 눌러
+            두 번째 이슈가 열린다. 그래서 되돌리기가 아니라 새 상태다.
+         ⚠ 위 requestDelivery 가 WITHDRAWN 도 받는 까닭이 이것이다 — 무른 것을 고쳐서
+            다시 보내는 것이 철회의 목적이다.
+    -->
+    <update id="withdrawDelivery">
+        update builder.adk_builder_dev_request
+           set delivery_state = 'WITHDRAWN', updated_at = now()
+         where id = #{id} and delivery_state = 'SENT'
+    </update>
+
+    <select id="countReferencing" parameterType="java.lang.String" resultType="_int">
+        select count(*) from builder.adk_builder_dev_request where previous_request_id = #{id}
+    </select>
+
+    <!-- ⛔ 상태를 where 에 둔다 — 서비스가 읽은 뒤 전송이 시작됐으면 여기서 0 이 되어 막힌다. -->
+    <delete id="deleteNotSent" parameterType="java.lang.String">
+        delete from builder.adk_builder_dev_request where id = #{id} and delivery_state = 'NOT_SENT'
+    </delete>
+</mapper>

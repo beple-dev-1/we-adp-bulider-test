@@ -1,0 +1,3193 @@
+<!doctype html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{fragments/shell :: layout(${title}, ${shape}, ${current}, ~{:: content})}">
+<body>
+<fieldset th:fragment="content" class="frd-workbench-page frd-owner-scope"
+     th:disabled="${!assignedUser}"
+     th:attr="data-frd-id=${frd.id()},data-workbench-editable=${workbenchEditable},
+              data-compare-url=@{/projects/{p}/artifacts/frds/{f}/canvas/compare(p=${projectId},f=${frd.id()},facet=${activeFacet})}">
+
+  <!--/*
+    목업 docs/mockups/05a-frd-workbench.html 이 정본이다.
+    ⛔ 목업을 고치지 마라 — 여기는 옮긴 실물 화면일 뿐이다.
+    ⚠ Claude 대화창은 UI만 먼저 열고 실제 전송·파일 수정은 별도 기능으로 연결한다.
+       직접 수정·수정 영역 선택·실행 마커 추가는 기능을 연결하기 전까지 자리만 그리고 잠근다.
+    ⚠ 목업은 화면 하나를 통째로 끼워 그리지만(wm-product), 실물은 <iframe> 이 DB 의 html 을
+       그대로 연다(FrdController.preview) — 미리보기와 스크립트를 우리 화면 자격에서 떼려는 것이다.
+    ⚠ 화면 여러 장을 한 페이지에서 고르는 것은 서버 왕복 없이 <iframe src> 만 바꾼다 — 아래 스크립트.
+  */-->
+
+  <header class="rq-head">
+    <div class="rq-head__copy">
+      <span class="rq-kicker num" th:text="${frd.label()}">FRD-003</span>
+      <h1 th:text="${frd.businessLabel()}">전자결재 상신 임시저장 지원</h1>
+    </div>
+    <div class="rq-head__actions">
+      <a class="button rq-head__list-action" th:href="@{/projects/{p}/artifacts/frds(p=${projectId},query=${listQuery},state=${listState},owner=${listOwner},system=${listSystem},page=${listPage},pageSize=${listPageSize})}">목록으로</a>
+      <button class="button rq-head__content-action" id="open-frd-overview" type="button"
+              aria-controls="frd-overview-dialog" aria-expanded="false">FRD 내용 보기</button>
+      <form class="rq-head__complete-action" method="post" th:action="@{/projects/{p}/artifacts/frds/{f}/complete(p=${projectId},f=${frd.id()})}"
+            onsubmit="return confirm('수정한 내용을 커밋하고 FRD 작업을 완료할까요? 완료 후에는 검토 필요 상태로 전환됩니다.')">
+        <button class="button button--primary" id="complete-frd-work" type="submit"
+                data-submit-loading="FRD 작업을 완료하고 개발요청서를 만드는 중"
+                th:disabled="${!completionStatus.canComplete()}" th:title="${completionStatus.message()}"
+                th:attr="data-work-modified=${completionStatus.modified()},
+                         data-completion-status-url=@{/projects/{p}/artifacts/frds/{f}/completion-status(p=${projectId},f=${frd.id()})}">FRD 작업 완료</button>
+      </form>
+      <details class="pop rq-head__overflow" th:if="${frd.canDelete() or !resetDisabled}">
+        <summary class="icon-button rq-head__more" aria-label="기타 작업" title="기타 작업"><span aria-hidden="true">⋮</span></summary>
+        <div class="pop__body rq-head__overflow-menu">
+          <form method="post" th:action="@{/projects/{p}/artifacts/frds/{f}/reset(p=${projectId},f=${frd.id()})}"
+                onsubmit="return confirm('작업 중인 모든 화면 변경이 삭제됩니다. 원본 저장소 기준으로 다시 시작할까요?')">
+            <button type="submit" th:disabled="${resetDisabled}">작업공간 초기화</button>
+          </form>
+          <hr th:if="${frd.canDelete()}">
+          <button class="rq-head__delete-action" type="button" th:if="${frd.canDelete()}"
+                  data-frd-delete-open>FRD 작업 삭제</button>
+        </div>
+      </details>
+    </div>
+  </header>
+
+  <div th:if="${frd.canDelete()}" th:replace="~{fragments/frd-delete-dialog :: dialog}"></div>
+
+  <p class="error-line" role="alert" th:if="${error}" th:text="${error}"></p>
+  <p class="rq-note" role="status" th:if="${!assignedUser}">담당자만 FRD 작업을 수정할 수 있습니다.</p>
+
+  <dl class="rq-meta">
+    <div><dt>적용 대상</dt><dd class="rq-meta__badges">
+      <span class="badge badge--outline" th:if="${allFacets}">전체</span>
+      <span class="badge badge--outline" th:if="${!allFacets}" th:each="facet : ${facets}" th:text="${facet.name()}">익산</span>
+      <span th:if="${#lists.isEmpty(facets)}">—</span>
+    </dd></div>
+    <div><dt>담당자</dt><dd th:text="${ownerName}">이영희</dd></div>
+    <div><dt>요구사항</dt><dd class="rq-meta__requirement"><button id="open-frd-requirement" type="button"
+      aria-controls="frd-overview-dialog" aria-expanded="false" title="요구사항 전체 보기"><span th:text="${frd.sourceText()}">상신 임시저장 지원</span><small>보기</small></button></dd></div>
+    <div><dt>생성일</dt><dd class="num"
+      th:text="${frd.createdAt() == null ? '—' : #temporals.format(frd.createdAt(), 'yyyy-MM-dd')}">2026-08-10</dd></div>
+  </dl>
+
+  <main class="wm-summary">
+    <section class="empty-state" th:if="${#lists.isEmpty(screens)}" aria-labelledby="frd-empty-title">
+      <div class="empty-state__copy">
+        <h2 id="frd-empty-title">아직 만들 화면이 없습니다</h2>
+        <p>화면 없는 요건으로 확정된 FRD 작업입니다.</p>
+      </div>
+    </section>
+
+    <div class="wm-work-layout" th:if="${!#lists.isEmpty(screens)}">
+      <aside class="rq-card wm-screen-sidebar" aria-labelledby="work-contents-title">
+        <div class="rq-card__head">
+          <div>
+            <h2 id="work-contents-title">작업 대상</h2>
+          </div>
+          <div class="wm-panel-icon-actions">
+            <button class="icon-button wm-panel-icon-button" id="add-work-screen" type="button"
+                    aria-label="FRD 화면 추가" th:disabled="${!workbenchEditable}"
+                    th:title="${workbenchEditable ? 'FRD 화면 추가' : '완료된 FRD에서는 화면을 추가할 수 없습니다.'}">+</button>
+          </div>
+        </div>
+        <nav class="wm-canvas-view-switch" aria-label="캔버스 보기 방식">
+          <a class="is-active" th:href="@{/projects/{p}/artifacts/frds/{f}(p=${projectId},f=${frd.id()},query=${listQuery},state=${listState},owner=${listOwner},system=${listSystem},page=${listPage},pageSize=${listPageSize})}"
+             aria-pressed="true">상세 화면</a>
+          <a th:href="@{/projects/{p}/artifacts/frds/{f}/canvas(p=${projectId},f=${frd.id()},facet=${activeFacet},query=${listQuery},state=${listState},owner=${listOwner},system=${listSystem},page=${listPage},pageSize=${listPageSize})}"
+             aria-pressed="false">전체 맵</a>
+        </nav>
+        <nav class="wm-screen-list" id="work-screen-list" aria-label="FRD 화면">
+          <div class="wm-screen-list-row" th:each="screen,st : ${screens}">
+            <a href="#" class="wm-screen-list-row__link" th:classappend="${st.first} ? 'is-current' : ''"
+               th:attr="data-screen-id=${screen.id()},
+                        data-screen-code=${screen.screenId()},
+                        data-screen-name=${screen.screenName() ?: screen.screenId()},
+                        data-screen-state=${screen.state().name()},
+                        data-new-screen=${screen.isNewScreen()},
+                        data-ai-draft-eligible=${screen.isAiDraftEligible()},
+                        data-generated=${screen.state().name() == 'GENERATED'},
+                        data-generate-url=@{/projects/{p}/artifacts/frds/{f}/screens/{s}/generate(p=${projectId},f=${frd.id()},s=${screen.id()})},
+                        data-status-url=@{/projects/{p}/artifacts/frds/{f}/screens/{s}/status(p=${projectId},f=${frd.id()},s=${screen.id()})},
+                        data-history-url=@{/projects/{p}/artifacts/frds/{f}/screens/{s}/history/latest(p=${projectId},f=${frd.id()},s=${screen.id()})},
+                        data-document-url=@{/projects/{p}/artifacts/frds/{f}/screens/{s}/document(p=${projectId},f=${frd.id()},s=${screen.id()})},
+                        data-memo-url=@{/projects/{p}/artifacts/frds/{f}/screens/{s}/memo(p=${projectId},f=${frd.id()},s=${screen.id()})},
+                        data-marker-url=@{/projects/{p}/artifacts/frds/{f}/screens/{s}/markers(p=${projectId},f=${frd.id()},s=${screen.id()})},
+                        data-direct-edit-url=@{/projects/{p}/artifacts/frds/{f}/screens/{s}/direct-text(p=${projectId},f=${frd.id()},s=${screen.id()})},
+                        data-chat-url=@{/projects/{p}/artifacts/frds/{f}/screens/{s}/chat(p=${projectId},f=${frd.id()},s=${screen.id()})},
+                        data-chat-events-url=@{/projects/{p}/artifacts/frds/{f}/chat/events(p=${projectId},f=${frd.id()})},
+                        data-chat-status-url=@{/projects/{p}/artifacts/frds/{f}/screens/{s}/chat/messages(p=${projectId},f=${frd.id()},s=${screen.id()})},
+                        data-chat-send-url=@{/projects/{p}/artifacts/frds/{f}/screens/{s}/chat/messages(p=${projectId},f=${frd.id()},s=${screen.id()})},
+                        data-preview-url=@{/projects/{p}/artifacts/frds/{f}/screens/{s}/preview(p=${projectId},f=${frd.id()},s=${screen.id()},facet=${activeFacet})},
+                        data-source-preview-url=${sourcePreviewPaths.get(screen.id()) == null ? '' : '/projects/' + projectId + '/artifacts/solution-mockups/files/' + sourcePreviewPaths.get(screen.id()) + previewSkinQuery}">
+              <span class="wm-screen-list-row__label">
+                <span class="wm-screen-origin"
+                      th:text="${screen.isNewScreen() ? '신규 화면' : '기존 화면'}">기존 화면</span>
+                <span class="wm-screen-name">
+                  <strong th:text="${screen.screenName() ?: screen.screenId()}">결재 문서 작성</strong>
+                  <i class="wm-screen-modified-dot" th:if="${!#lists.isEmpty(screen.changeList())}"
+                     role="img" aria-label="수정 있음" title="수정 있음"></i>
+                </span>
+                <small class="wm-screen-meta">
+                  <span th:text="${screen.systemCode() == null or screen.systemCode().isBlank() ? '시스템 확인 필요' : systemLabels.label(screen.systemCode())}">웹뷰</span>
+                  <span aria-hidden="true"> · </span>
+                  <span class="num"
+                        th:text="${managementNumbers.get(screen.screenId()) ?: (screen.isNewScreen() ? '미채번' : '관리번호 없음')}">PS-WV-MRC-010-L01-S</span>
+                </small>
+                <small class="num wm-screen-id" th:text="${screen.screenId()}">wv-appr-write</small>
+              </span>
+            </a>
+            <span data-screen-status th:if="${screen.isAiDraftEligible()}"
+                  class="status-badge status-badge--error"
+                  th:hidden="${screen.state().name() != 'FAILED'}"
+                  th:title="${screen.stateLabel()}" th:attr="aria-label=${screen.stateLabel()}"
+                  th:text="${screen.stateLabel()}">AI 초안 만드는 중</span>
+          </div>
+        </nav>
+      </aside>
+
+      <section class="wm-stage" id="screen-preview">
+        <header class="wm-stage-head">
+          <div>
+            <h2><span class="num" id="stage-screen-id"></span> · <span id="stage-screen-name"></span></h2>
+            <p>선택한 화면의 변경 내용을 확인하고 AI와 함께 작업합니다.</p>
+          </div>
+          <div class="wm-stage-actions">
+            <form class="wm-canvas-facet-tool" method="get" data-screen-facet-tool
+                  th:each="screen,st : ${screens}"
+                  th:if="${splitFacetsByScreen.containsKey(screen.id())}"
+                  th:hidden="${!st.first}"
+                  th:attr="data-screen-id=${screen.id()}"
+                  th:action="@{/projects/{p}/artifacts/frds/{f}(p=${projectId},f=${frd.id()})}">
+              <label class="sr-only" th:for="${'screen-facet-' + screen.id()}">기관 화면</label>
+              <select class="field__control" name="facet" data-screen-facet-select
+                      th:id="${'screen-facet-' + screen.id()}">
+                <option th:each="facetItem : ${splitFacetsByScreen.get(screen.id())}"
+                        th:value="${facetItem}" th:text="${facetItem}"
+                        th:selected="${facetItem == activeFacet}">익산</option>
+              </select>
+              <input type="hidden" name="screen" th:value="${screen.screenId()}">
+              <input type="hidden" name="query" th:value="${listQuery}">
+              <input type="hidden" name="state" th:value="${listState}">
+              <input type="hidden" name="owner" th:value="${listOwner}">
+              <input type="hidden" name="system" th:value="${listSystem}">
+              <input type="hidden" name="page" th:value="${listPage}">
+              <input type="hidden" name="pageSize" th:value="${listPageSize}">
+            </form>
+            <div class="wm-stage-action-group wm-stage-action-group--view" role="group" aria-label="화면 보기">
+              <div class="wm-zoom" role="group" aria-label="미리보기 확대 및 축소">
+                <button type="button" id="zoom-out" aria-label="미리보기 축소">&minus;</button>
+                <button type="button" id="zoom-reset" aria-label="미리보기 배율 초기화">
+                  <output id="zoom-level">100%</output>
+                </button>
+                <button type="button" id="zoom-in" aria-label="미리보기 확대">+</button>
+              </div>
+              <button class="icon-button wm-panel-icon-button wm-focus-toggle" id="toggle-frd-focus" type="button"
+                      aria-label="작업 화면 확대" aria-pressed="false" title="작업 화면 확대">
+                <svg class="wm-focus-toggle__expand" viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M8 3H3v5M16 3h5v5M8 21H3v-5M16 21h5v-5"/>
+                </svg>
+                <svg class="wm-focus-toggle__restore" viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M9 3v6H3M15 3v6h6M9 21v-6H3M15 21v-6h6"/>
+                </svg>
+              </button>
+            </div>
+            <div class="wm-stage-action-group" role="group" aria-label="화면 관리">
+              <button class="icon-button wm-panel-icon-button" id="open-screen-compare" type="button"
+                      aria-label="변경 내용 비교" title="변경 내용 비교"
+                      aria-controls="screen-compare-dialog" aria-expanded="false">
+                <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+                  <rect x="3" y="4" width="8" height="16" rx="1.5"></rect>
+                  <rect x="13" y="4" width="8" height="16" rx="1.5"></rect>
+                  <path d="M7 8h1M7 12h1M16 8h1M16 12h1"></path>
+                </svg>
+              </button>
+              <form method="post"
+                    th:action="@{/projects/{p}/artifacts/frds/{f}/canvas/screens/exclude(p=${projectId},f=${frd.id()})}"
+                    onsubmit="return confirm('선택한 화면을 작업 화면에서 삭제할까요? 워크트리의 작업 내용은 되돌릴 수 없습니다.');">
+                <input type="hidden" name="screenRowId" id="delete-detail-screen-id">
+                <input type="hidden" name="returnTo" value="detail">
+                <button class="icon-button wm-panel-icon-button" id="delete-detail-screen" type="submit"
+                        disabled aria-label="작업 화면 삭제" title="작업 화면 삭제">
+                  <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M4 7h16M9 7V4h6v3M7 7l1 13h8l1-13M10 11v5M14 11v5"></path>
+                  </svg>
+                </button>
+              </form>
+            </div>
+            <div class="wm-stage-action-group" role="group" aria-label="문서와 기록">
+              <button class="icon-button wm-panel-icon-button" id="open-screen-document" type="button"
+                      aria-label="기능정의서" title="기능정의서" aria-controls="screen-document-dialog"
+                      aria-expanded="false">
+                <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M9 4H6v17h12V4h-3M9 3h6v4H9V3Z"/>
+                  <path d="m9 12 1.3 1.3L13 10.5M14.5 12H16M9 17h7"/>
+                </svg>
+              </button>
+              <button class="icon-button wm-panel-icon-button" id="open-screen-memo" type="button"
+                      aria-label="메모" aria-controls="screen-memo-dialog" aria-expanded="false"
+                      th:disabled="${!workbenchEditable}"
+                      th:title="${workbenchEditable ? '메모' : '완료된 FRD에서는 메모를 사용할 수 없습니다.'}">
+                <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M4 5h16v12H9l-5 4V5Z"/>
+                  <path d="M8 9h8M8 13h5"/>
+                </svg>
+              </button>
+              <button class="icon-button wm-panel-icon-button" id="open-screen-history" type="button"
+                      aria-label="변경 히스토리" aria-controls="screen-history-dialog" aria-expanded="false"
+                      th:disabled="${!workbenchEditable}"
+                      th:title="${workbenchEditable ? '변경 히스토리' : '완료된 FRD에서는 변경 히스토리를 사용할 수 없습니다.'}">
+                <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7L3 8M3 3v5h5M12 7v5l3 2"/></svg>
+              </button>
+            </div>
+            <div class="wm-stage-action-group" role="group" aria-label="화면 수정 도구">
+              <button class="icon-button wm-ai-chat-trigger" id="open-frd-ai-chat" type="button"
+                      aria-label="AI와 화면 대화" aria-controls="frd-ai-chat" aria-expanded="false"
+                      th:disabled="${!workbenchEditable or #lists.isEmpty(screens)}"
+                      th:title="${workbenchEditable ? 'AI와 화면 대화' : '완료된 FRD에서는 AI 수정을 사용할 수 없습니다.'}">
+                <img src="/images/claudecode-color.png" alt="">
+              </button>
+              <button class="icon-button wm-panel-icon-button wm-stage-tool-button" id="edit-screen-directly"
+                      type="button" disabled aria-label="직접 수정" aria-pressed="false"
+                      th:title="${workbenchEditable ? '직접 수정' : '완료된 FRD에서는 직접 수정할 수 없습니다.'}">
+                <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M4 20h4l11-11-4-4L4 16v4Z"/>
+                  <path d="m13.5 6.5 4 4M4 16l4 4"/>
+                </svg>
+              </button>
+              <button class="icon-button wm-panel-icon-button wm-stage-tool-button" id="select-edit-region"
+                      type="button" disabled aria-label="수정 영역 선택"
+                      th:title="${workbenchEditable ? '수정 영역 선택' : '완료된 FRD에서는 수정 영역을 선택할 수 없습니다.'}"
+                      aria-pressed="false">
+                <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M4 8V4h4M16 4h4v4M20 16v4h-4M8 20H4v-4"/>
+                  <path d="m9 8 7 3-3 1-1 3-3-7Z"/>
+                </svg>
+              </button>
+              <button class="icon-button wm-panel-icon-button wm-stage-tool-button" id="add-execution-marker"
+                      type="button" disabled aria-label="실행 마커 추가"
+                      th:title="${workbenchEditable ? '실행 마커 추가' : '완료된 FRD에서는 실행 마커를 추가할 수 없습니다.'}"
+                      aria-pressed="false">
+                <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M12 21s6-5.2 6-11a6 6 0 1 0-12 0c0 5.8 6 11 6 11Z"/>
+                  <path d="M12 7v6M9 10h6"/>
+                </svg>
+              </button>
+            </div>
+          </div>
+        </header>
+        <p class="rq-note" id="screen-direct-edit-status" role="status" aria-live="polite" hidden></p>
+        <div class="wm-ai-progress is-error" id="ai-draft-progress" aria-live="polite" hidden>
+          <strong id="ai-draft-progress-title">AI 초안을 만들지 못했습니다</strong>
+          <span id="ai-draft-progress-detail">잠시 뒤 다시 시도해 주세요.</span>
+        </div>
+        <!--/* ⛔ sandbox 를 빼지 마라 — AI 가 만든 html 을 우리 화면 자격으로 돌리지 않는다. */-->
+        <div class="wm-canvas" id="preview-canvas" tabindex="0" aria-label="FRD 화면 미리보기 캔버스">
+          <div class="wm-canvas-loading" id="preview-loading" role="status" aria-live="polite" hidden>
+            <span class="wm-canvas-loading__spinner" aria-hidden="true"></span>
+            <span id="preview-loading-message">화면을 불러오는 중입니다.</span>
+          </div>
+          <div class="wm-canvas-sheet" id="preview-canvas-sheet">
+            <iframe class="preview-frame" id="preview-frame" sandbox="allow-same-origin" scrolling="no"
+                    title="FRD 화면 미리보기"></iframe>
+          </div>
+          <div id="preview-empty" aria-live="polite">
+            <p class="rq-note" id="preview-empty-message">화면 초안을 준비하고 있습니다.</p>
+          </div>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <div th:replace="~{fragments/frd-screen-dialog :: dialog}"></div>
+
+  <dialog class="dialog dialog--layer wm-frd-overview-dialog" id="frd-overview-dialog"
+          aria-labelledby="frd-overview-title" aria-describedby="frd-overview-description">
+    <section class="wm-frd-overview">
+      <header class="dialog__header dialog__header--with-meta wm-frd-overview__head">
+        <div class="dialog__header-copy">
+          <h2 class="dialog__title" id="frd-overview-title">FRD 내용</h2>
+          <p class="dialog__description" id="frd-overview-description" th:text="${frd.businessLabel()}">전자결재 상신 임시저장 지원</p>
+        </div>
+        <span class="dialog__meta num" th:text="${frd.label()}">FRD-003</span>
+        <button class="dialog__close" id="close-frd-overview" type="button" aria-label="FRD 내용 닫기"></button>
+      </header>
+      <div class="wm-frd-overview__body">
+        <div class="wm-frd-overview__reader">
+          <aside class="wm-frd-overview__toc" aria-label="FRD 내용 목차">
+            <div class="wm-frd-overview__toc-head"><strong>문서 목차</strong><span>4개 항목</span></div>
+            <ol>
+              <li><button type="button" data-frd-overview-target="frd-overview-summary-title" aria-current="true">작업 개요</button></li>
+              <li><button type="button" data-frd-overview-target="frd-overview-requirement-title">요구사항</button></li>
+              <li><button type="button" data-frd-overview-target="frd-overview-scope-title">개발 범위</button></li>
+              <li><button type="button" data-frd-overview-target="frd-overview-screen-title">화면별 수정 기록</button></li>
+            </ol>
+          </aside>
+          <article class="wm-frd-overview__content" id="frd-overview-content">
+            <section class="wm-frd-overview__section" aria-labelledby="frd-overview-summary-title">
+              <h3 id="frd-overview-summary-title">작업 개요</h3>
+              <dl class="wm-frd-overview__summary">
+                <div><dt>작업 상태</dt><dd th:text="${frd.stateLabel()}">수정 중</dd></div>
+                <div><dt>담당자</dt><dd th:text="${ownerName}">이영희</dd></div>
+                <div><dt>적용 대상</dt><dd><span th:each="facet,st : ${facets}" th:text="${facet.name() + (st.last ? '' : ', ')}">익산</span><span th:if="${#lists.isEmpty(facets)}">—</span></dd></div>
+              </dl>
+            </section>
+            <section class="wm-frd-overview__section" aria-labelledby="frd-overview-requirement-title">
+              <h3 id="frd-overview-requirement-title">요구사항</h3>
+              <p class="wm-frd-overview__requirement" th:text="${frd.sourceText()}">상신 화면에서 작성 중인 문서를 임시 저장할 수 있어야 합니다.</p>
+            </section>
+            <section class="wm-frd-overview__section" aria-labelledby="frd-overview-scope-title">
+              <div class="wm-frd-overview__section-head"><h3 id="frd-overview-scope-title">개발 범위</h3><span class="badge badge--outline" th:text="${#lists.size(frdItems)} + '건'">1건</span></div>
+              <p class="rq-note" th:if="${#lists.isEmpty(frdItems)}">정리된 개발 범위가 없습니다.</p>
+              <ol class="wm-frd-overview__scope-list" th:if="${!#lists.isEmpty(frdItems)}">
+                <li th:each="item : ${frdItems}"><div class="wm-frd-overview__scope-meta"><span class="status-badge" th:text="${item.natureLabel()}">개발</span><span class="badge badge--outline" th:if="${item.showsVerdict()}" th:text="${item.verdictLabel()}">화면</span></div><strong th:text="${item.requirement()}">작성 중인 문서를 임시 저장합니다.</strong><p th:if="${item.note() != null and !item.note().isBlank()}" th:text="${item.note()}">저장 버튼과 복원 흐름을 추가합니다.</p><div class="wm-frd-overview__linked-screens" th:if="${!#lists.isEmpty(item.screenIdList())}"><span>연결 화면</span><code th:each="screenId : ${item.screenIdList()}" th:text="${screenId}">wv-appr-write</code></div></li>
+              </ol>
+            </section>
+            <section class="wm-frd-overview__section" aria-labelledby="frd-overview-screen-title">
+              <div class="wm-frd-overview__section-head"><h3 id="frd-overview-screen-title">화면별 수정 기록</h3><span class="badge badge--outline" th:text="${#lists.size(screens)} + '개'">3개</span></div>
+              <p class="rq-note" th:if="${#lists.isEmpty(screens)}">이 FRD에는 화면 작업이 없습니다.</p>
+              <ol class="wm-frd-overview__screen-list" th:if="${!#lists.isEmpty(screens)}">
+                <li th:each="screen : ${screens}" th:with="historyRecords=${screenChangeHistories.get(screen.id())}">
+                  <div class="wm-frd-overview__screen-head"><span><small class="num" th:text="${screen.screenId()}">wv-appr-write</small><strong th:text="${screen.screenName() ?: screen.screenId()}">결재 문서 작성</strong></span>
+                    <!--/* ⛔ stateLabel() 을 쓰지 마라 — 여기는 개발요청서로 실려 나갈 것을 훑는 자리다. AI 초안은 작업 도구의 사정이고, 여기서 묻는 것은 화면이 됐느냐 하나다. */-->
+                    <span class="status-badge" th:classappend="${screen.state().name() == 'GENERATED' ? 'status-badge--complete' : (screen.state().name() == 'GENERATING' ? 'status-badge--progress' : (screen.state().name() == 'FAILED' ? 'status-badge--error' : 'status-badge--waiting'))}" th:text="${screen.workLabel()}">완료</span></div>
+                  <ol class="wm-frd-overview__version-list" th:if="${historyRecords != null and !#lists.isEmpty(historyRecords)}"><li th:each="history : ${historyRecords}"><time th:text="${#temporals.format(history.createdAt(), 'yyyy-MM-dd HH:mm')}">2026-08-21 13:40</time><span class="badge badge--outline" th:if="${history.source() == 'FRD_CANVAS_AI'}">맵 AI</span><ul class="wm-frd-overview__change-list"><li th:each="change : ${history.changeList()}" th:text="${change}">임시 저장 버튼을 추가했습니다.</li></ul></li></ol>
+                  <ul class="wm-frd-overview__change-list" th:if="${(historyRecords == null or #lists.isEmpty(historyRecords)) and !#lists.isEmpty(screen.changeList())}"><li th:each="change : ${screen.changeList()}" th:text="${change}">임시 저장 버튼을 추가했습니다.</li></ul>
+                  <p class="wm-frd-overview__no-change" th:if="${(historyRecords == null or #lists.isEmpty(historyRecords)) and #lists.isEmpty(screen.changeList())}" th:text="${screen.state().name() == 'GENERATED' ? '현재 버전에 기록된 변경 내용이 없습니다.' : '아직 화면 수정 내용이 없습니다.'}">아직 화면 수정 내용이 없습니다.</p>
+                </li>
+              </ol>
+            </section>
+          </article>
+        </div>
+      </div>
+    </section>
+  </dialog>
+
+  <dialog class="dialog dialog--layer wm-compare-dialog" id="screen-compare-dialog"
+          aria-labelledby="screen-compare-title" aria-describedby="screen-compare-description">
+    <section class="wm-compare-layer">
+      <header class="dialog__header dialog__header--with-meta">
+        <div class="dialog__header-copy">
+          <span class="dialog__kicker">화면 검토</span>
+          <h2 class="dialog__title" id="screen-compare-title">화면 변경 비교</h2>
+          <p class="dialog__description" id="screen-compare-description"><strong id="screen-compare-name">선택 화면</strong>의 기준 화면과 FRD 수정안을 비교합니다.</p>
+        </div>
+        <span class="dialog__meta num" id="screen-compare-id"></span>
+        <button class="dialog__close" id="close-screen-compare" type="button" aria-label="화면 변경 비교 닫기"></button>
+      </header>
+      <div class="dialog__body wm-compare-layer__body">
+        <iframe id="screen-compare-frame" title="화면 변경 비교"></iframe>
+      </div>
+    </section>
+  </dialog>
+
+  <dialog class="dialog dialog--layer wm-history-dialog" id="screen-history-dialog" aria-labelledby="screen-history-title">
+    <section class="wm-layer-frame">
+      <header class="dialog__header dialog__header--with-meta">
+        <div class="dialog__header-copy">
+          <span class="dialog__kicker">화면 버전 관리</span>
+          <h2 class="dialog__title" id="screen-history-title">변경 히스토리</h2>
+          <p class="dialog__description"><strong id="screen-history-screen-name"></strong> 화면의 버전을 확인하거나 복원합니다.</p>
+        </div>
+        <span class="dialog__meta num" id="screen-history-screen-id"></span>
+        <button class="dialog__close" id="close-screen-history" type="button" aria-label="변경 히스토리 닫기"></button>
+      </header>
+      <div class="dialog__body">
+        <p class="dialog__notice">버전을 미리보면 작업 화면에 읽기 전용으로 표시됩니다. 복원하기 전까지 현재 파일은 바뀌지 않습니다.</p>
+      <p class="rq-note" id="screen-history-empty">이 화면 파일에는 아직 저장된 변경 이력이 없습니다.</p>
+      <ol class="wm-history-list" id="screen-history-list">
+        <li th:each="history : ${screenHistories}"
+            th:attr="data-history-screen-id=${history.frdScreenId()},data-history-id=${history.id()},data-history-current=${latestHistoryIds.get(history.frdScreenId()) == history.id()},data-history-preview-url=@{/projects/{p}/artifacts/frds/{f}/history/{h}/preview(p=${projectId},f=${frd.id()},h=${history.id()})},data-history-marker-url=@{/projects/{p}/artifacts/frds/{f}/history/{h}/markers(p=${projectId},f=${frd.id()},h=${history.id()})}" hidden>
+          <div class="wm-history-list__head">
+            <div>
+              <span class="status-badge"
+                    th:classappend="${latestHistoryIds.get(history.frdScreenId()) == history.id() ? 'status-badge--complete' : 'status-badge--waiting'}"
+                    th:text="${latestHistoryIds.get(history.frdScreenId()) == history.id() ? '현재 버전' : '이전 버전'}">이전 버전</span>
+              <span class="badge badge--outline" th:if="${history.source() == 'FRD_CANVAS_AI'}">맵 AI</span>
+              <time th:text="${#temporals.format(history.createdAt(), 'yyyy-MM-dd HH:mm')}">2026-08-20 19:10</time>
+            </div>
+            <div class="wm-history-list__actions">
+              <button class="button button--small" type="button" data-history-preview
+                      th:text="${latestHistoryIds.get(history.frdScreenId()) == history.id() ? '현재 화면으로 돌아가기' : '미리보기'}">미리보기</button>
+              <form method="post"
+                    th:hidden="${latestHistoryIds.get(history.frdScreenId()) == history.id()}"
+                    th:action="@{/projects/{p}/artifacts/frds/{f}/history/{h}/restore(p=${projectId},f=${frd.id()},h=${history.id()})}"
+                    onsubmit="return confirm('이 시점의 화면으로 되돌릴까요?')">
+                <button class="button button--small" type="submit" data-history-restore
+                        th:disabled="${!workbenchEditable or resetDisabled}"
+                        th:title="${workbenchEditable ? '이 버전 복원' : '완료된 FRD에서는 버전을 복원할 수 없습니다.'}">이 버전 복원</button>
+              </form>
+            </div>
+          </div>
+          <ul th:if="${!#lists.isEmpty(history.changeList())}">
+            <li th:each="change : ${history.changeList()}" th:text="${change}">임시저장 버튼을 추가함</li>
+          </ul>
+          <p th:if="${#lists.isEmpty(history.changeList())}">변경사항 없음</p>
+        </li>
+        <li th:each="screen : ${screens}"
+            th:if="${sourcePreviewPaths.get(screen.id()) != null}"
+            th:attr="data-history-screen-id=${screen.id()},data-history-id=${'source-' + screen.id()},data-history-preview-url=${'/projects/' + projectId + '/artifacts/solution-mockups/files/' + sourcePreviewPaths.get(screen.id()) + previewSkinQuery}" hidden>
+          <div class="wm-history-list__head">
+            <div>
+              <span class="status-badge status-badge--waiting">작업 시작 전</span>
+              <time>솔루션 목업 기준 화면</time>
+            </div>
+            <div class="wm-history-list__actions">
+              <button class="button button--small" type="button" data-history-preview>미리보기</button>
+            </div>
+          </div>
+          <p>FRD 작업을 시작하기 전 솔루션 목업입니다.</p>
+        </li>
+      </ol>
+      </div>
+    </section>
+  </dialog>
+
+  <dialog class="dialog dialog--layer wm-screen-document-dialog" id="screen-document-dialog"
+          aria-labelledby="screen-document-title" aria-describedby="screen-document-description">
+    <section class="wm-screen-document">
+      <header class="dialog__header dialog__header--with-meta wm-screen-document__head">
+        <div class="dialog__header-copy">
+          <h2 class="dialog__title" id="screen-document-title">기능정의서</h2>
+          <p class="dialog__description" id="screen-document-description">
+            <strong id="screen-document-screen-name"></strong> · 화면에 연결된 기능과 처리 기준
+          </p>
+        </div>
+        <span class="dialog__meta num" id="screen-document-screen-id"></span>
+        <button class="dialog__close" id="close-screen-document" type="button" aria-label="기능정의서 닫기"></button>
+      </header>
+      <div class="dialog__body wm-screen-document__body">
+        <p class="rq-note" id="screen-document-status" role="status" aria-live="polite">기능정의서를 불러오고 있습니다.</p>
+        <div class="wm-screen-document__reader" id="screen-document-reader" hidden>
+          <aside class="wm-screen-document__toc" aria-label="기능정의서 목차">
+            <div class="wm-screen-document__toc-head">
+              <strong>문서 목차</strong>
+              <span id="screen-document-section-count"></span>
+            </div>
+            <ol id="screen-document-toc"></ol>
+          </aside>
+          <article class="wm-screen-document__content" id="screen-document-content"></article>
+        </div>
+        <div class="empty-state wm-screen-document__empty" id="screen-document-empty" hidden>
+          <div class="empty-state__copy">
+            <h3>아직 기능정의서가 없습니다</h3>
+            <p>선택한 화면에 연결된 기능정의서를 찾지 못했습니다.<br>화면 정보가 준비되었는지 확인해 주세요.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+  </dialog>
+
+  <dialog class="dialog dialog--layer wm-screen-memo-dialog" id="screen-memo-dialog"
+          aria-labelledby="screen-memo-title">
+    <form id="screen-memo-form">
+      <header class="dialog__header dialog__header--with-meta wm-screen-memo__head">
+        <div class="dialog__header-copy">
+          <h2 class="dialog__title" id="screen-memo-title">화면 메모</h2>
+        </div>
+        <span class="dialog__meta num" id="screen-memo-screen-id"></span>
+        <button class="dialog__close" id="close-screen-memo" type="button" aria-label="화면 메모 닫기"></button>
+      </header>
+      <div class="dialog__body wm-screen-memo__body">
+        <div class="wm-screen-memo__context">
+          <span>대상 화면</span>
+          <strong id="screen-memo-screen-name"></strong>
+        </div>
+        <section class="wm-screen-memo-thread" aria-labelledby="screen-memo-list-title">
+          <header class="wm-screen-memo-thread__head">
+            <h3 id="screen-memo-list-title">등록된 메모</h3>
+            <span id="screen-memo-count">0건</span>
+          </header>
+          <p class="wm-screen-memo-empty" id="screen-memo-empty">아직 등록된 메모가 없습니다.<br>이 화면에서 확인할 내용을 먼저 남겨 보세요.</p>
+          <ol class="wm-screen-memo-list" id="screen-memo-list"></ol>
+        </section>
+        <section class="field wm-screen-memo-composer">
+          <label class="field__label" for="screen-memo-content">새 메모</label>
+          <textarea class="field__control" id="screen-memo-content" name="content" rows="5"
+                    maxlength="10000" placeholder="확인할 내용이나 결정 사항을 입력해 주세요."></textarea>
+          <p class="rq-note" id="screen-memo-status" role="status" aria-live="polite"></p>
+        </section>
+      </div>
+      <div class="dialog__actions">
+        <button class="button" id="cancel-screen-memo" type="button">취소</button>
+        <button class="button button--primary" id="save-screen-memo" type="submit"
+                th:disabled="${!workbenchEditable}">메모 등록</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog class="dialog wm-screen-marker-dialog" id="screen-marker-dialog"
+          aria-labelledby="screen-marker-title">
+    <form id="screen-marker-form">
+      <div class="dialog__body">
+        <div class="dialog__title-row wm-screen-marker__head">
+          <div>
+            <h2 id="screen-marker-title">실행 마커 추가</h2>
+            <p id="screen-marker-position"></p>
+          </div>
+          <button class="button button--small" id="close-screen-marker" type="button">닫기</button>
+        </div>
+        <p class="wm-screen-marker__meta" id="screen-marker-meta" hidden></p>
+        <div class="field">
+          <label class="field__label" for="screen-marker-description">설명</label>
+          <textarea class="field__control" id="screen-marker-description" name="description" rows="7"
+                    maxlength="4000" placeholder="이 위치에서 확인하거나 수정할 내용을 입력하세요"></textarea>
+        </div>
+        <p class="rq-note" id="screen-marker-status" role="status" aria-live="polite"></p>
+      </div>
+      <div class="dialog__actions wm-screen-marker__actions">
+        <button class="button button--danger-outline" id="delete-screen-marker" type="button" hidden>마커 삭제</button>
+        <button class="button" id="cancel-screen-marker" type="button">취소</button>
+        <button class="button" id="use-screen-marker-ai" type="button" hidden>AI 수정에 사용</button>
+        <button class="button button--primary" id="save-screen-marker" type="submit">마커 저장</button>
+      </div>
+    </form>
+  </dialog>
+
+  <form method="post" id="ai-draft-form" hidden
+        th:action="@{/projects/{p}/artifacts/frds/{f}/generate(p=${projectId},f=${frd.id()})}"></form>
+
+  <dialog class="wm-draft-dialog" id="ai-draft-dialog"
+          aria-labelledby="ai-draft-dialog-title"
+          th:attr="data-auto-open=${workbenchEditable and draftReadyCount > 0},data-frd-key=${frd.id()},data-required-draft=${workbenchEditable and draftRequired}">
+    <div class="wm-draft-dialog__surface">
+      <header class="wm-draft-dialog__head">
+        <span class="wm-draft-dialog__symbol" aria-hidden="true">
+          <svg viewBox="0 0 24 24"><path d="m12 3 1.3 3.7L17 8l-3.7 1.3L12 13l-1.3-3.7L7 8l3.7-1.3L12 3ZM5 14l.8 2.2L8 17l-2.2.8L5 20l-.8-2.2L2 17l2.2-.8L5 14Z"/></svg>
+        </span>
+        <div>
+          <span class="wm-draft-dialog__eyebrow">AI 사전 작업</span>
+          <h2 id="ai-draft-dialog-title">화면 초안을 만드시겠습니까?</h2>
+          <p>확인된 요구사항과 화면별 수정 내용을 바탕으로 작업 대상 화면을 순서대로 준비합니다.</p>
+        </div>
+      </header>
+
+      <section class="wm-draft-dialog__confirm" id="ai-draft-confirm-view">
+        <div class="wm-draft-dialog__body">
+          <div class="wm-draft-dialog__summary">
+            <strong th:text="${draftReadyCount} + '개 화면을 준비합니다'">2개 화면을 준비합니다</strong>
+            <span th:text="${draftRequired ? '신규 화면은 초안을 만든 뒤 상세 작업을 시작할 수 있습니다.' : '초안이 만들어지는 동안 다른 화면으로 이동해도 작업은 계속됩니다.'}">초안이 만들어지는 동안 다른 화면으로 이동해도 작업은 계속됩니다.</span>
+          </div>
+          <ul class="wm-draft-dialog__targets" aria-label="AI 초안 생성 대상">
+            <li th:each="screen : ${screens}" th:if="${screen.canGenerateDraft()}">
+              <span class="wm-draft-dialog__target-index" aria-hidden="true"></span>
+              <div><strong th:text="${screen.screenName() ?: screen.screenId()}">결재 문서 작성</strong><small class="num" th:text="${screen.screenId()}">wv-appr-write</small></div>
+              <span>대기</span>
+            </li>
+          </ul>
+        </div>
+        <div class="wm-draft-dialog__actions">
+          <button class="button" id="cancel-ai-draft" type="button" th:hidden="${draftRequired}">이번에는 건너뛰기</button>
+          <button class="button button--primary" id="confirm-ai-draft" type="button"
+                  th:disabled="${!workbenchEditable}">초안 만들기</button>
+        </div>
+      </section>
+
+      <section class="wm-draft-dialog__progress" id="ai-draft-progress-view" aria-live="polite" hidden>
+        <div class="wm-draft-dialog__body">
+          <div class="wm-draft-dialog__progress-head">
+            <div><strong id="ai-draft-layer-title">AI가 화면 초안을 만들고 있습니다</strong><span id="ai-draft-layer-detail">첫 번째 화면을 준비하고 있습니다.</span></div>
+            <b id="ai-draft-layer-count">0/0</b>
+          </div>
+          <div class="wm-draft-dialog__meter" aria-hidden="true"><span id="ai-draft-layer-meter"></span></div>
+          <ol class="wm-draft-dialog__screen-progress">
+            <li th:each="screen : ${screens}" th:if="${screen.isAiDraftEligible()}"
+                th:attr="data-draft-progress-row=${screen.id()},data-draft-state=${screen.state().name()},data-draft-name=${screen.screenName() ?: screen.screenId()}">
+              <span class="wm-draft-dialog__state-icon" aria-hidden="true"></span>
+              <div><strong th:text="${screen.screenName() ?: screen.screenId()}">결재 문서 작성</strong><small class="num" th:text="${screen.screenId()}">wv-appr-write</small></div>
+              <span class="wm-draft-dialog__state-label">대기</span>
+            </li>
+          </ol>
+          <div class="wm-draft-dialog__log-wrap">
+            <strong>진행 로그</strong>
+            <ol class="wm-draft-dialog__log" id="ai-draft-layer-log"></ol>
+          </div>
+        </div>
+        <div class="wm-draft-dialog__actions" id="ai-draft-progress-actions" hidden>
+          <button class="button button--primary" id="close-ai-draft-progress" type="button">작업 화면 확인</button>
+        </div>
+      </section>
+    </div>
+  </dialog>
+
+  <section class="wm-ai-chat" id="frd-ai-chat" role="dialog" aria-labelledby="frd-ai-chat-title" hidden>
+    <header class="wm-ai-chat__head">
+      <img src="/images/claudecode-color.png" alt="">
+      <div class="wm-ai-chat__identity">
+        <strong id="frd-ai-chat-title">Claude Code</strong>
+        <span><b id="frd-ai-chat-screen-name"></b> 화면 대화</span>
+        <span th:if="${claudeIdentity != null}">계정 <b th:text="${claudeIdentity.email()}">planner@example.com</b><th:block
+              th:if="${claudeIdentity.organizationName() != null}"
+              th:text="${' · ' + claudeIdentity.organizationName()}"> · 기획팀</th:block></span>
+      </div>
+      <div class="wm-ai-chat__actions">
+        <button class="wm-ai-chat__expand" id="expand-frd-ai-chat" type="button"
+                aria-label="별도 창으로 열기" title="별도 창으로 열기">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 5h5v5M19 5l-7 7M10 19H5v-5M5 19l7-7"/></svg>
+        </button>
+        <button class="wm-ai-chat__close" id="close-frd-ai-chat" type="button" aria-label="대화창 닫기">×</button>
+      </div>
+    </header>
+    <div class="wm-ai-chat__selection" id="frd-ai-chat-selection" hidden>
+      <div>
+        <small>수정 영역</small>
+        <strong id="frd-ai-chat-selection-label"></strong>
+        <span class="num" id="frd-ai-chat-selection-path"></span>
+      </div>
+      <button type="button" id="clear-frd-ai-chat-selection" aria-label="선택 영역 해제" title="선택 영역 해제">×</button>
+    </div>
+    <div class="wm-ai-chat__log" id="frd-ai-chat-log" aria-live="polite">
+      <article class="wm-ai-chat-message wm-ai-chat-message--ai">
+        <strong>Claude Code</strong>
+        <p>현재 화면을 질문하거나 수정·신규 화면을 요청해 주세요.</p>
+      </article>
+    </div>
+    <form class="wm-ai-chat__composer" id="frd-ai-chat-form">
+      <div class="wm-ai-chat__attachment" id="frd-ai-chat-reference" hidden>
+        <span class="wm-ai-chat__attachment-name" id="frd-ai-chat-reference-name" aria-live="polite"></span>
+        <button class="wm-ai-chat__attachment-remove" id="frd-ai-chat-reference-remove" type="button" aria-label="선택한 참고 이미지 제거" title="선택한 참고 이미지 제거" hidden>×</button>
+      </div>
+      <div class="wm-ai-chat__message-field">
+        <textarea id="frd-ai-chat-message" aria-label="화면 질문 또는 작업 요청"
+                  placeholder="화면 동작을 질문하거나 수정·신규 화면을 요청해 주세요" maxlength="4000"
+                  title="Enter 전송 · Alt+Enter 줄바꿈"></textarea>
+        <div class="wm-ai-chat__message-tools">
+          <input class="sr-only" id="frd-ai-chat-reference-input" type="file"
+                 accept="image/png,image/jpeg,image/webp">
+          <label class="wm-ai-chat__reference-button" for="frd-ai-chat-reference-input">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v14H4zM4 16l4-4 3 3 2-2 7 6M15 9h.01"/></svg>
+            참고 이미지
+          </label>
+          <div class="wm-ai-chat__suggestion-control">
+            <button class="wm-ai-chat__reference-button wm-ai-chat__suggestion-button" id="frd-ai-chat-suggestion-toggle"
+                    type="button" aria-expanded="false" aria-controls="frd-ai-chat-suggestion-menu">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m12 3 1.4 4.1L17.5 8.5l-4.1 1.4L12 14l-1.4-4.1-4.1-1.4 4.1-1.4L12 3ZM18.5 14l.8 2.2 2.2.8-2.2.8-.8 2.2-.8-2.2-2.2-.8 2.2-.8.8-2.2Z"/></svg>
+              AI 제안
+            </button>
+            <div class="wm-ai-chat__suggestion-menu" id="frd-ai-chat-suggestion-menu" role="menu" hidden>
+              <button type="button" role="menuitem" data-screen-chat-suggestion="현재 화면이 디자인 규칙과 공통 컴포넌트를 올바르게 사용했는지 검토하고, 수정 전에 개선점을 제안해 주세요.">디자인 규칙 검토</button>
+              <button type="button" role="menuitem" data-screen-chat-suggestion="현재 화면의 접근성·문구·조작 흐름을 검토하고 우선순위가 높은 개선점을 제안해 주세요.">사용성 개선 제안</button>
+              <button type="button" role="menuitem" data-screen-chat-suggestion="현재 화면과 관련 화면의 이동 관계를 검토하고 누락되거나 어색한 흐름을 제안해 주세요.">화면 연결 검토</button>
+            </div>
+          </div>
+          <small class="wm-ai-chat__drop-hint" id="frd-ai-chat-drop-hint">
+            끌어다 놓기 · PNG, JPEG, WebP · 최대 10MB
+          </small>
+        </div>
+      </div>
+      <button class="button button--primary" id="frd-ai-chat-send" type="submit">전송</button>
+    </form>
+  </section>
+
+<!--/*
+  ⚠ 서버 왕복 없이 <iframe src> 만 바꾼다 — /preview 는 이미 만들어진 화면마다 따로 있는 주소다.
+  ⛔ iframe 안쪽을 만지지 마라 — sandbox 라 우리 자격으로 못 들어간다. 겉을 늘이고 줄일 뿐이다.
+*/-->
+<script id="frd-workbench-script">
+  (function () {
+    const workbenchRoot = document.querySelector('.frd-workbench-page');
+    const workbenchEditable = workbenchRoot?.dataset.workbenchEditable === 'true';
+    const list = document.getElementById('work-screen-list');
+    const frame = document.getElementById('preview-frame');
+    const canvas = document.getElementById('preview-canvas');
+    const previewLoading = document.getElementById('preview-loading');
+    const previewLoadingMessage = document.getElementById('preview-loading-message');
+    const empty = document.getElementById('preview-empty');
+    const emptyMessage = document.getElementById('preview-empty-message');
+    const stageId = document.getElementById('stage-screen-id');
+    const stageName = document.getElementById('stage-screen-name');
+    const screenFacetTools = [...document.querySelectorAll('[data-screen-facet-tool]')];
+    const deleteDetailScreenButton = document.getElementById('delete-detail-screen');
+    const deleteDetailScreenId = document.getElementById('delete-detail-screen-id');
+    document.querySelectorAll('[data-screen-facet-select]').forEach(select => {
+      select.addEventListener('change', () => select.form.requestSubmit());
+    });
+    const draftForm = document.getElementById('ai-draft-form');
+    const completionButton = document.getElementById('complete-frd-work');
+    const progressPanel = document.getElementById('ai-draft-progress');
+    const progressTitle = document.getElementById('ai-draft-progress-title');
+    const progressDetail = document.getElementById('ai-draft-progress-detail');
+    const draftDialog = document.getElementById('ai-draft-dialog');
+    const draftConfirmView = document.getElementById('ai-draft-confirm-view');
+    const draftProgressView = document.getElementById('ai-draft-progress-view');
+    const draftLayerTitle = document.getElementById('ai-draft-layer-title');
+    const draftLayerDetail = document.getElementById('ai-draft-layer-detail');
+    const draftLayerCount = document.getElementById('ai-draft-layer-count');
+    const draftLayerMeter = document.getElementById('ai-draft-layer-meter');
+    const draftLayerLog = document.getElementById('ai-draft-layer-log');
+    const confirmDraftButton = document.getElementById('confirm-ai-draft');
+    const cancelDraftButton = document.getElementById('cancel-ai-draft');
+    const closeDraftProgressButton = document.getElementById('close-ai-draft-progress');
+    const overviewButton = document.getElementById('open-frd-overview');
+    const requirementButton = document.getElementById('open-frd-requirement');
+    const overviewDialog = document.getElementById('frd-overview-dialog');
+    const overviewToc = overviewDialog?.querySelector('.wm-frd-overview__toc');
+    const overviewContent = document.getElementById('frd-overview-content');
+    const historyButton = document.getElementById('open-screen-history');
+    const historyDialog = document.getElementById('screen-history-dialog');
+    const historyList = document.getElementById('screen-history-list');
+    const historyEmpty = document.getElementById('screen-history-empty');
+    const historyScreenName = document.getElementById('screen-history-screen-name');
+    const historyScreenId = document.getElementById('screen-history-screen-id');
+    const compareButton = document.getElementById('open-screen-compare');
+    const compareDialog = document.getElementById('screen-compare-dialog');
+    const compareFrame = document.getElementById('screen-compare-frame');
+    const compareScreenName = document.getElementById('screen-compare-name');
+    const compareScreenId = document.getElementById('screen-compare-id');
+    const documentButton = document.getElementById('open-screen-document');
+    const documentDialog = document.getElementById('screen-document-dialog');
+    const documentScreenName = document.getElementById('screen-document-screen-name');
+    const documentScreenId = document.getElementById('screen-document-screen-id');
+    const documentStatus = document.getElementById('screen-document-status');
+    const documentReader = document.getElementById('screen-document-reader');
+    const documentToc = document.getElementById('screen-document-toc');
+    const documentSectionCount = document.getElementById('screen-document-section-count');
+    const documentContent = document.getElementById('screen-document-content');
+    const documentEmpty = document.getElementById('screen-document-empty');
+    const memoButton = document.getElementById('open-screen-memo');
+    const memoDialog = document.getElementById('screen-memo-dialog');
+    const memoScreenName = document.getElementById('screen-memo-screen-name');
+    const memoScreenId = document.getElementById('screen-memo-screen-id');
+    const memoForm = document.getElementById('screen-memo-form');
+    const memoList = document.getElementById('screen-memo-list');
+    const memoEmpty = document.getElementById('screen-memo-empty');
+    const memoCount = document.getElementById('screen-memo-count');
+    const memoContent = document.getElementById('screen-memo-content');
+    const memoStatus = document.getElementById('screen-memo-status');
+    const memoSave = document.getElementById('save-screen-memo');
+    const markerButton = document.getElementById('add-execution-marker');
+    const markerDialog = document.getElementById('screen-marker-dialog');
+    const markerForm = document.getElementById('screen-marker-form');
+    const markerTitle = document.getElementById('screen-marker-title');
+    const markerPosition = document.getElementById('screen-marker-position');
+    const markerMeta = document.getElementById('screen-marker-meta');
+    const markerDescription = document.getElementById('screen-marker-description');
+    const markerStatus = document.getElementById('screen-marker-status');
+    const markerSave = document.getElementById('save-screen-marker');
+    const markerDelete = document.getElementById('delete-screen-marker');
+    const markerUseAi = document.getElementById('use-screen-marker-ai');
+    const directEditButton = document.getElementById('edit-screen-directly');
+    const directEditStatus = document.getElementById('screen-direct-edit-status');
+    const chatButton = document.getElementById('open-frd-ai-chat');
+    const chatPanel = document.getElementById('frd-ai-chat');
+    const chatScreenName = document.getElementById('frd-ai-chat-screen-name');
+    const chatMessage = document.getElementById('frd-ai-chat-message');
+    const chatLog = document.getElementById('frd-ai-chat-log');
+    const chatForm = document.getElementById('frd-ai-chat-form');
+    const chatSend = document.getElementById('frd-ai-chat-send');
+    const chatReferenceInput = document.getElementById('frd-ai-chat-reference-input');
+    const chatReference = document.getElementById('frd-ai-chat-reference');
+    const chatReferenceName = document.getElementById('frd-ai-chat-reference-name');
+    const chatReferenceRemove = document.getElementById('frd-ai-chat-reference-remove');
+    const chatSuggestionToggle = document.getElementById('frd-ai-chat-suggestion-toggle');
+    const chatSuggestionMenu = document.getElementById('frd-ai-chat-suggestion-menu');
+    const regionButton = document.getElementById('select-edit-region');
+    const chatSelection = document.getElementById('frd-ai-chat-selection');
+    const chatSelectionLabel = document.getElementById('frd-ai-chat-selection-label');
+    const chatSelectionPath = document.getElementById('frd-ai-chat-selection-path');
+    const chatDrafts = new Map();
+    let chatViewingLink = null;
+    let chatActiveId = null;
+    let chatActiveScreenName = null;
+    let chatActiveLink = null;
+    let chatLoadSequence = 0;
+    let chatNotice = '';
+    let chatRenderSignature = '';
+    let chatReloadScheduled = false;
+    let chatReferenceImage = null;
+    let chatReferenceDragDepth = 0;
+    const acceptedChatImageTypes = new Set(['image/png', 'image/jpeg', 'image/webp']);
+    const maxChatReferenceImageBytes = 10 * 1024 * 1024;
+    const safeAiFailure = (value, fallback) => {
+      const text = String(value || '').trim();
+      const technical = /apiStatus|terminalReason|exitCode|API Error|Exception|\bat [\w$.]+\(|[A-Za-z]:\\|^\s*[\[{]/i;
+      return !text || text.length > 320 || technical.test(text) ? fallback : text;
+    };
+    const closeChatSuggestionMenu = restoreFocus => {
+      if (!chatSuggestionMenu || chatSuggestionMenu.hidden) return;
+      chatSuggestionMenu.hidden = true;
+      chatSuggestionToggle?.setAttribute('aria-expanded', 'false');
+      if (restoreFocus) chatSuggestionToggle?.focus();
+    };
+    let overviewReturnFocus = overviewButton;
+    const closeOverview = () => {
+      if (!overviewDialog?.open) return;
+      overviewDialog.close();
+      overviewButton?.setAttribute('aria-expanded', 'false');
+      requirementButton?.setAttribute('aria-expanded', 'false');
+      overviewReturnFocus?.focus();
+    };
+    const openOverview = (targetId, opener) => {
+      if (!overviewDialog) return;
+      overviewReturnFocus = opener;
+      const target = document.getElementById(targetId);
+      overviewToc?.querySelectorAll('button').forEach(item => {
+        item.toggleAttribute('aria-current', item.dataset.frdOverviewTarget === targetId);
+      });
+      overviewDialog.showModal();
+      opener?.setAttribute('aria-expanded', 'true');
+      if (targetId === 'frd-overview-summary-title') overviewContent.scrollTop = 0;
+      else target?.scrollIntoView({ block: 'start' });
+    };
+    overviewButton?.addEventListener('click', () => openOverview('frd-overview-summary-title', overviewButton));
+    requirementButton?.addEventListener('click', () => openOverview('frd-overview-requirement-title', requirementButton));
+    const overviewTarget = new URLSearchParams(window.location.search).get('overview');
+    if (overviewTarget === 'summary') openOverview('frd-overview-summary-title', overviewButton);
+    if (overviewTarget === 'requirement') openOverview('frd-overview-requirement-title', requirementButton);
+    document.getElementById('close-frd-overview')?.addEventListener('click', closeOverview);
+    overviewToc?.addEventListener('click', event => {
+      const button = event.target.closest('[data-frd-overview-target]');
+      if (!button) return;
+      const target = document.getElementById(button.dataset.frdOverviewTarget);
+      if (!target) return;
+      overviewToc.querySelectorAll('button').forEach(item => item.removeAttribute('aria-current'));
+      button.setAttribute('aria-current', 'true');
+      target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+    overviewDialog?.addEventListener('cancel', () => {
+      overviewButton?.setAttribute('aria-expanded', 'false');
+      requirementButton?.setAttribute('aria-expanded', 'false');
+      overviewReturnFocus?.focus();
+    });
+    const closeDocument = () => {
+      if (!documentDialog?.open) return;
+      documentDialog.close();
+      documentButton?.setAttribute('aria-expanded', 'false');
+      documentButton?.focus();
+    };
+    const renderScreenDocument = markdown => {
+      documentContent.replaceChildren();
+      documentToc.replaceChildren();
+      let list = null;
+      let code = null;
+      let facts = null;
+      let contentTarget = documentContent;
+      let sectionIndex = 0;
+      markdown.replace(/\r\n|\r/g, '\n').split('\n').forEach(line => {
+        if (line.trim().startsWith('```')) {
+          code = code ? null : contentTarget.appendChild(document.createElement('pre'));
+          list = null;
+          facts = null;
+          return;
+        }
+        if (code) {
+          code.textContent += (code.textContent ? '\n' : '') + line;
+          return;
+        }
+        const section = line.trim().match(/^---\s*(.+?)\s*---$/);
+        const heading = line.trim().match(/^(#{1,6})\s+(.+)$/);
+        const bullet = line.trim().match(/^[-*]\s+(.+)$/);
+        const ordered = line.trim().match(/^\d+[.)]\s+(.+)$/);
+        if (section || heading) {
+          list = null;
+          facts = null;
+          const title = document.createElement(heading && heading[1].length > 2 ? 'h4' : 'h3');
+          title.textContent = section ? section[1] : heading[2];
+          if (title.tagName === 'H3') {
+            sectionIndex += 1;
+            title.id = `screen-document-section-${sectionIndex}`;
+            const documentSection = document.createElement('section');
+            documentSection.className = 'wm-screen-document__section';
+            documentSection.append(title);
+            documentContent.append(documentSection);
+            contentTarget = documentSection;
+            const tocItem = document.createElement('li');
+            const tocButton = document.createElement('button');
+            tocButton.type = 'button';
+            tocButton.dataset.documentTarget = title.id;
+            tocButton.textContent = title.textContent;
+            tocItem.append(tocButton);
+            documentToc.append(tocItem);
+          } else {
+            contentTarget.append(title);
+          }
+          return;
+        }
+        if (bullet || ordered) {
+          facts = null;
+          const listTag = ordered ? 'OL' : 'UL';
+          if (!list || list.tagName !== listTag) {
+            list = document.createElement(listTag.toLowerCase());
+            contentTarget.append(list);
+          }
+          const item = document.createElement('li');
+          item.textContent = (bullet || ordered)[1];
+          list.append(item);
+          return;
+        }
+        list = null;
+        if (!line.trim()) return;
+        const keyValue = line.match(/^([^:]{1,40}):\s*(.*)$/);
+        if (keyValue) {
+          if (!facts) {
+            facts = document.createElement('dl');
+            facts.className = 'wm-screen-document__facts';
+            contentTarget.append(facts);
+          }
+          const fact = document.createElement('div');
+          const key = document.createElement('dt');
+          const value = document.createElement('dd');
+          key.textContent = keyValue[1];
+          value.textContent = keyValue[2] || '-';
+          fact.append(key, value);
+          facts.append(fact);
+          return;
+        }
+        facts = null;
+        const paragraph = document.createElement('p');
+        paragraph.textContent = line;
+        contentTarget.append(paragraph);
+      });
+      documentSectionCount.textContent = `${sectionIndex}개 항목`;
+      documentReader.classList.toggle('wm-screen-document__reader--without-toc', sectionIndex === 0);
+      documentToc.querySelector('button')?.setAttribute('aria-current', 'true');
+    };
+    const openDocument = async () => {
+      const link = currentLink();
+      if (!link?.dataset.documentUrl || !documentDialog) return;
+      documentScreenName.textContent = link.dataset.screenName;
+      documentScreenId.textContent = link.dataset.screenCode;
+      documentStatus.textContent = '기능정의서를 불러오고 있습니다.';
+      documentStatus.hidden = false;
+      documentReader.hidden = true;
+      documentEmpty.hidden = true;
+      documentDialog.showModal();
+      documentButton.setAttribute('aria-expanded', 'true');
+      try {
+        const response = await fetch(link.dataset.documentUrl, { headers: { 'Accept': 'application/json' } });
+        if (!response.ok) throw new Error('기능정의서를 불러오지 못했습니다.');
+        const screenDocument = await response.json();
+        documentStatus.hidden = true;
+        if (!screenDocument.exists) {
+          documentEmpty.hidden = false;
+          return;
+        }
+        renderScreenDocument(screenDocument.markdown || '');
+        documentReader.hidden = false;
+        documentContent.scrollTop = 0;
+      } catch (error) {
+        documentStatus.textContent = error.message || '기능정의서를 불러오지 못했습니다.';
+      }
+    };
+    const closeMemo = () => {
+      if (!memoDialog?.open) return;
+      memoDialog.close();
+      memoButton?.setAttribute('aria-expanded', 'false');
+      memoButton?.focus();
+    };
+    const memoDateFormatter = new Intl.DateTimeFormat('ko-KR', {
+      year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit'
+    });
+    const memoItem = memo => {
+      const item = document.createElement('li');
+      const meta = document.createElement('div');
+      const author = document.createElement('strong');
+      author.textContent = memo.authorName;
+      const time = document.createElement('time');
+      time.dateTime = memo.createdAt;
+      time.textContent = memoDateFormatter.format(new Date(memo.createdAt));
+      const content = document.createElement('p');
+      content.textContent = memo.content;
+      meta.append(author, time);
+      item.append(meta, content);
+      return item;
+    };
+    const renderMemoItems = memos => {
+      memoList.replaceChildren(...memos.map(memoItem));
+      memoEmpty.hidden = memos.length > 0;
+      memoCount.textContent = `${memos.length}건`;
+    };
+    const openMemo = async () => {
+      if (!workbenchEditable) return;
+      const link = currentLink();
+      if (!link?.dataset.memoUrl || !memoDialog) return;
+      memoScreenName.textContent = link.dataset.screenName;
+      memoScreenId.textContent = link.dataset.screenCode;
+      memoContent.value = '';
+      memoContent.disabled = !workbenchEditable;
+      memoSave.disabled = true;
+      memoStatus.textContent = '메모를 불러오고 있습니다.';
+      renderMemoItems([]);
+      memoDialog.showModal();
+      memoButton.setAttribute('aria-expanded', 'true');
+      memoContent.focus();
+      try {
+        const response = await fetch(link.dataset.memoUrl, { headers: { 'Accept': 'application/json' } });
+        if (!response.ok) throw new Error('메모를 불러오지 못했습니다.');
+        const thread = await response.json();
+        renderMemoItems(thread.comments || []);
+        memoSave.disabled = !workbenchEditable;
+        memoStatus.textContent = workbenchEditable ? '' : '완료된 FRD에서는 메모를 등록할 수 없습니다.';
+      } catch (error) {
+        memoSave.disabled = !workbenchEditable;
+        memoStatus.textContent = workbenchEditable
+          ? '등록된 메모를 불러오지 못했습니다. 새 메모는 등록할 수 있습니다.'
+          : '등록된 메모를 불러오지 못했습니다.';
+      }
+    };
+
+    const chatArticle = (role, content, state) => {
+      const article = document.createElement('article');
+      article.className = 'wm-ai-chat-message wm-ai-chat-message--' + (role === 'USER' ? 'user' : 'ai');
+      const failed = state === 'FAILED';
+      const cancelled = failed && content?.startsWith('사용자가');
+      if (failed) article.classList.add('wm-ai-chat-message--error');
+      if (cancelled) article.classList.add('wm-ai-chat-message--cancelled');
+      const author = document.createElement('strong');
+      author.textContent = role === 'USER' ? '나'
+        : (failed ? (cancelled ? '작업을 중단했습니다' : '요청을 완료하지 못했습니다') : 'Claude Code');
+      const body = document.createElement('p');
+      body.textContent = content.replace(/\\r\\n|\\n|\\r/g, '\n');
+      article.append(author, body);
+      if (failed && !cancelled) {
+        const guide = document.createElement('small');
+        guide.className = 'wm-ai-chat-message__guide';
+        guide.textContent = '입력한 요청은 대화에 남아 있습니다.';
+        article.append(guide);
+      }
+      return article;
+    };
+    const renderChat = (status, link) => {
+      const signature = JSON.stringify({
+        screenId: link.dataset.screenId,
+        messages: status.messages,
+        active: status.active,
+        notice: chatNotice
+      });
+      if (signature === chatRenderSignature) return;
+      chatRenderSignature = signature;
+      chatLog.replaceChildren();
+      if (chatNotice) {
+        const notice = document.createElement('p');
+        notice.className = 'wm-ai-chat__notice';
+        notice.textContent = chatNotice;
+        chatLog.append(notice);
+        chatNotice = '';
+      }
+      if (status.active && status.active.screenRowId !== link.dataset.screenId) {
+        const notice = document.createElement('p');
+        notice.className = 'wm-ai-chat__notice';
+        notice.textContent = status.active.screenName
+          + ' 화면 요청을 처리하고 있습니다. 완료되면 이 화면에서 새 요청을 보낼 수 있습니다.';
+        chatLog.append(notice);
+      }
+      if (!status.messages.length) {
+        chatLog.append(chatArticle('AI', '현재 화면을 질문하거나 수정·신규 화면을 요청해 주세요.', 'DONE'));
+      }
+      status.messages.forEach(message => {
+        const content = message.state === 'RUNNING' ? '현재 화면과 요청 내용을 확인하고 있습니다.'
+          : (message.state === 'FAILED'
+            ? safeAiFailure(message.failure, '화면 요청을 완료하지 못했습니다. 잠시 후 다시 요청해 주세요.')
+            : message.content);
+        const article = chatArticle(message.role, content, message.state);
+        if (message.state === 'RUNNING' && status.active?.screenRowId === link.dataset.screenId) {
+          const steps = document.createElement('ol');
+          steps.className = 'wm-ai-chat-progress';
+          (status.active.progress || []).forEach(step => {
+            const item = document.createElement('li');
+            item.textContent = step.text;
+            steps.append(item);
+          });
+          article.append(steps);
+        }
+        chatLog.append(article);
+      });
+      chatLog.scrollTop = chatLog.scrollHeight;
+    };
+    const setChatBusy = busy => {
+      chatMessage.disabled = busy;
+      if (chatReferenceInput) chatReferenceInput.disabled = busy;
+      if (chatReferenceRemove) chatReferenceRemove.disabled = busy;
+      if (chatSuggestionToggle) chatSuggestionToggle.disabled = busy;
+      chatSend.disabled = busy;
+      chatSend.textContent = busy ? '확인 중' : '전송';
+      if (busy) {
+        closeChatSuggestionMenu(false);
+        showChatDropTarget(false);
+      }
+    };
+    const renderChatReferenceImage = () => {
+      if (chatReference) chatReference.hidden = !chatReferenceImage;
+      if (chatReferenceName) chatReferenceName.textContent = chatReferenceImage?.name || '';
+      if (chatReferenceRemove) chatReferenceRemove.hidden = !chatReferenceImage;
+    };
+    chatReferenceRemove?.addEventListener('click', () => {
+      chatReferenceImage = null;
+      if (chatReferenceInput) chatReferenceInput.value = '';
+      renderChatReferenceImage();
+      chatMessage.focus();
+    });
+    const hasDraggedChatFiles = transfer => {
+      const types = Array.from(transfer?.types || []);
+      const items = Array.from(transfer?.items || []);
+      return types.includes('Files') || items.some(item => item.kind === 'file');
+    };
+    const droppedChatImage = files => Array.from(files || [])[0];
+    const acceptChatReferenceImage = file => {
+      const acceptedExtension = /\.(png|jpe?g|webp)$/i.test(file?.name || '');
+      if (!file || (!acceptedChatImageTypes.has(file.type) && !acceptedExtension)) {
+        throw new Error('참고 이미지는 PNG, JPEG, WebP 형식만 사용할 수 있습니다.');
+      }
+      if (file.size > maxChatReferenceImageBytes) {
+        throw new Error('참고 이미지는 10MB 이하로 올려 주세요.');
+      }
+      chatReferenceImage = file;
+      renderChatReferenceImage();
+    };
+    chatReferenceInput?.addEventListener('change', () => {
+      try {
+        acceptChatReferenceImage(chatReferenceInput.files[0]);
+      } catch (error) {
+        chatReferenceInput.value = '';
+        chatLog.append(chatArticle('AI', error.message, 'FAILED'));
+        chatLog.scrollTop = chatLog.scrollHeight;
+      }
+    });
+    const showChatDropTarget = shown => {
+      chatForm.classList.toggle('is-dragover', shown && !chatSend.disabled);
+    };
+    const isEmbeddedChatFileDrag = event => chatPanel?.contains(event.target)
+      && hasDraggedChatFiles(event.dataTransfer);
+    window.addEventListener('dragenter', event => {
+      if (!isEmbeddedChatFileDrag(event)) return;
+      event.preventDefault();
+      chatReferenceDragDepth += 1;
+      showChatDropTarget(true);
+    }, true);
+    window.addEventListener('dragover', event => {
+      if (!isEmbeddedChatFileDrag(event)) return;
+      event.preventDefault();
+      event.dataTransfer.dropEffect = chatSend.disabled ? 'none' : 'copy';
+    }, true);
+    window.addEventListener('dragleave', event => {
+      if (!isEmbeddedChatFileDrag(event)) return;
+      chatReferenceDragDepth = Math.max(0, chatReferenceDragDepth - 1);
+      if (!chatReferenceDragDepth) showChatDropTarget(false);
+    }, true);
+    window.addEventListener('drop', event => {
+      if (!isEmbeddedChatFileDrag(event)) return;
+      event.preventDefault();
+      chatReferenceDragDepth = 0;
+      showChatDropTarget(false);
+      if (chatSend.disabled) return;
+      try {
+        acceptChatReferenceImage(droppedChatImage(event.dataTransfer.files));
+      } catch (error) {
+        chatLog.append(chatArticle('AI', error.message, 'FAILED'));
+        chatLog.scrollTop = chatLog.scrollHeight;
+      }
+    }, true);
+    const loadChat = async link => {
+      if (!link?.dataset.chatStatusUrl) return;
+      const sequence = ++chatLoadSequence;
+      const previousViewingLink = chatViewingLink;
+      if (chatViewingLink && chatViewingLink !== link && !chatMessage.disabled) {
+        chatDrafts.set(chatViewingLink.dataset.screenId, chatMessage.value);
+      }
+      const switching = previousViewingLink !== link;
+      if (switching) {
+        chatViewingLink = link;
+        chatScreenName.textContent = link.dataset.screenName;
+        chatRenderSignature = '';
+        chatLog.replaceChildren(chatArticle('AI', '대화를 불러오고 있습니다.', 'RUNNING'));
+        chatMessage.value = '';
+        setChatBusy(true);
+      }
+      try {
+        const response = await fetch(link.dataset.chatStatusUrl, { headers: { 'Accept': 'application/json' } });
+        if (!response.ok) throw new Error('HTTP ' + response.status);
+        const status = await response.json();
+        if (sequence !== chatLoadSequence || chatViewingLink !== link) return;
+        if (chatActiveId && !status.active) {
+          const finishedMessage = status.messages.find(message => message.id === chatActiveId);
+          if (finishedMessage?.state === 'DONE') {
+            chatNotice = (chatActiveScreenName || '이전') + ' 화면 요청 처리를 완료했습니다.';
+          }
+          const completedLink = chatActiveLink;
+          chatActiveId = null;
+          chatActiveScreenName = null;
+          chatActiveLink = null;
+          const completedStatus = completedLink ? await refreshStatus(completedLink) : null;
+          if (completedLink && completedStatus?.state === 'GENERATED') {
+            await refreshHistory(completedLink, completedStatus);
+            if (currentLink() === completedLink) showCurrentPreview(completedLink);
+          }
+        }
+        chatViewingLink = link;
+        chatScreenName.textContent = link.dataset.screenName;
+        chatActiveId = status.active?.id || null;
+        chatActiveScreenName = status.active?.screenName || null;
+        chatActiveLink = status.active
+          ? list.querySelector(`[data-screen-id="${status.active.screenRowId}"]`)
+          : null;
+        const restoreDraft = !status.active && (switching || chatMessage.disabled);
+        renderChat(status, link);
+        setChatBusy(Boolean(status.active));
+        if (!chatReloadScheduled && status.screenCount
+            > list.querySelectorAll('.wm-screen-list-row__link').length) {
+          chatReloadScheduled = true;
+          window.setTimeout(() => window.location.reload(), 800);
+        }
+        if (restoreDraft) {
+          chatMessage.value = chatDrafts.get(link.dataset.screenId) || '';
+        }
+      } catch (error) {
+        if (sequence !== chatLoadSequence || chatViewingLink !== link) return;
+        chatNotice = '대화 상태를 확인하지 못했습니다. 잠시 후 다시 시도해 주세요.';
+        chatLog.replaceChildren(chatArticle('AI', chatNotice, 'FAILED'));
+        chatNotice = '';
+        setChatBusy(false);
+      }
+    };
+    const closeHistory = () => {
+      if (!historyDialog?.open) return;
+      historyDialog.close();
+      historyButton?.setAttribute('aria-expanded', 'false');
+      historyButton?.focus();
+    };
+    historyButton?.addEventListener('click', () => {
+      if (!workbenchEditable) return;
+      const link = currentLink();
+      if (!link || !historyDialog) return;
+      let visible = 0;
+      historyDialog.querySelectorAll('[data-history-screen-id]').forEach(item => {
+        item.hidden = item.dataset.historyScreenId !== link.dataset.screenId;
+        if (!item.hidden) visible++;
+      });
+      historyScreenName.textContent = link.dataset.screenName;
+      historyScreenId.textContent = link.dataset.screenCode;
+      historyEmpty.hidden = visible !== 0;
+      historyDialog.showModal();
+      historyButton.setAttribute('aria-expanded', 'true');
+    });
+    document.getElementById('close-screen-history')?.addEventListener('click', closeHistory);
+    historyDialog?.addEventListener('cancel', event => {
+      event.preventDefault();
+      closeHistory();
+    });
+    const closeCompare = () => {
+      if (!compareDialog?.open) return;
+      compareDialog.close();
+      compareButton?.setAttribute('aria-expanded', 'false');
+      compareButton?.focus();
+    };
+    compareButton?.addEventListener('click', () => {
+      const link = currentLink();
+      if (!link || !compareDialog || !compareFrame || !workbenchRoot?.dataset.compareUrl) return;
+      compareScreenName.textContent = link.dataset.screenName;
+      compareScreenId.textContent = link.dataset.screenCode;
+      const url = new URL(workbenchRoot.dataset.compareUrl, window.location.href);
+      url.searchParams.set('screenRowId', link.dataset.screenId);
+      url.searchParams.set('embedded', 'true');
+      compareFrame.src = url;
+      compareDialog.showModal();
+      compareButton.setAttribute('aria-expanded', 'true');
+    });
+    compareDialog?.addEventListener('close', () => {
+      compareFrame?.removeAttribute('src');
+      compareButton?.setAttribute('aria-expanded', 'false');
+    });
+    document.getElementById('close-screen-compare')?.addEventListener('click', closeCompare);
+    compareDialog?.addEventListener('click', event => {
+      if (event.target === compareDialog) closeCompare();
+    });
+    compareDialog?.addEventListener('cancel', event => {
+      event.preventDefault();
+      closeCompare();
+    });
+    window.addEventListener('message', event => {
+      if (event.origin !== window.location.origin || event.source !== compareFrame?.contentWindow) return;
+      if (event.data?.type === 'frd-canvas-compare-close') closeCompare();
+    });
+    documentButton?.addEventListener('click', openDocument);
+    document.getElementById('close-screen-document')?.addEventListener('click', closeDocument);
+    documentToc?.addEventListener('click', event => {
+      const button = event.target.closest('[data-document-target]');
+      if (!button) return;
+      const target = document.getElementById(button.dataset.documentTarget);
+      if (!target) return;
+      documentToc.querySelectorAll('button').forEach(item => item.removeAttribute('aria-current'));
+      button.setAttribute('aria-current', 'true');
+      target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+    documentDialog?.addEventListener('cancel', event => {
+      event.preventDefault();
+      closeDocument();
+    });
+    memoButton?.addEventListener('click', openMemo);
+    document.getElementById('close-screen-memo')?.addEventListener('click', closeMemo);
+    document.getElementById('cancel-screen-memo')?.addEventListener('click', closeMemo);
+    memoDialog?.addEventListener('cancel', event => {
+      event.preventDefault();
+      closeMemo();
+    });
+    memoForm?.addEventListener('submit', async event => {
+      event.preventDefault();
+      const link = currentLink();
+      if (!link?.dataset.memoUrl || memoSave.disabled) return;
+      const content = memoContent.value.trim();
+      if (!content) {
+        memoStatus.textContent = '메모 내용을 입력해 주세요.';
+        memoContent.focus();
+        return;
+      }
+      const body = new FormData();
+      body.append('content', content);
+      const csrf = draftForm?.querySelector('input[name="_csrf"]');
+      if (csrf) body.append(csrf.name, csrf.value);
+      memoSave.disabled = true;
+      memoStatus.textContent = '메모를 등록하고 있습니다.';
+      try {
+        const response = await fetch(link.dataset.memoUrl, {
+          method: 'POST', body, headers: { 'Accept': 'application/json' }
+        });
+        if (!response.ok) {
+          const problem = await response.json().catch(() => null);
+          throw new Error(problem?.detail || problem?.message || '메모를 등록하지 못했습니다.');
+        }
+        const added = await response.json();
+        memoList.append(memoItem(added));
+        memoEmpty.hidden = true;
+        memoCount.textContent = `${memoList.childElementCount}건`;
+        memoContent.value = '';
+        memoStatus.textContent = '메모를 등록했습니다.';
+        memoSave.disabled = false;
+        memoContent.focus();
+      } catch (error) {
+        memoStatus.textContent = error.message || '메모를 등록하지 못했습니다.';
+        memoSave.disabled = false;
+      }
+    });
+    let chatEventSource = null;
+    let chatFallbackTimer = null;
+    const disconnectChatEvents = () => {
+      chatEventSource?.close();
+      chatEventSource = null;
+      window.clearInterval(chatFallbackTimer);
+      chatFallbackTimer = null;
+    };
+    const connectChatEvents = link => {
+      if (chatEventSource || chatFallbackTimer || !link?.dataset.chatEventsUrl) return;
+      if (!('EventSource' in window)) {
+        chatFallbackTimer = window.setInterval(() => {
+          if (!chatPanel?.hidden) loadChat(chatViewingLink || currentLink());
+        }, 3000);
+        return;
+      }
+      chatEventSource = new EventSource(link.dataset.chatEventsUrl);
+      chatEventSource.addEventListener('refresh', () => {
+        if (!chatPanel?.hidden) loadChat(chatViewingLink || currentLink());
+      });
+      chatEventSource.addEventListener('error', () => {
+        if (!chatPanel?.hidden) loadChat(chatViewingLink || currentLink());
+      });
+    };
+    const closeChat = (clearSelection = true) => {
+      if (!chatPanel || chatPanel.hidden) return;
+      disconnectChatEvents();
+      chatPanel.hidden = true;
+      chatButton?.setAttribute('aria-expanded', 'false');
+      if (clearSelection) clearSelectedRegion();
+      chatButton?.focus();
+    };
+    chatButton?.addEventListener('click', () => {
+      if (!chatPanel) return;
+      if (!chatPanel.hidden) {
+        closeChat();
+        return;
+      }
+      const link = currentLink();
+      if (!link) return;
+      chatScreenName.textContent = link.dataset.screenName;
+      chatPanel.hidden = false;
+      chatButton.setAttribute('aria-expanded', 'true');
+      connectChatEvents(link);
+      loadChat(link).then(() => chatMessage?.focus());
+    });
+    document.getElementById('close-frd-ai-chat')?.addEventListener('click', closeChat);
+    let chatPopup = null;
+    let chatPopupScreenId = null;
+    let chatPopupWatcher = null;
+    document.getElementById('expand-frd-ai-chat')?.addEventListener('click', () => {
+      const link = chatViewingLink || currentLink();
+      if (!link?.dataset.chatUrl) return;
+      chatPopup = window.open(link.dataset.chatUrl, 'frd-ai-chat-' + link.dataset.screenId,
+        'popup=yes,width=860,height=900,resizable=yes,scrollbars=yes');
+      if (!chatPopup) {
+        window.alert('팝업이 차단되었습니다. 브라우저에서 이 사이트의 팝업을 허용해 주세요.');
+        return;
+      }
+      chatPopupScreenId = link.dataset.screenId;
+      disconnectChatEvents();
+      chatPanel.hidden = true;
+      chatButton.setAttribute('aria-expanded', 'false');
+      chatPopup.focus();
+      window.clearInterval(chatPopupWatcher);
+      chatPopupWatcher = window.setInterval(() => {
+        if (chatPopup && !chatPopup.closed) return;
+        const closedPopupScreenId = chatPopupScreenId;
+        window.clearInterval(chatPopupWatcher);
+        chatPopupWatcher = null;
+        chatPopup = null;
+        chatPopupScreenId = null;
+        if (closedPopupScreenId === currentLink()?.dataset.screenId) clearSelectedRegion(false);
+        chatPanel.hidden = false;
+        chatButton.setAttribute('aria-expanded', 'true');
+        connectChatEvents(currentLink());
+        loadChat(currentLink()).then(() => chatMessage?.focus());
+      }, 300);
+    });
+    chatForm?.addEventListener('submit', async event => {
+      event.preventDefault();
+      const link = currentLink();
+      const message = chatMessage.value.trim();
+      if (!link || (!message && !chatReferenceImage) || chatSend.disabled) return;
+      const body = new FormData();
+      body.append('message', message);
+      if (chatReferenceImage) body.append('referenceImage', chatReferenceImage, chatReferenceImage.name);
+      if (selectedRegion) body.append('selectedRegion', JSON.stringify(selectedRegion));
+      const csrf = draftForm?.querySelector('input[name="_csrf"]');
+      if (csrf) body.append(csrf.name, csrf.value);
+      setChatBusy(true);
+      try {
+        const response = await fetch(link.dataset.chatSendUrl, { method: 'POST', body });
+        if (!response.ok) {
+          const problem = await response.json().catch(() => null);
+          throw new Error(problem?.detail || problem?.message || '화면 요청을 시작하지 못했습니다.');
+        }
+        const started = await response.json();
+        chatActiveId = started.id;
+        chatActiveScreenName = link.dataset.screenName;
+        chatActiveLink = link;
+        chatDrafts.delete(link.dataset.screenId);
+        chatMessage.value = '';
+        chatReferenceImage = null;
+        if (chatReferenceInput) chatReferenceInput.value = '';
+        renderChatReferenceImage();
+        await loadChat(link);
+      } catch (error) {
+        chatLog.append(chatArticle('AI', error.message || '화면 요청을 시작하지 못했습니다.', 'FAILED'));
+        setChatBusy(false);
+      }
+    });
+    chatMessage?.addEventListener('keydown', event => {
+      if (event.key !== 'Enter' || event.isComposing || event.keyCode === 229) return;
+      event.preventDefault();
+      if (event.altKey) {
+        const start = chatMessage.selectionStart;
+        chatMessage.setRangeText('\n', start, chatMessage.selectionEnd, 'end');
+        chatMessage.dispatchEvent(new Event('input', { bubbles: true }));
+        return;
+      }
+      if (!chatSend.disabled) chatForm?.requestSubmit();
+    });
+    chatSuggestionToggle?.addEventListener('click', () => {
+      if (chatSuggestionToggle.disabled || !chatSuggestionMenu) return;
+      const opening = chatSuggestionMenu.hidden;
+      chatSuggestionMenu.hidden = !opening;
+      chatSuggestionToggle.setAttribute('aria-expanded', String(opening));
+      if (opening) chatSuggestionMenu.querySelector('[role="menuitem"]')?.focus();
+    });
+    chatSuggestionMenu?.querySelectorAll('[data-screen-chat-suggestion]').forEach(button => {
+      button.addEventListener('click', () => {
+        const suggestion = button.dataset.screenChatSuggestion?.trim();
+        closeChatSuggestionMenu(false);
+        if (!suggestion || chatSend.disabled) return;
+        chatMessage.value = suggestion;
+        chatForm?.requestSubmit();
+      });
+    });
+    document.addEventListener('click', event => {
+      if (!chatSuggestionMenu?.hidden && !event.target.closest('.wm-ai-chat__suggestion-control')) {
+        closeChatSuggestionMenu(false);
+      }
+    });
+    document.addEventListener('keydown', event => {
+      if (event.key !== 'Escape' || chatSuggestionMenu?.hidden) return;
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      closeChatSuggestionMenu(true);
+    }, true);
+    let chatCancelPending = false;
+    const cancelActiveScreenChat = async () => {
+      const link = chatActiveLink || chatViewingLink || currentLink();
+      if (!chatActiveId || !link?.dataset.chatSendUrl || chatCancelPending) return;
+      chatCancelPending = true;
+      setChatBusy(true);
+      try {
+        const csrf = draftForm?.querySelector('input[name="_csrf"]');
+        const headers = {};
+        if (csrf) headers['X-CSRF-TOKEN'] = csrf.value;
+        const response = await fetch(`${link.dataset.chatSendUrl}/${encodeURIComponent(chatActiveId)}/cancel`,
+          { method: 'POST', headers });
+        if (!response.ok) throw new Error('화면 작업을 중단하지 못했습니다. 잠시 후 다시 시도해 주세요.');
+        chatNotice = '진행 중인 화면 작업을 중단하고 변경 내용을 되돌렸습니다.';
+        await loadChat(chatViewingLink || link);
+      } catch (error) {
+        chatNotice = error.message;
+        await loadChat(chatViewingLink || link);
+      } finally {
+        chatCancelPending = false;
+      }
+    };
+    document.addEventListener('keydown', event => {
+      if (event.key !== 'Escape' || chatPanel?.hidden) return;
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      if (chatActiveId) cancelActiveScreenChat();
+      else closeChat();
+    }, true);
+    if (!list || !frame) {
+      return;
+    }
+
+    const desktopChat = window.matchMedia('(min-width: 821px)');
+    const chatHandle = chatPanel?.querySelector('.wm-ai-chat__head');
+    let chatDrag = null;
+    chatHandle?.addEventListener('pointerdown', event => {
+      if (!desktopChat.matches || event.button !== 0
+          || event.target.closest('button, a, input, textarea, select')) return;
+      const rect = chatPanel.getBoundingClientRect();
+      chatDrag = { pointerId: event.pointerId, x: event.clientX, y: event.clientY,
+        left: rect.left, top: rect.top };
+      chatPanel.style.left = rect.left + 'px';
+      chatPanel.style.top = rect.top + 'px';
+      chatPanel.style.right = 'auto';
+      chatPanel.style.bottom = 'auto';
+      chatPanel.classList.add('is-dragging');
+      chatHandle.setPointerCapture(event.pointerId);
+      event.preventDefault();
+    });
+    chatHandle?.addEventListener('pointermove', event => {
+      if (!chatDrag || event.pointerId !== chatDrag.pointerId) return;
+      const gap = 12;
+      const maxLeft = window.innerWidth - chatPanel.offsetWidth - gap;
+      const maxTop = window.innerHeight - chatPanel.offsetHeight - gap;
+      chatPanel.style.left = Math.min(Math.max(chatDrag.left + event.clientX - chatDrag.x, gap), maxLeft) + 'px';
+      chatPanel.style.top = Math.min(Math.max(chatDrag.top + event.clientY - chatDrag.y, gap), maxTop) + 'px';
+    });
+    const finishChatDrag = event => {
+      if (!chatDrag || event.pointerId !== chatDrag.pointerId) return;
+      chatDrag = null;
+      chatPanel.classList.remove('is-dragging');
+      if (chatHandle.hasPointerCapture(event.pointerId)) chatHandle.releasePointerCapture(event.pointerId);
+    };
+    chatHandle?.addEventListener('pointerup', finishChatDrag);
+    chatHandle?.addEventListener('pointercancel', finishChatDrag);
+    desktopChat.addEventListener('change', () => {
+      if (desktopChat.matches) return;
+      chatPanel.style.removeProperty('left');
+      chatPanel.style.removeProperty('top');
+      chatPanel.style.removeProperty('right');
+      chatPanel.style.removeProperty('bottom');
+    });
+    window.addEventListener('pagehide', () => {
+      window.clearInterval(chatPopupWatcher);
+      disconnectChatEvents();
+    }, { once: true });
+    window.addEventListener('message', async event => {
+      if (event.origin !== window.location.origin) return;
+      if (event.data?.type === 'frd-screen-chat-ready') {
+        if (event.source !== chatPopup) return;
+        if (chatPopup && !chatPopup.closed && chatPopupScreenId === event.data.screenRowId) {
+          chatPopup.postMessage({ type: 'frd-screen-selection-changed',
+            screenRowId: chatPopupScreenId, selection: selectedRegion }, window.location.origin);
+        }
+        return;
+      }
+      if (event.data?.type === 'frd-screen-selection-cleared') {
+        if (event.source !== chatPopup) return;
+        if (event.data.screenRowId === currentLink()?.dataset.screenId) clearSelectedRegion(false);
+        return;
+      }
+      if (event.data?.type !== 'frd-screen-chat-completed') return;
+      if (event.data.screenCount > list.querySelectorAll('.wm-screen-list-row__link').length) {
+        window.location.reload();
+        return;
+      }
+      const link = list.querySelector(`[data-screen-id="${event.data.screenRowId}"]`);
+      if (!link) return;
+      const completedStatus = await refreshStatus(link);
+      if (completedStatus?.state !== 'GENERATED') return;
+      await refreshHistory(link, completedStatus);
+      if (currentLink() === link) showCurrentPreview(link);
+    });
+    const resetPreviewViewport = () => {
+      frame.style.removeProperty('height');
+      canvas.scrollTop = 0;
+      canvas.scrollLeft = 0;
+    };
+    let previewLoadSequence = 0;
+    let previewSlowTimer = null;
+    const beginPreviewLoading = (message = '화면을 불러오는 중입니다.') => {
+      const sequence = ++previewLoadSequence;
+      window.clearTimeout(previewSlowTimer);
+      previewLoadingMessage.textContent = message;
+      previewLoading.hidden = false;
+      canvas.setAttribute('aria-busy', 'true');
+      previewSlowTimer = window.setTimeout(() => {
+        if (sequence !== previewLoadSequence) return;
+        previewLoadingMessage.textContent = '화면을 불러오는 데 시간이 걸리고 있습니다.';
+      }, 5000);
+      return sequence;
+    };
+    const finishPreviewLoading = sequence => {
+      if (sequence !== previewLoadSequence) return;
+      window.clearTimeout(previewSlowTimer);
+      previewLoading.hidden = true;
+      canvas.removeAttribute('aria-busy');
+    };
+    const cancelPreviewLoading = () => {
+      previewLoadSequence += 1;
+      window.clearTimeout(previewSlowTimer);
+      previewLoading.hidden = true;
+      canvas.removeAttribute('aria-busy');
+    };
+    const loadCanvasPreview = url => {
+      const sequence = beginPreviewLoading();
+      frame.addEventListener('load', () => finishPreviewLoading(sequence), { once: true });
+      frame.src = url;
+      frame.hidden = false;
+      empty.hidden = true;
+    };
+    const resizePreviewFrame = () => {
+      try {
+        frame.style.removeProperty('height');
+        const documentElement = frame.contentDocument?.documentElement;
+        const body = frame.contentDocument?.body;
+        const contentHeight = Math.max(
+          documentElement?.scrollHeight || 0,
+          documentElement?.offsetHeight || 0,
+          body?.scrollHeight || 0,
+          body?.offsetHeight || 0
+        );
+        if (contentHeight > 0) {
+          frame.style.height = contentHeight + 'px';
+        }
+      } catch (error) {
+        frame.style.height = '680px';
+      }
+    };
+    frame.addEventListener('load', resizePreviewFrame);
+
+    const focusButton = document.getElementById('toggle-frd-focus');
+    const setFocusMode = active => {
+      document.body.classList.toggle('is-frd-focus', active);
+      focusButton.setAttribute('aria-pressed', String(active));
+      focusButton.setAttribute('aria-label', active ? '작업 화면 원래 크기로' : '작업 화면 확대');
+      focusButton.title = active ? '작업 화면 원래 크기로 (Esc)' : '작업 화면 확대';
+    };
+    const navToggle = document.querySelector('[data-nav-toggle]');
+    navToggle?.addEventListener('click', event => {
+      if (!document.body.classList.contains('is-frd-focus')) return;
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      setFocusMode(false);
+      document.body.classList.remove('is-nav-collapsed');
+      navToggle.setAttribute('aria-expanded', 'true');
+      navToggle.setAttribute('aria-label', '메뉴 접기');
+      navToggle.title = '메뉴 접기';
+      try {
+        window.localStorage.setItem('builder-nav-collapsed', 'false');
+      } catch (error) {
+        // 저장소를 사용할 수 없어도 현재 화면에서는 메뉴를 펼친다.
+      }
+    }, true);
+    focusButton.addEventListener('click', () => {
+      setFocusMode(!document.body.classList.contains('is-frd-focus'));
+    });
+    document.addEventListener('keydown', event => {
+      if (event.key === 'Escape' && document.body.classList.contains('is-frd-focus')) {
+        setFocusMode(false);
+        focusButton.focus();
+      }
+    });
+
+    const currentLink = () => list.querySelector('.wm-screen-list-row__link.is-current');
+    const regionClassNames = ['builder-region-hover', 'builder-region-selected'];
+    let regionMode = false;
+    let regionDocument = null;
+    let hoveredRegion = null;
+    let selectedRegionElement = null;
+    let regionOverlay = null;
+    let regionDrag = null;
+    let selectedRegion = null;
+    let selectionEligible = false;
+    const directEditableTags = new Set([
+      'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'p', 'div', 'span', 'strong', 'b', 'em', 'i',
+      'small', 'u', 's', 'sub', 'sup', 'label', 'button', 'a', 'th', 'td', 'li', 'dt', 'dd',
+      'legend', 'caption', 'option', 'summary'
+    ]);
+    let directEditMode = false;
+    let directEditDocument = null;
+    let directEditHovered = null;
+    let directEditTarget = null;
+
+    const escapeSelector = value => window.CSS?.escape
+      ? window.CSS.escape(value)
+      : String(value).replace(/[^a-zA-Z0-9_-]/g, character => '\\' + character);
+    const regionSelector = element => {
+      if (element.id) return '#' + escapeSelector(element.id);
+      const parts = [];
+      let current = element;
+      while (current && current.nodeType === Node.ELEMENT_NODE && current.localName !== 'html') {
+        let part = current.localName;
+        const stableClasses = Array.from(current.classList)
+          .filter(name => !name.startsWith('builder-region-')
+            && !name.startsWith('builder-direct-edit-')
+            && !name.startsWith('builder-execution-marker')).slice(0, 2);
+        if (stableClasses.length) part += '.' + stableClasses.map(escapeSelector).join('.');
+        const siblings = current.parentElement
+          ? Array.from(current.parentElement.children).filter(sibling => sibling.localName === current.localName)
+          : [];
+        if (siblings.length > 1) part += ':nth-of-type(' + (siblings.indexOf(current) + 1) + ')';
+        parts.unshift(part);
+        if (current.localName === 'body') break;
+        current = current.parentElement;
+      }
+      return parts.join(' > ');
+    };
+    const regionText = element => (element.getAttribute('aria-label')
+      || element.getAttribute('title')
+      || element.labels?.[0]?.textContent
+      || element.getAttribute('placeholder')
+      || element.textContent || '').replace(/\s+/g, ' ').trim();
+    const regionLabel = element => {
+      const text = regionText(element).slice(0, 80);
+      const names = { button: '버튼', a: '링크', input: '입력란', textarea: '입력란', select: '선택란',
+        table: '표', tr: '표 행', th: '표 제목', td: '표 항목', img: '이미지', nav: '메뉴', form: '입력 영역',
+        section: '영역', article: '영역', header: '머리말', footer: '바닥글', h1: '제목', h2: '제목', h3: '제목' };
+      const kind = names[element.localName] || '화면 요소';
+      return text ? text + ' · ' + kind : kind;
+    };
+    const regionHtml = element => {
+      const clone = element.cloneNode(true);
+      clone.classList?.remove(...regionClassNames);
+      clone.querySelector?.('#builder-region-selection-box')?.remove();
+      clone.querySelectorAll?.('.' + regionClassNames.join(',.')).forEach(child =>
+        child.classList.remove(...regionClassNames));
+      const html = clone.outerHTML || '';
+      return html.length > 5000 ? html.slice(0, 5000) + '…' : html;
+    };
+    const renderSelectedRegion = () => {
+      const visible = Boolean(selectedRegion);
+      chatSelection.hidden = !visible;
+      chatSelectionLabel.textContent = selectedRegion?.label || '';
+      chatSelectionPath.textContent = selectedRegion?.selector || '';
+    };
+    const detachRegionMode = () => {
+      if (regionDocument) {
+        regionDocument.removeEventListener('mouseover', hoverRegion, true);
+        regionDocument.removeEventListener('mouseout', leaveRegion, true);
+        regionDocument.removeEventListener('pointerdown', startRegionDrag, true);
+        regionDocument.removeEventListener('keydown', cancelRegionWithEscape, true);
+        regionDocument.defaultView?.removeEventListener('pointermove', moveRegionDrag, true);
+        regionDocument.defaultView?.removeEventListener('pointerup', finishRegionDrag, true);
+        regionDocument.defaultView?.removeEventListener('pointercancel', cancelRegionDrag, true);
+        regionDocument.body?.classList.remove('builder-region-selection-active');
+      }
+      hoveredRegion?.classList.remove('builder-region-hover');
+      hoveredRegion = null;
+      regionDrag = null;
+      if (!selectedRegion && regionOverlay) regionOverlay.hidden = true;
+      regionDocument = null;
+      regionMode = false;
+      regionButton.setAttribute('aria-pressed', 'false');
+      regionButton.setAttribute('aria-label', '수정 영역 선택');
+      regionButton.title = '수정 영역 선택';
+      regionButton.classList.remove('is-active');
+    };
+    const clearSelectedRegion = (notifyPopup = true) => {
+      detachRegionMode();
+      selectedRegionElement?.classList.remove('builder-region-selected');
+      if (regionOverlay) regionOverlay.hidden = true;
+      selectedRegionElement = null;
+      selectedRegion = null;
+      renderSelectedRegion();
+      if (notifyPopup && chatPopup && !chatPopup.closed && chatPopupScreenId === currentLink()?.dataset.screenId) {
+        chatPopup.postMessage({ type: 'frd-screen-selection-changed',
+          screenRowId: chatPopupScreenId, selection: null }, window.location.origin);
+      }
+    };
+    const showSelectionInChat = () => {
+      const link = currentLink();
+      if (chatPopup && !chatPopup.closed && chatPopupScreenId === link?.dataset.screenId) {
+        chatPopup.postMessage({ type: 'frd-screen-selection-changed',
+          screenRowId: chatPopupScreenId, selection: selectedRegion }, window.location.origin);
+        chatPopup.focus();
+        return;
+      }
+      if (chatPanel.hidden) chatButton.click();
+      else chatMessage.focus();
+    };
+    function hoverRegion(event) {
+      if (!regionMode || !(event.target instanceof frame.contentWindow.Element)) return;
+      hoveredRegion?.classList.remove('builder-region-hover');
+      hoveredRegion = event.target;
+      hoveredRegion.classList.add('builder-region-hover');
+    }
+    function leaveRegion(event) {
+      if (event.target !== hoveredRegion) return;
+      hoveredRegion.classList.remove('builder-region-hover');
+      hoveredRegion = null;
+    }
+    function cancelRegionWithEscape(event) {
+      if (event.key !== 'Escape') return;
+      event.preventDefault();
+      detachRegionMode();
+      regionButton.focus();
+    }
+    const selectRegionElement = element => {
+      selectedRegionElement?.classList.remove('builder-region-selected');
+      if (regionOverlay) regionOverlay.hidden = true;
+      selectedRegionElement = element;
+      selectedRegionElement.classList.remove('builder-region-hover');
+      selectedRegionElement.classList.add('builder-region-selected');
+      const link = currentLink();
+      selectedRegion = {
+        selectionType: 'ELEMENT',
+        screenId: link.dataset.screenCode,
+        screenName: link.dataset.screenName,
+        selector: regionSelector(selectedRegionElement),
+        label: regionLabel(selectedRegionElement),
+        tagName: selectedRegionElement.localName,
+        text: regionText(selectedRegionElement).slice(0, 1000),
+        html: regionHtml(selectedRegionElement)
+      };
+      detachRegionMode();
+      renderSelectedRegion();
+      showSelectionInChat();
+    };
+    const regionRectangle = (startX, startY, endX, endY) => ({
+      left: Math.min(startX, endX),
+      top: Math.min(startY, endY),
+      right: Math.max(startX, endX),
+      bottom: Math.max(startY, endY),
+      width: Math.abs(endX - startX),
+      height: Math.abs(endY - startY)
+    });
+    const drawRegionRectangle = rectangle => {
+      if (!regionOverlay) return;
+      regionOverlay.hidden = false;
+      regionOverlay.style.left = rectangle.left + 'px';
+      regionOverlay.style.top = rectangle.top + 'px';
+      regionOverlay.style.width = rectangle.width + 'px';
+      regionOverlay.style.height = rectangle.height + 'px';
+    };
+    const intersectsRegion = (element, selection) => {
+      const rectangle = element.getBoundingClientRect();
+      return rectangle.width > 0 && rectangle.height > 0
+        && rectangle.right >= selection.left && rectangle.left <= selection.right
+        && rectangle.bottom >= selection.top && rectangle.top <= selection.bottom;
+    };
+    const commonRegionAncestor = elements => {
+      let ancestor = elements[0];
+      while (ancestor && !elements.every(element => ancestor.contains(element))) {
+        ancestor = ancestor.parentElement;
+      }
+      return ancestor || regionDocument.body;
+    };
+    const selectDraggedRegion = rectangle => {
+      const candidates = Array.from(regionDocument.body.querySelectorAll('*'))
+        .filter(element => !['script', 'style', 'link', 'meta'].includes(element.localName)
+          && element !== regionOverlay && intersectsRegion(element, rectangle));
+      const detailed = candidates.filter(element =>
+        !candidates.some(other => other !== element && element.contains(other)));
+      const elements = (detailed.length ? detailed : candidates).slice(0, 8);
+      if (!elements.length) return false;
+      const ancestor = commonRegionAncestor(elements);
+      const link = currentLink();
+      const labels = elements.map(regionLabel).filter(Boolean);
+      selectedRegionElement = null;
+      selectedRegion = {
+        selectionType: 'RECTANGLE',
+        screenId: link.dataset.screenCode,
+        screenName: link.dataset.screenName,
+        selector: regionSelector(ancestor),
+        label: '드래그 영역 · ' + (labels.slice(0, 2).join(', ') || elements.length + '개 요소'),
+        tagName: ancestor.localName,
+        text: elements.map(regionText).filter(Boolean).join(' / ').slice(0, 1200),
+        html: regionHtml(ancestor).slice(0, 3000),
+        rectangle: {
+          left: Math.round(rectangle.left), top: Math.round(rectangle.top),
+          width: Math.round(rectangle.width), height: Math.round(rectangle.height)
+        },
+        elements: elements.map(element => ({
+          selector: regionSelector(element),
+          label: regionLabel(element),
+          text: regionText(element).slice(0, 160),
+          html: regionHtml(element).slice(0, 240)
+        }))
+      };
+      regionOverlay.classList.add('builder-region-selection-box--selected');
+      detachRegionMode();
+      renderSelectedRegion();
+      showSelectionInChat();
+      return true;
+    };
+    function startRegionDrag(event) {
+      if (!regionMode || event.button !== 0
+          || !(event.target instanceof frame.contentWindow.Element)) return;
+      event.preventDefault();
+      event.stopPropagation();
+      hoveredRegion?.classList.remove('builder-region-hover');
+      hoveredRegion = null;
+      regionOverlay.classList.remove('builder-region-selection-box--selected');
+      regionDrag = { pointerId: event.pointerId, x: event.clientX, y: event.clientY,
+        target: event.target, currentX: event.clientX, currentY: event.clientY };
+      drawRegionRectangle(regionRectangle(event.clientX, event.clientY, event.clientX, event.clientY));
+    }
+    function moveRegionDrag(event) {
+      if (!regionDrag || event.pointerId !== regionDrag.pointerId) return;
+      event.preventDefault();
+      regionDrag.currentX = event.clientX;
+      regionDrag.currentY = event.clientY;
+      drawRegionRectangle(regionRectangle(regionDrag.x, regionDrag.y, event.clientX, event.clientY));
+    }
+    function finishRegionDrag(event) {
+      if (!regionDrag || event.pointerId !== regionDrag.pointerId) return;
+      event.preventDefault();
+      event.stopPropagation();
+      const drag = regionDrag;
+      regionDrag = null;
+      const rectangle = regionRectangle(drag.x, drag.y, event.clientX, event.clientY);
+      if (rectangle.width < 7 && rectangle.height < 7) {
+        selectRegionElement(drag.target);
+        return;
+      }
+      if (!selectDraggedRegion(rectangle)) {
+        if (regionOverlay) regionOverlay.hidden = true;
+        detachRegionMode();
+      }
+    }
+    function cancelRegionDrag(event) {
+      if (!regionDrag || event.pointerId !== regionDrag.pointerId) return;
+      regionDrag = null;
+      if (regionOverlay) regionOverlay.hidden = true;
+    }
+    const prepareRegionDocument = () => {
+      let doc;
+      try {
+        doc = frame.contentDocument;
+      } catch (error) {
+        doc = null;
+      }
+      if (!doc?.body) return null;
+      if (!doc.getElementById('builder-region-selection-style')) {
+        const style = doc.createElement('style');
+        style.id = 'builder-region-selection-style';
+        style.textContent = `
+          body.builder-region-selection-active { touch-action: none; user-select: none; }
+          body.builder-region-selection-active * { cursor: crosshair !important; }
+          body.builder-marker-placement-active { touch-action: none; user-select: none; }
+          body.builder-marker-placement-active * { cursor: crosshair !important; }
+          body.builder-direct-edit-active { user-select: none; }
+          body.builder-direct-edit-active * { cursor: default !important; }
+          body.builder-direct-edit-active .builder-direct-edit-hover { cursor: text !important;
+            outline: 2px dashed #167d8d !important; outline-offset: -2px !important;
+            background: rgb(22 125 141 / 8%) !important; }
+          .builder-direct-edit-editing { cursor: text !important; outline: 3px solid #167d8d !important;
+            outline-offset: 2px !important; background: rgb(22 125 141 / 10%) !important; }
+          .builder-direct-edit-saving { opacity: .65; }
+          .builder-region-hover { outline: 2px dashed #6c5ce7 !important; outline-offset: -2px !important; }
+          .builder-region-selected { outline: 3px solid #6c5ce7 !important; outline-offset: -3px !important; }
+          .builder-region-selection-box { position: fixed; z-index: 2147483647; box-sizing: border-box;
+            border: 2px dashed #6c5ce7; background: rgb(108 92 231 / 12%); pointer-events: none; }
+          .builder-region-selection-box--selected { border-style: solid; background: rgb(108 92 231 / 8%); }
+          .builder-execution-marker { width: 28px; height: 28px; padding: 0; position: absolute; z-index: 2147483646;
+            display: grid; place-items: center; transform: translate(-50%, -50%); border: 2px solid #fff;
+            border-radius: 50%; color: #fff; background: #6c5ce7; box-shadow: 0 2px 8px rgb(31 24 69 / 35%);
+            font: 700 12px/1 system-ui, sans-serif; cursor: pointer; }
+          .builder-execution-marker:hover, .builder-execution-marker:focus-visible { background: #4f3ec4;
+            outline: 3px solid rgb(108 92 231 / 28%); outline-offset: 2px; }
+          .builder-execution-marker--readonly { background: #5f6573; }
+          .builder-execution-marker--readonly:hover, .builder-execution-marker--readonly:focus-visible {
+            background: #424754; outline-color: rgb(95 101 115 / 28%); }
+        `;
+        (doc.head || doc.documentElement).append(style);
+      }
+      regionOverlay = doc.getElementById('builder-region-selection-box');
+      if (!regionOverlay) {
+        regionOverlay = doc.createElement('div');
+        regionOverlay.id = 'builder-region-selection-box';
+        regionOverlay.className = 'builder-region-selection-box';
+        regionOverlay.hidden = true;
+        regionOverlay.setAttribute('aria-hidden', 'true');
+        doc.body.append(regionOverlay);
+      }
+      return doc;
+    };
+    const directText = value => (value?.textContent || '').replace(/\s+/g, ' ').trim();
+    const directTextNodes = element => !element
+      || !directEditableTags.has(element.localName)
+      || element.closest('[data-builder-execution-marker], #builder-region-selection-box')
+      ? [] : Array.from(element.childNodes).filter(node => node.nodeType === Node.TEXT_NODE && directText(node));
+    const directEditCandidate = element => {
+      let current = element;
+      while (current && current !== directEditDocument?.body) {
+        if (directTextNodes(current).length) return current;
+        current = current.parentElement;
+      }
+      return directTextNodes(current).length ? current : null;
+    };
+    const directTextNodeAtPoint = event => {
+      const doc = event.target.ownerDocument;
+      const pointed = doc.caretPositionFromPoint?.(event.clientX, event.clientY)?.offsetNode
+        || doc.caretRangeFromPoint?.(event.clientX, event.clientY)?.startContainer;
+      if (pointed?.nodeType === Node.TEXT_NODE && directText(pointed)
+          && directEditableTags.has(pointed.parentElement?.localName)
+          && !pointed.parentElement.closest('[data-builder-execution-marker], #builder-region-selection-box')) {
+        return pointed;
+      }
+      const candidate = directEditCandidate(event.target);
+      const nodes = directTextNodes(candidate);
+      return nodes.length === 1 ? nodes[0] : null;
+    };
+    const isDirectEditable = element => Boolean(directEditCandidate(element));
+    function hoverDirectEdit(event) {
+      if (!directEditMode || !(event.target instanceof frame.contentWindow.Element)) return;
+      directEditHovered?.classList.remove('builder-direct-edit-hover');
+      directEditHovered = directEditCandidate(event.target);
+      directEditHovered?.classList.add('builder-direct-edit-hover');
+    }
+    function leaveDirectEdit(event) {
+      if (event.target !== directEditHovered) return;
+      directEditHovered.classList.remove('builder-direct-edit-hover');
+      directEditHovered = null;
+    }
+    function detachDirectEditMode() {
+      if (directEditDocument) {
+        directEditDocument.removeEventListener('mouseover', hoverDirectEdit, true);
+        directEditDocument.removeEventListener('mouseout', leaveDirectEdit, true);
+        directEditDocument.removeEventListener('click', chooseDirectEditText, true);
+        directEditDocument.removeEventListener('keydown', cancelDirectEditWithEscape, true);
+        directEditDocument.body?.classList.remove('builder-direct-edit-active');
+      }
+      directEditHovered?.classList.remove('builder-direct-edit-hover');
+      directEditHovered = null;
+      directEditDocument = null;
+      directEditMode = false;
+      directEditButton.setAttribute('aria-pressed', 'false');
+      directEditButton.setAttribute('aria-label', '직접 수정');
+      directEditButton.title = '직접 수정';
+      directEditButton.classList.remove('is-active');
+    }
+    function chooseDirectEditText(event) {
+      if (!directEditMode || !(event.target instanceof frame.contentWindow.Element)) return;
+      const textNode = directTextNodeAtPoint(event);
+      if (!textNode) return;
+      event.preventDefault();
+      event.stopPropagation();
+      const element = textNode.parentElement;
+      const selector = regionSelector(element);
+      const expectedText = directText(textNode);
+      const originalText = textNode.textContent;
+      detachDirectEditMode();
+      const editor = element.ownerDocument.createElement('span');
+      editor.textContent = expectedText;
+      textNode.replaceWith(editor);
+      directEditTarget = {
+        element: editor,
+        selector,
+        expectedText,
+        originalText,
+        cancelled: false,
+        saving: false
+      };
+      editor.classList.add('builder-direct-edit-editing');
+      editor.setAttribute('contenteditable', 'plaintext-only');
+      editor.setAttribute('spellcheck', 'true');
+      editor.addEventListener('keydown', handleInlineDirectEditKeyDown);
+      editor.addEventListener('keyup', handleInlineDirectEditKeyUp);
+      editor.addEventListener('blur', saveInlineDirectEdit);
+      editor.focus();
+      const range = editor.ownerDocument.createRange();
+      range.selectNodeContents(editor);
+      const selection = editor.ownerDocument.defaultView.getSelection();
+      selection.removeAllRanges();
+      selection.addRange(range);
+    }
+    const clearInlineDirectEdit = restore => {
+      const target = directEditTarget;
+      if (!target) return;
+      if (restore) target.element.textContent = target.originalText;
+      target.element.removeEventListener('keydown', handleInlineDirectEditKeyDown);
+      target.element.removeEventListener('keyup', handleInlineDirectEditKeyUp);
+      target.element.removeEventListener('blur', saveInlineDirectEdit);
+      target.element.removeAttribute('contenteditable');
+      target.element.removeAttribute('spellcheck');
+      target.element.classList.remove('builder-direct-edit-editing', 'builder-direct-edit-saving');
+      const text = restore ? target.originalText : (target.element.innerText || target.element.textContent || '');
+      target.element.replaceWith(target.element.ownerDocument.createTextNode(text));
+      directEditTarget = null;
+    };
+    const cancelInlineDirectEdit = () => {
+      if (!directEditTarget) return;
+      clearInlineDirectEdit(true);
+      directEditStatus.hidden = true;
+      directEditStatus.textContent = '';
+    };
+    function handleInlineDirectEditKeyDown(event) {
+      if (event.isComposing || event.keyCode === 229) return;
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        if (directEditTarget) directEditTarget.cancelled = true;
+        event.currentTarget.blur();
+        return;
+      }
+      if (event.key === 'Enter' && !event.shiftKey) {
+        event.preventDefault();
+        saveInlineDirectEdit();
+      }
+    }
+    function handleInlineDirectEditKeyUp(event) {
+      if (event.key !== 'Enter' || event.shiftKey || event.isComposing || !directEditTarget) return;
+      event.preventDefault();
+      saveInlineDirectEdit();
+    }
+    async function saveInlineDirectEdit() {
+      const target = directEditTarget;
+      if (!target || target.saving) return;
+      if (target.cancelled) {
+        cancelInlineDirectEdit();
+        directEditButton.focus();
+        return;
+      }
+      const link = currentLink();
+      const newText = (target.element.innerText || target.element.textContent || '').trim();
+      if (!newText || newText.length > 1000) {
+        clearInlineDirectEdit(true);
+        directEditStatus.hidden = false;
+        directEditStatus.textContent = !newText
+          ? '빈 문구는 저장할 수 없습니다.' : '문구는 1,000자 이내로 입력해 주세요.';
+        directEditButton.focus();
+        return;
+      }
+      if (newText.replace(/\s+/g, ' ') === target.expectedText) {
+        clearInlineDirectEdit(true);
+        directEditStatus.hidden = true;
+        directEditStatus.textContent = '';
+        directEditButton.focus();
+        return;
+      }
+      if (!link?.dataset.directEditUrl) {
+        clearInlineDirectEdit(true);
+        return;
+      }
+      target.saving = true;
+      target.element.removeAttribute('contenteditable');
+      target.element.classList.add('builder-direct-edit-saving');
+      directEditStatus.textContent = '문구를 저장하고 새 버전을 만들고 있습니다.';
+      const body = new FormData();
+      body.append('selector', target.selector);
+      body.append('expectedText', target.expectedText);
+      body.append('newText', newText);
+      const csrf = draftForm?.querySelector('input[name="_csrf"]');
+      if (csrf) body.append(csrf.name, csrf.value);
+      try {
+        const response = await fetch(link.dataset.directEditUrl,
+          { method: 'POST', body, headers: { 'Accept': 'application/json' } });
+        if (!response.ok) throw new Error(await directEditError(response));
+        const saved = await response.json();
+        clearInlineDirectEdit(false);
+        directEditStatus.textContent = '문구를 저장했습니다.';
+        window.setTimeout(() => {
+          if (directEditStatus.textContent === '문구를 저장했습니다.') {
+            directEditStatus.hidden = true;
+            directEditStatus.textContent = '';
+          }
+        }, 2000);
+        link.dataset.generated = 'true';
+        link.dataset.screenState = 'GENERATED';
+        showCurrentPreview(link);
+        const status = await refreshStatus(link) || { changes: [saved.change] };
+        if (saved.historyId) syncHistory(link, status, saved.historyId);
+      } catch (error) {
+        clearInlineDirectEdit(true);
+        directEditStatus.hidden = false;
+        directEditStatus.textContent = error.message || '수정한 문구를 저장하지 못했습니다.';
+        directEditButton.focus();
+      }
+    }
+    function cancelDirectEditWithEscape(event) {
+      if (event.key !== 'Escape') return;
+      event.preventDefault();
+      detachDirectEditMode();
+      directEditButton.focus();
+    }
+    const startDirectEditMode = () => {
+      if (!selectionEligible || directEditButton.disabled) return;
+      if (directEditMode) {
+        detachDirectEditMode();
+        return;
+      }
+      const doc = prepareRegionDocument();
+      if (!doc) return;
+      cancelInlineDirectEdit();
+      detachRegionMode();
+      detachMarkerMode();
+      directEditTarget = null;
+      directEditDocument = doc;
+      directEditMode = true;
+      doc.body.classList.add('builder-direct-edit-active');
+      doc.addEventListener('mouseover', hoverDirectEdit, true);
+      doc.addEventListener('mouseout', leaveDirectEdit, true);
+      doc.addEventListener('click', chooseDirectEditText, true);
+      doc.addEventListener('keydown', cancelDirectEditWithEscape, true);
+      directEditButton.setAttribute('aria-pressed', 'true');
+      directEditButton.setAttribute('aria-label', '직접 수정 취소');
+      directEditButton.title = '미리보기에서 바꿀 문구를 선택하세요 (Esc 취소)';
+      directEditButton.classList.add('is-active');
+      frame.contentWindow.focus();
+    };
+    const startRegionMode = () => {
+      if (!selectionEligible || regionButton.disabled) return;
+      if (regionMode) {
+        detachRegionMode();
+        return;
+      }
+      const doc = prepareRegionDocument();
+      if (!doc) return;
+      cancelInlineDirectEdit();
+      detachDirectEditMode();
+      detachMarkerMode();
+      clearSelectedRegion();
+      regionDocument = doc;
+      regionOverlay = doc.getElementById('builder-region-selection-box');
+      regionMode = true;
+      doc.body.classList.add('builder-region-selection-active');
+      doc.addEventListener('mouseover', hoverRegion, true);
+      doc.addEventListener('mouseout', leaveRegion, true);
+      doc.addEventListener('pointerdown', startRegionDrag, true);
+      doc.addEventListener('keydown', cancelRegionWithEscape, true);
+      doc.defaultView?.addEventListener('pointermove', moveRegionDrag, true);
+      doc.defaultView?.addEventListener('pointerup', finishRegionDrag, true);
+      doc.defaultView?.addEventListener('pointercancel', cancelRegionDrag, true);
+      regionButton.setAttribute('aria-pressed', 'true');
+      regionButton.setAttribute('aria-label', '수정 영역 선택 취소');
+      regionButton.title = '미리보기에서 수정할 영역을 선택하세요 (Esc 취소)';
+      regionButton.classList.add('is-active');
+      frame.contentWindow.focus();
+    };
+    let markerMode = false;
+    let markerDocument = null;
+    let pendingMarkerPosition = null;
+    let editingMarker = null;
+    let currentMarkers = [];
+    let activeMarkerUrl = null;
+    let markerReadOnly = false;
+    const markerDateFormatter = new Intl.DateTimeFormat('ko-KR', {
+      year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit'
+    });
+    const markerError = async response => {
+      const problem = await response.json().catch(() => null);
+      return problem?.detail || problem?.message || '실행 마커를 저장하지 못했습니다.';
+    };
+    const markerTarget = (doc, selector) => {
+      try {
+        return doc.querySelector(selector);
+      } catch (error) {
+        return null;
+      }
+    };
+    const markerPoint = (doc, marker) => {
+      const target = markerTarget(doc, marker.selector);
+      if (target) {
+        const rectangle = target.getBoundingClientRect();
+        return {
+          x: rectangle.left + doc.defaultView.scrollX + rectangle.width * marker.relativeX,
+          y: rectangle.top + doc.defaultView.scrollY + rectangle.height * marker.relativeY
+        };
+      }
+      const root = doc.documentElement;
+      return { x: root.scrollWidth * marker.documentX, y: root.scrollHeight * marker.documentY };
+    };
+    const openMarkerDialog = marker => {
+      const readOnly = markerReadOnly || !workbenchEditable;
+      editingMarker = marker || null;
+      pendingMarkerPosition = marker ? null : pendingMarkerPosition;
+      markerTitle.textContent = marker
+        ? '실행 마커 ' + marker.markerNo + (readOnly ? ' · 읽기 전용' : '')
+        : '실행 마커 추가';
+      markerPosition.textContent = marker?.elementLabel || pendingMarkerPosition?.elementLabel || '';
+      markerDescription.value = marker?.description || '';
+      markerDescription.readOnly = readOnly;
+      markerStatus.textContent = readOnly ? '완료된 FRD에서는 실행 마커를 변경할 수 없습니다.' : '';
+      markerDelete.hidden = !marker || readOnly;
+      markerDelete.disabled = false;
+      markerUseAi.hidden = !marker || readOnly;
+      markerMeta.hidden = !marker;
+      markerMeta.textContent = marker
+        ? marker.authorName + ' · ' + markerDateFormatter.format(new Date(marker.createdAt))
+          + (marker.updatedAt !== marker.createdAt ? ' · 수정됨' : '')
+        : '';
+      markerSave.hidden = readOnly;
+      markerSave.disabled = readOnly;
+      document.getElementById('cancel-screen-marker').textContent = readOnly ? '닫기' : '취소';
+      markerDialog.showModal();
+      markerDescription.focus();
+    };
+    const renderMarkers = () => {
+      const doc = frame.contentDocument;
+      if (!doc?.body) return;
+      doc.querySelectorAll('[data-builder-execution-marker]').forEach(marker => marker.remove());
+      if (!activeMarkerUrl) return;
+      currentMarkers.forEach(marker => {
+        const point = markerPoint(doc, marker);
+        const button = doc.createElement('button');
+        button.type = 'button';
+        button.className = 'builder-execution-marker';
+        button.classList.toggle('builder-execution-marker--readonly', markerReadOnly);
+        button.dataset.builderExecutionMarker = marker.id;
+        button.textContent = marker.markerNo;
+        button.setAttribute('aria-label', (markerReadOnly ? '과거 버전 ' : '')
+          + '실행 마커 ' + marker.markerNo + ' · ' + marker.description);
+        button.title = marker.description;
+        button.style.left = point.x + 'px';
+        button.style.top = point.y + 'px';
+        button.addEventListener('click', event => {
+          event.preventDefault();
+          event.stopPropagation();
+          openMarkerDialog(marker);
+        });
+        doc.body.append(button);
+      });
+    };
+    const loadMarkers = async markerUrl => {
+      if (!markerUrl || markerUrl !== activeMarkerUrl) return;
+      try {
+        const response = await fetch(markerUrl, {
+          cache: 'no-store', headers: { 'Accept': 'application/json' }
+        });
+        if (!response.ok) throw new Error('실행 마커를 불러오지 못했습니다.');
+        const loadedMarkers = await response.json();
+        if (markerUrl !== activeMarkerUrl) return;
+        currentMarkers = loadedMarkers;
+        renderMarkers();
+      } catch (error) {
+        if (markerUrl === activeMarkerUrl) currentMarkers = [];
+      }
+    };
+    function chooseMarkerPosition(event) {
+      if (!markerMode || event.button !== 0
+          || !(event.target instanceof frame.contentWindow.Element)
+          || event.target.closest('[data-builder-execution-marker]')) return;
+      event.preventDefault();
+      event.stopPropagation();
+      const target = event.target;
+      const rectangle = target.getBoundingClientRect();
+      const root = markerDocument.documentElement;
+      const pageX = event.clientX + markerDocument.defaultView.scrollX;
+      const pageY = event.clientY + markerDocument.defaultView.scrollY;
+      pendingMarkerPosition = {
+        selector: regionSelector(target),
+        elementLabel: regionLabel(target),
+        relativeX: rectangle.width ? Math.min(1, Math.max(0, (event.clientX - rectangle.left) / rectangle.width)) : 0.5,
+        relativeY: rectangle.height ? Math.min(1, Math.max(0, (event.clientY - rectangle.top) / rectangle.height)) : 0.5,
+        documentX: root.scrollWidth ? Math.min(1, Math.max(0, pageX / root.scrollWidth)) : 0.5,
+        documentY: root.scrollHeight ? Math.min(1, Math.max(0, pageY / root.scrollHeight)) : 0.5
+      };
+      detachMarkerMode();
+      openMarkerDialog(null);
+    }
+    function cancelMarkerWithEscape(event) {
+      if (event.key !== 'Escape') return;
+      event.preventDefault();
+      detachMarkerMode();
+      markerButton.focus();
+    }
+    function detachMarkerMode() {
+      if (markerDocument) {
+        markerDocument.removeEventListener('pointerdown', chooseMarkerPosition, true);
+        markerDocument.removeEventListener('keydown', cancelMarkerWithEscape, true);
+        markerDocument.body?.classList.remove('builder-marker-placement-active');
+      }
+      markerMode = false;
+      markerDocument = null;
+      markerButton.setAttribute('aria-pressed', 'false');
+      markerButton.setAttribute('aria-label', '실행 마커 추가');
+      markerButton.title = '실행 마커 추가';
+      markerButton.classList.remove('is-active');
+    }
+    const startMarkerMode = () => {
+      if (!selectionEligible || markerButton.disabled) return;
+      if (markerMode) {
+        detachMarkerMode();
+        return;
+      }
+      const doc = prepareRegionDocument();
+      if (!doc) return;
+      cancelInlineDirectEdit();
+      detachDirectEditMode();
+      detachRegionMode();
+      pendingMarkerPosition = null;
+      editingMarker = null;
+      markerMode = true;
+      markerDocument = doc;
+      doc.body.classList.add('builder-marker-placement-active');
+      doc.addEventListener('pointerdown', chooseMarkerPosition, true);
+      doc.addEventListener('keydown', cancelMarkerWithEscape, true);
+      markerButton.setAttribute('aria-pressed', 'true');
+      markerButton.setAttribute('aria-label', '실행 마커 추가 취소');
+      markerButton.title = '미리보기에서 마커를 추가할 위치를 선택하세요 (Esc 취소)';
+      markerButton.classList.add('is-active');
+      frame.contentWindow.focus();
+    };
+    const closeMarkerDialog = () => {
+      if (!markerDialog?.open) return;
+      markerDialog.close();
+      editingMarker = null;
+      pendingMarkerPosition = null;
+      markerButton.focus();
+    };
+    markerButton?.addEventListener('click', startMarkerMode);
+    document.getElementById('close-screen-marker')?.addEventListener('click', closeMarkerDialog);
+    document.getElementById('cancel-screen-marker')?.addEventListener('click', closeMarkerDialog);
+    markerDialog?.addEventListener('cancel', event => {
+      event.preventDefault();
+      closeMarkerDialog();
+    });
+    markerForm?.addEventListener('submit', async event => {
+      event.preventDefault();
+      if (markerReadOnly) return;
+      const link = currentLink();
+      const description = markerDescription.value.trim();
+      if (!link?.dataset.markerUrl || markerSave.disabled) return;
+      if (!description) {
+        markerStatus.textContent = '마커 설명을 입력해 주세요.';
+        markerDescription.focus();
+        return;
+      }
+      const body = new FormData();
+      body.append('description', description);
+      if (!editingMarker) {
+        if (!pendingMarkerPosition) return;
+        Object.entries(pendingMarkerPosition).forEach(([name, value]) => body.append(name, String(value)));
+      }
+      const csrf = draftForm?.querySelector('input[name="_csrf"]');
+      if (csrf) body.append(csrf.name, csrf.value);
+      markerSave.disabled = true;
+      markerStatus.textContent = '실행 마커를 저장하고 있습니다.';
+      const url = editingMarker ? link.dataset.markerUrl + '/' + editingMarker.id : link.dataset.markerUrl;
+      try {
+        const response = await fetch(url, { method: 'POST', body, headers: { 'Accept': 'application/json' } });
+        if (!response.ok) throw new Error(await markerError(response));
+        const saved = await response.json();
+        const index = currentMarkers.findIndex(marker => marker.id === saved.id);
+        if (index < 0) currentMarkers.push(saved);
+        else currentMarkers[index] = saved;
+        currentMarkers.sort((left, right) => left.markerNo - right.markerNo);
+        renderMarkers();
+        closeMarkerDialog();
+      } catch (error) {
+        markerStatus.textContent = error.message || '실행 마커를 저장하지 못했습니다.';
+        markerSave.disabled = false;
+      }
+    });
+    markerDelete?.addEventListener('click', async () => {
+      const link = currentLink();
+      if (markerReadOnly || !editingMarker || !link?.dataset.markerUrl
+          || !window.confirm('이 실행 마커를 삭제할까요?')) return;
+      markerDelete.disabled = true;
+      markerStatus.textContent = '실행 마커를 삭제하고 있습니다.';
+      const body = new FormData();
+      const csrf = draftForm?.querySelector('input[name="_csrf"]');
+      if (csrf) body.append(csrf.name, csrf.value);
+      try {
+        const response = await fetch(link.dataset.markerUrl + '/' + editingMarker.id + '/delete',
+          { method: 'POST', body, headers: { 'Accept': 'application/json' } });
+        if (!response.ok) throw new Error(await markerError(response));
+        currentMarkers = currentMarkers.filter(marker => marker.id !== editingMarker.id);
+        renderMarkers();
+        closeMarkerDialog();
+      } catch (error) {
+        markerStatus.textContent = error.message || '실행 마커를 삭제하지 못했습니다.';
+        markerDelete.disabled = false;
+      }
+    });
+    markerUseAi?.addEventListener('click', () => {
+      if (markerReadOnly || !editingMarker) return;
+      const doc = frame.contentDocument;
+      const target = markerTarget(doc, editingMarker.selector);
+      const link = currentLink();
+      selectedRegionElement?.classList.remove('builder-region-selected');
+      selectedRegionElement = target;
+      target?.classList.add('builder-region-selected');
+      selectedRegion = {
+        selectionType: 'MARKER',
+        markerId: editingMarker.id,
+        markerNo: editingMarker.markerNo,
+        screenId: link.dataset.screenCode,
+        screenName: link.dataset.screenName,
+        selector: editingMarker.selector,
+        label: '실행 마커 ' + editingMarker.markerNo + ' · ' + editingMarker.elementLabel,
+        text: editingMarker.description,
+        html: target ? regionHtml(target) : ''
+      };
+      renderSelectedRegion();
+      markerDialog.close();
+      editingMarker = null;
+      pendingMarkerPosition = null;
+      showSelectionInChat();
+    });
+    const directEditError = async response => {
+      const problem = await response.json().catch(() => null);
+      return problem?.detail || problem?.message || '수정한 문구를 저장하지 못했습니다.';
+    };
+    directEditButton?.addEventListener('click', startDirectEditMode);
+    const setSelectionEligible = eligible => {
+      const canEdit = workbenchEditable && eligible;
+      selectionEligible = canEdit;
+      directEditButton.disabled = !canEdit;
+      regionButton.disabled = !canEdit;
+      markerButton.disabled = !canEdit;
+      if (!canEdit) {
+        cancelInlineDirectEdit();
+        detachDirectEditMode();
+        clearSelectedRegion();
+        detachMarkerMode();
+        currentMarkers = [];
+      }
+    };
+    regionButton?.addEventListener('click', startRegionMode);
+    document.getElementById('clear-frd-ai-chat-selection')?.addEventListener('click', clearSelectedRegion);
+    frame.addEventListener('load', () => {
+      cancelInlineDirectEdit();
+      detachDirectEditMode();
+      prepareRegionDocument();
+      if (selectedRegion) clearSelectedRegion();
+      loadMarkers(activeMarkerUrl);
+    });
+    window.addEventListener('resize', renderMarkers);
+    const syncHistory = (link, status, historyId) => {
+      if (!historyList || !historyId
+          || historyList.querySelector(`[data-history-id="${historyId}"]`)) return;
+      const item = document.createElement('li');
+      item.dataset.historyScreenId = link.dataset.screenId;
+      item.dataset.historyId = String(historyId);
+      historyList.querySelectorAll(`[data-history-screen-id="${link.dataset.screenId}"]`).forEach(previous => {
+        previous.dataset.historyCurrent = 'false';
+        const previousButton = previous.querySelector('[data-history-preview]');
+        if (previousButton) previousButton.textContent = '미리보기';
+        const previousBadge = previous.querySelector('.status-badge');
+        if (previousBadge) {
+          previousBadge.classList.remove('status-badge--complete');
+          previousBadge.classList.add('status-badge--waiting');
+          previousBadge.textContent = previous.dataset.historyId?.startsWith('source-') ? '작업 시작 전' : '이전 버전';
+        }
+        const previousRestore = previous.querySelector('form');
+        if (previousRestore && !previous.dataset.historyId?.startsWith('source-')) previousRestore.hidden = false;
+      });
+      item.dataset.historyCurrent = 'true';
+      item.dataset.historyPreviewUrl = window.location.pathname + '/history/' + historyId + '/preview';
+      item.dataset.historyMarkerUrl = window.location.pathname + '/history/' + historyId + '/markers';
+      item.hidden = link !== currentLink();
+
+      const head = document.createElement('div');
+      head.className = 'wm-history-list__head';
+      const identity = document.createElement('div');
+      const badge = document.createElement('span');
+      badge.className = 'status-badge status-badge--complete';
+      badge.textContent = '현재 버전';
+      const time = document.createElement('time');
+      time.textContent = '방금 전';
+      identity.append(badge, time);
+
+      const actions = document.createElement('div');
+      actions.className = 'wm-history-list__actions';
+      const preview = document.createElement('button');
+      preview.className = 'button button--small';
+      preview.type = 'button';
+      preview.dataset.historyPreview = '';
+      preview.textContent = '현재 화면으로 돌아가기';
+      const form = document.createElement('form');
+      form.method = 'post';
+      form.hidden = true;
+      form.action = window.location.pathname + '/history/' + historyId + '/restore';
+      form.addEventListener('submit', event => {
+        if (!window.confirm('이 시점의 화면으로 되돌릴까요?')) event.preventDefault();
+      });
+      const csrf = draftForm?.querySelector('input[name="_csrf"]')?.cloneNode(true);
+      if (csrf) form.append(csrf);
+      const restore = document.createElement('button');
+      restore.className = 'button button--small';
+      restore.type = 'submit';
+      restore.dataset.historyRestore = '';
+      restore.textContent = '이 버전 복원';
+      form.append(restore);
+      actions.append(preview, form);
+      head.append(identity, actions);
+      item.append(head);
+
+      const changes = Array.isArray(status.changes) ? status.changes : [];
+      if (changes.length) {
+        const changeList = document.createElement('ul');
+        changes.forEach(change => {
+          const row = document.createElement('li');
+          row.textContent = change;
+          changeList.append(row);
+        });
+        item.append(changeList);
+      } else {
+        const noChanges = document.createElement('p');
+        noChanges.textContent = '변경사항 없음';
+        item.append(noChanges);
+      }
+      historyList.prepend(item);
+      if (!item.hidden) historyEmpty.hidden = true;
+    };
+    const refreshHistory = async (link, status) => {
+      try {
+        const response = await fetch(link.dataset.historyUrl, { headers: { 'Accept': 'application/json' } });
+        if (response.ok) {
+          const history = await response.json();
+          syncHistory(link, status, history.historyId);
+        }
+      } catch (error) {
+        // 히스토리 팝업을 다시 열 때 서버 렌더링 결과로 확인할 수 있으므로 생성 결과 표시는 유지한다.
+      }
+    };
+    const updateDraftState = () => {
+      const links = Array.from(list.querySelectorAll('.wm-screen-list-row__link'));
+      const eligibleLinks = links.filter(link => link.dataset.aiDraftEligible === 'true');
+      const states = eligibleLinks.map(link => link.dataset.screenState);
+      const generating = states.some(state => state === 'GENERATING');
+      historyList?.querySelectorAll('[data-history-restore]').forEach(button => {
+        button.disabled = generating;
+      });
+    };
+    const draftStateCache = new Map();
+    const draftProgressCache = new Map();
+    let draftProgressActive = false;
+    const draftLinks = () => Array.from(list.querySelectorAll('.wm-screen-list-row__link'))
+      .filter(link => link.dataset.aiDraftEligible === 'true');
+    const draftRow = link => Array.from(draftProgressView?.querySelectorAll('[data-draft-progress-row]') || [])
+      .find(row => row.dataset.draftProgressRow === link.dataset.screenId);
+    const appendDraftLog = (message, tone) => {
+      if (!draftLayerLog) return;
+      const item = document.createElement('li');
+      if (tone) item.className = tone;
+      const time = document.createElement('time');
+      time.textContent = new Intl.DateTimeFormat('ko-KR', {
+        hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false
+      }).format(new Date());
+      const text = document.createElement('span');
+      text.textContent = message;
+      item.append(time, text);
+      draftLayerLog.append(item);
+      draftLayerLog.scrollTop = draftLayerLog.scrollHeight;
+    };
+    const draftStateLabel = state => ({
+      WAITING: '대기', GENERATING: '초안 생성 중', GENERATED: '완료', FAILED: '실패'
+    })[state] || '대기';
+    const syncDraftDialog = (writeLog = true) => {
+      if (!draftDialog) return;
+      const links = draftLinks();
+      let completed = 0;
+      let failed = 0;
+      let running = null;
+      links.forEach(link => {
+        const state = link.dataset.screenState;
+        const row = draftRow(link);
+        if (state === 'GENERATED') completed += 1;
+        if (state === 'FAILED') failed += 1;
+        if (state === 'GENERATING') running = link;
+        if (row) {
+          row.dataset.draftState = state;
+          row.classList.toggle('is-running', state === 'GENERATING');
+          row.classList.toggle('is-complete', state === 'GENERATED');
+          row.classList.toggle('is-failed', state === 'FAILED');
+          const label = row.querySelector('.wm-draft-dialog__state-label');
+          if (label) label.textContent = draftStateLabel(state);
+        }
+        const previous = draftStateCache.get(link.dataset.screenId);
+        if (writeLog && previous && previous !== state) {
+          const name = link.dataset.screenName;
+          if (state === 'GENERATING') appendDraftLog(name + ' 화면 분석을 시작했습니다.');
+          if (state === 'GENERATED') appendDraftLog(name + ' 화면 초안을 만들었습니다.', 'is-complete');
+          if (state === 'FAILED') appendDraftLog(name + ' 화면을 만들지 못했습니다.', 'is-error');
+        }
+        const currentProgress = link.dataset.draftProgress || '';
+        const previousProgress = draftProgressCache.get(link.dataset.screenId) || '';
+        if (writeLog && state === 'GENERATING' && currentProgress
+            && currentProgress !== previousProgress) {
+          appendDraftLog(link.dataset.screenName + ' · ' + currentProgress);
+        }
+        draftStateCache.set(link.dataset.screenId, state);
+        draftProgressCache.set(link.dataset.screenId, currentProgress);
+      });
+      const finished = completed + failed;
+      draftLayerCount.textContent = finished + '/' + links.length;
+      draftLayerMeter.style.width = (links.length ? Math.round(finished / links.length * 100) : 0) + '%';
+      if (running) {
+        draftLayerTitle.textContent = running.dataset.screenName + ' 초안을 만들고 있습니다';
+        draftLayerDetail.textContent = running.dataset.draftProgress
+          || '요구사항과 현재 화면을 비교하고 있습니다.';
+      } else if (finished < links.length && draftProgressActive) {
+        draftLayerTitle.textContent = '다음 화면을 준비하고 있습니다';
+        draftLayerDetail.textContent = '화면을 목록 순서대로 하나씩 처리합니다.';
+      } else if (failed > 0 && finished === links.length) {
+        draftLayerTitle.textContent = '일부 화면을 만들지 못했습니다';
+        draftLayerDetail.textContent = '작업공간을 초기화하면 화면 초안을 다시 준비할 수 있습니다.';
+      } else if (links.length && completed === links.length) {
+        draftLayerTitle.textContent = '화면 초안이 모두 준비되었습니다';
+        draftLayerDetail.textContent = '각 화면을 열어 요구사항이 올바르게 반영됐는지 확인해 주세요.';
+      }
+      closeDraftProgressButton.parentElement.hidden = finished < links.length;
+      if (finished === links.length) {
+        closeDraftProgressButton.textContent = '작업 화면 확인';
+        delete closeDraftProgressButton.dataset.action;
+      }
+    };
+    const canStartDraft = () => {
+      const states = draftLinks().map(link => link.dataset.screenState);
+      return workbenchEditable && !states.includes('GENERATING')
+        && (states.includes('WAITING') || states.includes('FAILED'));
+    };
+    const showDraftConfirm = () => {
+      if (!draftDialog || !canStartDraft()) return;
+      draftProgressActive = false;
+      draftConfirmView.hidden = false;
+      draftProgressView.hidden = true;
+      if (!draftDialog.open) draftDialog.showModal();
+    };
+    const showDraftProgress = (fresh = false) => {
+      if (!draftDialog) return;
+      draftProgressActive = true;
+      draftConfirmView.hidden = true;
+      draftProgressView.hidden = false;
+      if (fresh) {
+        draftLayerLog.replaceChildren();
+        draftStateCache.clear();
+        draftProgressCache.clear();
+        draftLinks().forEach(link => {
+          draftStateCache.set(link.dataset.screenId, link.dataset.screenState);
+          draftProgressCache.set(link.dataset.screenId, link.dataset.draftProgress || '');
+        });
+        appendDraftLog('AI 초안 작업을 시작했습니다.');
+      }
+      syncDraftDialog(false);
+      if (!draftDialog.open) draftDialog.showModal();
+    };
+    const clearHistorySelection = () => {
+      historyList?.querySelectorAll('.is-previewing').forEach(item => item.classList.remove('is-previewing'));
+    };
+    const showCurrentPreview = link => {
+      if (!link) return;
+      const generated = link.dataset.generated === 'true';
+      const url = generated ? link.dataset.previewUrl : link.dataset.sourcePreviewUrl;
+      if (!url) return;
+      activeMarkerUrl = link.dataset.markerUrl || null;
+      markerReadOnly = false;
+      currentMarkers = [];
+      resetPreviewViewport();
+      loadCanvasPreview(generated ? url + '?v=' + Date.now() : url);
+      clearHistorySelection();
+      setSelectionEligible(true);
+    };
+    historyList?.addEventListener('click', event => {
+      const button = event.target.closest('[data-history-preview]');
+      const item = button?.closest('[data-history-id]');
+      if (!item?.dataset.historyPreviewUrl || item.hidden) return;
+      if (item.dataset.historyCurrent === 'true') {
+        showCurrentPreview(currentLink());
+        item.classList.add('is-previewing');
+        closeHistory();
+        return;
+      }
+      activeMarkerUrl = item.dataset.historyMarkerUrl || null;
+      markerReadOnly = true;
+      currentMarkers = [];
+      resetPreviewViewport();
+      loadCanvasPreview(item.dataset.historyPreviewUrl + '?v=' + Date.now());
+      clearHistorySelection();
+      setSelectionEligible(false);
+      item.classList.add('is-previewing');
+      closeHistory();
+    });
+
+    const showFeedback = (link, status) => {
+      const state = status.state;
+      progressPanel.hidden = state !== 'FAILED';
+      progressPanel.classList.toggle('is-error', state === 'FAILED');
+      if (state === 'FAILED') {
+        progressTitle.textContent = 'AI 초안을 만들지 못했습니다';
+        progressDetail.textContent = safeAiFailure(status.failure,
+          '화면 초안을 만들지 못했습니다. 잠시 후 다시 시도해 주세요.');
+      }
+    };
+
+    let workModified = completionButton?.dataset.workModified === 'true';
+    const updateCompletionButton = status => {
+      if (!completionButton) return;
+      if (status) workModified = status.modified === true;
+      const busy = status?.busy === true
+        || list.querySelector('.wm-screen-list-row__link[data-screen-state="GENERATING"]') !== null;
+      completionButton.disabled = !workModified || busy;
+      completionButton.title = status?.message || (busy
+        ? 'AI가 화면을 수정하고 있어 완료할 수 없습니다.'
+        : workModified ? 'FRD 작업을 완료합니다.' : '수정된 내용이 있어야 FRD 작업을 완료할 수 있습니다.');
+    };
+    const refreshCompletionStatus = async () => {
+      if (!completionButton?.dataset.completionStatusUrl) return;
+      try {
+        const response = await fetch(completionButton.dataset.completionStatusUrl,
+          { headers: { 'Accept': 'application/json' }, cache: 'no-store' });
+        if (!response.ok) return;
+        updateCompletionButton(await response.json());
+      } catch (error) {
+        // 다음 자동 확인에서 다시 시도한다. 일시적인 네트워크 오류로 버튼 상태를 바꾸지 않는다.
+      }
+    };
+
+    const updateModifiedMark = (link, changes) => {
+      const screenName = link.querySelector('.wm-screen-name');
+      if (!screenName) return;
+      const modified = Array.isArray(changes) && changes.length > 0;
+      const currentMark = screenName.querySelector('.wm-screen-modified-dot');
+      if (!modified) {
+        currentMark?.remove();
+        return;
+      }
+      if (currentMark) return;
+      const mark = document.createElement('i');
+      mark.className = 'wm-screen-modified-dot';
+      mark.setAttribute('role', 'img');
+      mark.setAttribute('aria-label', '수정 있음');
+      mark.title = '수정 있음';
+      screenName.append(mark);
+    };
+
+    const renderStatus = (link, status) => {
+      const previousState = link.dataset.screenState;
+      link.dataset.screenState = status.state;
+      link.dataset.generated = String(status.state === 'GENERATED');
+      link.dataset.draftProgress = status.progress || '';
+      if (status.state === 'GENERATED') updateModifiedMark(link, status.changes);
+      const badge = link.closest('.wm-screen-list-row')?.querySelector('[data-screen-status]');
+      if (badge) {
+        if (status.state === 'FAILED') {
+          badge.hidden = false;
+          badge.className = 'status-badge status-badge--error';
+          badge.textContent = status.stateLabel;
+        } else {
+          badge.hidden = true;
+          badge.textContent = '';
+        }
+        badge.setAttribute('aria-label', status.stateLabel);
+        badge.title = status.stateLabel;
+      }
+      if (link === currentLink()) {
+        showFeedback(link, status);
+        if (status.state === 'GENERATED' && previousState !== 'GENERATED') {
+          showCurrentPreview(link);
+        } else if (!empty.hidden) {
+          renderEmpty(link);
+        }
+      }
+      if (status.state === 'GENERATED' && previousState !== 'GENERATED') {
+        refreshHistory(link, status);
+      }
+      updateDraftState();
+      updateCompletionButton();
+      if (draftProgressActive) syncDraftDialog();
+    };
+
+    const refreshStatus = async link => {
+      try {
+        const response = await fetch(link.dataset.statusUrl, { headers: { 'Accept': 'application/json' } });
+        if (!response.ok) return;
+        const status = await response.json();
+        renderStatus(link, status);
+        return status;
+      } catch (error) {
+        // 다음 자동 확인에서 다시 시도한다. 일시적인 네트워크 오류로 작업 상태를 바꾸지 않는다.
+      }
+    };
+
+    const renderEmpty = link => {
+      const canCreateNewScreen = link.dataset.newScreen === 'true'
+        && link.dataset.aiDraftEligible === 'true'
+        && (link.dataset.screenState === 'WAITING' || link.dataset.screenState === 'FAILED');
+      if (link.dataset.newScreen === 'true') {
+        emptyMessage.textContent = canCreateNewScreen
+          ? '신규 화면입니다. 확인한 초안 준비 작업을 시작해 주세요.'
+          : '신규 화면의 AI 초안을 준비하고 있습니다.';
+      } else {
+        emptyMessage.textContent = link.dataset.aiDraftEligible === 'true'
+          ? '기준 화면 미리보기가 없습니다. 확인한 초안 준비 작업을 시작해 주세요.'
+          : '기준 화면 미리보기가 없습니다. AI와 화면 대화에서 작업해 주세요.';
+      }
+    };
+
+    const detailScreenStorageKey = document.querySelector('.frd-workbench-page')?.dataset.frdId
+      ? `frd-detail-screen:${document.querySelector('.frd-workbench-page').dataset.frdId}`
+      : null;
+    const rememberedDetailScreen = () => {
+      if (!detailScreenStorageKey) return null;
+      try { return window.sessionStorage.getItem(detailScreenStorageKey); }
+      catch (_) { return null; }
+    };
+    const rememberDetailScreen = screenCode => {
+      if (!detailScreenStorageKey || !screenCode) return;
+      try { window.sessionStorage.setItem(detailScreenStorageKey, screenCode); }
+      catch (_) { /* 브라우저 저장소를 사용할 수 없어도 화면 전환은 계속한다. */ }
+    };
+
+    const show = (link, refresh = true) => {
+      if (link !== currentLink()) {
+        cancelInlineDirectEdit();
+        detachDirectEditMode();
+        clearSelectedRegion();
+        detachMarkerMode();
+        currentMarkers = [];
+        resetPreviewViewport();
+      }
+      list.querySelectorAll('.wm-screen-list-row__link').forEach(a => a.classList.remove('is-current'));
+      link.classList.add('is-current');
+      rememberDetailScreen(link.dataset.screenCode);
+      link.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+      stageId.textContent = link.dataset.screenCode;
+      stageName.textContent = link.dataset.screenName;
+      screenFacetTools.forEach(tool => {
+        tool.hidden = tool.dataset.screenId !== link.dataset.screenId;
+      });
+      if (deleteDetailScreenId) deleteDetailScreenId.value = link.dataset.screenId;
+      if (deleteDetailScreenButton) {
+        deleteDetailScreenButton.disabled = !workbenchEditable;
+        deleteDetailScreenButton.title = workbenchEditable
+          ? '작업 화면 삭제'
+          : '완료된 FRD에서는 작업 화면을 삭제할 수 없습니다.';
+      }
+      if (chatScreenName) chatScreenName.textContent = link.dataset.screenName;
+      const state = link.dataset.screenState;
+      if (link.dataset.generated === 'true' || link.dataset.sourcePreviewUrl) {
+        showCurrentPreview(link);
+      } else {
+        cancelPreviewLoading();
+        activeMarkerUrl = null;
+        markerReadOnly = false;
+        currentMarkers = [];
+        frame.removeAttribute('src');
+        frame.hidden = true;
+        renderEmpty(link);
+        empty.hidden = false;
+        setSelectionEligible(false);
+      }
+      progressPanel.hidden = true;
+      if (refresh) {
+        refreshStatus(link);
+      }
+      if (!chatPanel?.hidden) loadChat(link);
+      updateDraftState();
+    };
+
+    document.querySelector('.wm-canvas-view-switch')?.addEventListener('click', event => {
+      const link = event.target.closest('a[href]:not(.is-active)');
+      if (!link || event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+      event.stopPropagation();
+      beginPreviewLoading('전체 맵을 불러오는 중입니다.');
+    });
+
+    list.querySelectorAll('.wm-screen-list-row__link').forEach(link => {
+      link.addEventListener('click', event => {
+        event.preventDefault();
+        show(link);
+      });
+    });
+
+    const requestedScreen = new URLSearchParams(window.location.search).get('screen') || rememberedDetailScreen();
+    const requested = requestedScreen
+      ? Array.from(list.querySelectorAll('.wm-screen-list-row__link')).find(link => link.dataset.screenCode === requestedScreen)
+      : null;
+    const current = requested || list.querySelector('.wm-screen-list-row__link.is-current');
+    const generating = list.querySelector('.wm-screen-list-row__link[data-ai-draft-eligible="true"][data-screen-state="GENERATING"]');
+    // 작업 상태가 선택 화면을 바꾸지 않게 한다. 최초 화면도 사용자 선택 이력 또는 목록 기본값을 따른다.
+    if (current) show(current);
+
+    confirmDraftButton?.addEventListener('click', () => {
+      draftForm.requestSubmit();
+    });
+    cancelDraftButton?.addEventListener('click', () => draftDialog.close());
+    closeDraftProgressButton?.addEventListener('click', () => {
+      if (closeDraftProgressButton.dataset.action === 'retry') showDraftConfirm();
+      else draftDialog.close();
+    });
+    draftDialog?.addEventListener('cancel', event => {
+      if (draftProgressActive || draftDialog.dataset.requiredDraft === 'true') event.preventDefault();
+    });
+    if (generating) {
+      showDraftProgress(false);
+      appendDraftLog(generating.dataset.screenName + ' 화면 초안을 만들고 있습니다.');
+    } else if (draftDialog?.dataset.autoOpen === 'true') {
+      showDraftConfirm();
+    }
+
+    draftForm.addEventListener('submit', async event => {
+      event.preventDefault();
+      if (!canStartDraft()) return;
+      const targets = Array.from(list.querySelectorAll('.wm-screen-list-row__link'))
+        .filter(link => link.dataset.aiDraftEligible === 'true'
+          && (link.dataset.screenState === 'WAITING' || link.dataset.screenState === 'FAILED'));
+      if (!targets.length) return;
+      showDraftProgress(true);
+      renderStatus(targets[0], { state: 'GENERATING', stateLabel: 'AI 초안 만드는 중', changes: [], failure: null });
+      try {
+        const response = await fetch(draftForm.action, { method: 'POST', body: new FormData(draftForm) });
+        if (!response.ok) {
+          throw new Error('HTTP ' + response.status);
+        }
+      } catch (error) {
+        progressPanel.classList.add('is-error');
+        progressTitle.textContent = 'AI 초안 만들기를 시작하지 못했습니다';
+        progressDetail.textContent = '서버를 다시 시작한 뒤 다시 시도해 주세요.';
+        targets[0].dataset.screenState = 'WAITING';
+        draftProgressActive = false;
+        draftLayerTitle.textContent = 'AI 초안 만들기를 시작하지 못했습니다';
+        draftLayerDetail.textContent = '작업공간을 초기화한 뒤 다시 시도해 주세요.';
+        appendDraftLog('AI 초안 작업을 시작하지 못했습니다.', 'is-error');
+        syncDraftDialog(false);
+        closeDraftProgressButton.textContent = '다시 시도';
+        closeDraftProgressButton.dataset.action = 'retry';
+        closeDraftProgressButton.parentElement.hidden = false;
+        updateDraftState();
+      }
+      list.querySelectorAll('.wm-screen-list-row__link').forEach(refreshStatus);
+    });
+
+    const statusTimer = window.setInterval(() => {
+      list.querySelectorAll('.wm-screen-list-row__link').forEach(refreshStatus);
+      refreshCompletionStatus();
+    }, 2000);
+    window.addEventListener('pagehide', () => window.clearInterval(statusTimer), { once: true });
+
+    const canvasSheet = document.getElementById('preview-canvas-sheet');
+    const zoomLevel = document.getElementById('zoom-level');
+    const zoomOutButton = document.getElementById('zoom-out');
+    const zoomInButton = document.getElementById('zoom-in');
+    let zoom = 100;
+    const updateZoom = nextZoom => {
+      zoom = Math.min(150, Math.max(50, nextZoom));
+      canvasSheet.style.setProperty('--mockup-zoom', zoom / 100);
+      zoomLevel.value = zoom + '%';
+      zoomLevel.textContent = zoom + '%';
+      zoomOutButton.disabled = zoom === 50;
+      zoomInButton.disabled = zoom === 150;
+    };
+    zoomOutButton.addEventListener('click', () => updateZoom(zoom - 10));
+    zoomInButton.addEventListener('click', () => updateZoom(zoom + 10));
+    document.getElementById('zoom-reset').addEventListener('click', () => updateZoom(100));
+
+    const addScreenButton = document.getElementById('add-work-screen');
+    const screenDialog = document.getElementById('analysis-screen-dialog');
+    const screenDescription = document.getElementById('screen-add-description');
+    const screenPanels = {
+      existing: document.getElementById('existing-screen-panel'),
+      new: document.getElementById('new-screen-panel')
+    };
+    document.querySelectorAll('[data-screen-add-mode]').forEach(tab => {
+      tab.addEventListener('click', () => {
+        const mode = tab.dataset.screenAddMode;
+        document.querySelectorAll('[data-screen-add-mode]').forEach(item => {
+          const active = item === tab;
+          item.classList.toggle('is-active', active);
+          item.setAttribute('aria-selected', String(active));
+        });
+        Object.keys(screenPanels).forEach(key => {
+          if (screenPanels[key]) screenPanels[key].hidden = key !== mode;
+        });
+        if (screenDescription) {
+          screenDescription.textContent = mode === 'new'
+            ? '기준 화면을 바탕으로 개발할 새 화면 정보를 입력해 주세요.'
+            : '현재 운영 화면에서 수정할 화면을 선택해 주세요.';
+        }
+      });
+    });
+
+    const previewList = document.getElementById('existing-screen-list');
+    const previewContainers = document.querySelectorAll('.fi-existing-screen-thumb[data-preview-src]');
+    let previewObserver = null;
+    const loadPreview = container => {
+      clearTimeout(container._unloadTimer);
+      if (container.querySelector('iframe')) return;
+      container.classList.add('is-loading');
+      const thumbnail = document.createElement('iframe');
+      thumbnail.setAttribute('sandbox', 'allow-same-origin');
+      thumbnail.tabIndex = -1;
+      thumbnail.setAttribute('aria-hidden', 'true');
+      thumbnail.title = container.title;
+      thumbnail.addEventListener('load', () => {
+        container.classList.remove('is-loading');
+        container.classList.add('is-loaded');
+      });
+      thumbnail.src = container.dataset.previewSrc;
+      container.append(thumbnail);
+    };
+    const unloadPreview = (container, immediately) => {
+      clearTimeout(container._unloadTimer);
+      const remove = () => {
+        container.querySelector('iframe')?.remove();
+        container.classList.remove('is-loaded', 'is-loading');
+      };
+      if (immediately) remove();
+      else container._unloadTimer = setTimeout(remove, 600);
+    };
+    const startPreviewLoading = () => {
+      if (!previewList || previewObserver) return;
+      if ('IntersectionObserver' in window) {
+        previewObserver = new IntersectionObserver(entries => {
+          entries.forEach(entry => entry.isIntersecting
+            ? loadPreview(entry.target) : unloadPreview(entry.target, false));
+        }, { root: previewList, rootMargin: '100px 0px', threshold: 0.01 });
+        previewContainers.forEach(container => previewObserver.observe(container));
+      } else {
+        Array.from(previewContainers).filter(container =>
+          !container.closest('.fi-existing-screen-item').hidden).slice(0, 4).forEach(loadPreview);
+      }
+    };
+    const stopPreviewLoading = () => {
+      previewObserver?.disconnect();
+      previewObserver = null;
+      previewContainers.forEach(container => unloadPreview(container, true));
+    };
+
+    const screenSearch = document.getElementById('existing-screen-search');
+    const screenSystem = document.getElementById('existing-screen-system');
+    const screenItems = document.querySelectorAll('.fi-existing-screen-item');
+    const screenCount = document.getElementById('existing-screen-count');
+    const screenEmpty = document.getElementById('existing-screen-empty');
+    const filterScreens = () => {
+      const keyword = screenSearch?.value.trim().toLowerCase() || '';
+      const system = screenSystem?.value || '';
+      let visible = 0;
+      screenItems.forEach(item => {
+        const matchesKeyword = !keyword || item.dataset.screenName.includes(keyword)
+          || item.dataset.screenId.includes(keyword);
+        const matchesSystem = !system || item.dataset.screenSystem === system;
+        item.hidden = !(matchesKeyword && matchesSystem);
+        if (!item.hidden) visible++;
+      });
+      if (screenCount) screenCount.textContent = String(visible);
+      if (screenEmpty) {
+        screenEmpty.hidden = visible !== 0;
+        if (visible === 0) screenEmpty.textContent = '검색 조건에 맞는 현재 운영 화면이 없습니다.';
+      }
+    };
+    screenSearch?.addEventListener('input', filterScreens);
+    screenSystem?.addEventListener('change', filterScreens);
+    const openScreenDialog = () => {
+      if (!workbenchEditable) return;
+      filterScreens();
+      screenDialog.showModal();
+      startPreviewLoading();
+    };
+    addScreenButton?.addEventListener('click', openScreenDialog);
+    const screenAddQuery = new URLSearchParams(window.location.search);
+    if (workbenchEditable && screenAddQuery.get('addScreen') === 'true') {
+      screenAddQuery.delete('addScreen');
+      const query = screenAddQuery.toString();
+      window.history.replaceState(null, '', window.location.pathname + (query ? '?' + query : '') + window.location.hash);
+      openScreenDialog();
+    }
+    screenDialog?.addEventListener('close', stopPreviewLoading);
+  })();
+</script>
+</fieldset>
+</body>
+</html>

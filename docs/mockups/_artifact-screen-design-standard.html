@@ -1,0 +1,175 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>화면설계서 양식 시안</title>
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="../../src/main/resources/static/css/tokens.css">
+  <link rel="stylesheet" href="../../src/main/resources/static/css/reset.css">
+  <link rel="stylesheet" href="../../src/main/resources/static/css/typography.css">
+  <link rel="stylesheet" href="_artifact-document-standard.css">
+</head>
+<body>
+<main class="artifact-stage">
+  <article class="artifact-paper" aria-labelledby="artifact-title">
+    <header class="artifact-head">
+      <p class="artifact-head__kind">화면설계서</p>
+      <h1 id="artifact-title">지출결의 작성</h1>
+      <dl class="artifact-meta">
+        <div>
+          <dt>시스템</dt>
+          <dd>업무관리 시스템</dd>
+        </div>
+        <div>
+          <dt>화면 ID</dt>
+          <dd>EXP-REQ-001</dd>
+        </div>
+        <div>
+          <dt>개정</dt>
+          <dd>3차</dd>
+        </div>
+        <div>
+          <dt>작성일</dt>
+          <dd>2026-08-28</dd>
+        </div>
+      </dl>
+    </header>
+
+    <div class="artifact-body">
+      <section class="artifact-section" aria-labelledby="section-overview">
+        <h2 id="section-overview">화면 개요</h2>
+        <dl class="artifact-definitions">
+          <dt>화면 목적</dt>
+          <dd>지출 내역과 증빙을 입력하고 결재를 요청할 지출결의서를 작성한다.</dd>
+          <dt>IA 메뉴 경로</dt>
+          <dd>경비 관리 &gt; 지출결의 &gt; 지출결의 작성</dd>
+          <dt>화면 유형</dt>
+          <dd>등록 화면 · 데스크톱</dd>
+          <dt>관련 FRD</dt>
+          <dd>FRD-2026-014 · 지출결의 임시 저장과 제출 검증 개선</dd>
+        </dl>
+      </section>
+
+      <section class="artifact-section" aria-labelledby="section-layout">
+        <h2 id="section-layout">화면 구성</h2>
+        <figure class="screen-figure">
+          <div class="screen-figure__scroll">
+            <div class="screen-figure__canvas">
+              <div class="screen-sample" aria-label="지출결의 작성 화면 예시">
+                <div class="screen-sample__top">
+                  <span>업무관리 시스템</span>
+                  <span>기획팀 홍길동</span>
+                </div>
+                <aside class="screen-sample__side">
+                  <strong>경비 관리</strong>
+                  <span>지출결의 목록</span>
+                  <span>지출결의 작성</span>
+                  <span>결재 진행 현황</span>
+                </aside>
+                <div class="screen-sample__main">
+                  <h3>지출결의 작성</h3>
+                  <div class="screen-sample__summary">
+                    <span>작성자<br><strong>홍길동</strong></span>
+                    <span>작성일<br><strong>2026-08-28</strong></span>
+                    <span>진행 상태<br><strong>작성 중</strong></span>
+                  </div>
+                  <div class="screen-sample__table" aria-hidden="true">
+                    <span>사용일</span><span>지출 유형</span><span>금액</span>
+                    <span>2026-08-27</span><span>회의비</span><span>120,000원</span>
+                    <span>2026-08-28</span><span>교통비</span><span>34,000원</span>
+                  </div>
+                  <div class="screen-sample__actions" aria-hidden="true">
+                    <span>임시 저장</span>
+                    <span>지출결의 제출</span>
+                  </div>
+                </div>
+              </div>
+              <span class="screen-marker screen-marker--one" aria-hidden="true">1</span>
+              <span class="screen-marker screen-marker--two" aria-hidden="true">2</span>
+              <span class="screen-marker screen-marker--three" aria-hidden="true">3</span>
+            </div>
+          </div>
+          <figcaption>화면의 번호 표시는 아래 화면 요소 명세의 번호와 일치한다.</figcaption>
+        </figure>
+      </section>
+
+      <section class="artifact-section" aria-labelledby="section-elements">
+        <h2 id="section-elements">화면 요소 명세</h2>
+        <div class="artifact-table-wrap">
+          <table class="artifact-table">
+            <thead>
+            <tr>
+              <th scope="col">번호</th>
+              <th scope="col">요소명</th>
+              <th scope="col">유형</th>
+              <th scope="col">표시 내용</th>
+              <th scope="col">동작</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr>
+              <td>1</td>
+              <td><strong>기본 정보</strong></td>
+              <td>요약 정보</td>
+              <td>작성자, 작성일, 현재 진행 상태를 표시한다.</td>
+              <td>사용자가 입력하지 않으며 현재 문서 상태에 따라 갱신된다.</td>
+            </tr>
+            <tr>
+              <td>2</td>
+              <td><strong>지출 내역</strong></td>
+              <td>입력 표</td>
+              <td>사용일, 지출 유형, 거래처, 금액을 행 단위로 표시한다.</td>
+              <td>행을 추가하거나 삭제하면 합계 금액을 다시 계산한다.</td>
+            </tr>
+            <tr>
+              <td>3</td>
+              <td><strong>문서 행동</strong></td>
+              <td>버튼</td>
+              <td>임시 저장, 지출결의 제출 행동을 표시한다.</td>
+              <td>제출 전 필수값과 증빙 등록 여부를 확인한다.</td>
+            </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="artifact-section" aria-labelledby="section-flow">
+        <h2 id="section-flow">이동 및 상태 규칙</h2>
+        <div class="artifact-table-wrap">
+          <table class="artifact-table artifact-table--compact">
+            <thead>
+            <tr>
+              <th scope="col">사용자 행동</th>
+              <th scope="col">조건</th>
+              <th scope="col">처리 결과</th>
+              <th scope="col">이동 화면</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr>
+              <td>임시 저장</td>
+              <td>제목과 한 건 이상의 지출 내역 입력</td>
+              <td>작성 중 상태로 저장하고 저장 시각을 안내한다.</td>
+              <td>현재 화면 유지</td>
+            </tr>
+            <tr>
+              <td>지출결의 제출</td>
+              <td>필수값과 증빙 등록 완료</td>
+              <td>결재 요청 번호를 만들고 제출 완료를 안내한다.</td>
+              <td>지출결의 상세</td>
+            </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </div>
+
+    <footer class="artifact-foot">
+      <span>화면 HTML · 화면 명세 · IA 기준</span>
+      <span>화면설계서 3차 · 2026-08-28</span>
+    </footer>
+  </article>
+</main>
+</body>
+</html>

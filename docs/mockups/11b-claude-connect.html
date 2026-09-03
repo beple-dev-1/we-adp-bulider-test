@@ -1,0 +1,16 @@
+<!doctype html>
+<html lang="ko">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="stylesheet" href="_auth-concepts.css"></head>
+<body class="auth auth--setup">
+<main class="setup-card setup-card--wide">
+  <header><a class="auth-brand" href="login-a.html">WE-ADP <span>Builder</span></a><div class="setup-step" aria-label="최초 설정 진행 단계"><span>✓</span><i></i><span aria-current="step">2</span></div></header>
+  <div class="setup-intro"><p>최초 로그인 · 선택 설정</p><h1>Claude Code 계정 연결</h1><span>AI 기능을 사용하려면 본인 Claude Code 계정을 연결하세요. 지금 연결하지 않아도 Builder에 로그인할 수 있습니다.</span></div>
+  <ol class="claude-steps claude-steps--wide">
+    <li><span>1</span><div class="claude-step-content"><strong>Claude에서 접근 승인</strong><p>이 브라우저의 새 창에서 본인 계정으로 로그인하고 Builder의 접근을 승인합니다.</p><form action="11b-claude-connect.html" onsubmit="setTimeout(() => location.href=this.action, 600); return false"><button class="secondary-action" type="submit" data-submit-loading="승인 화면 여는 중" data-submit-loading-tone="dark">승인 화면 열기</button></form></div></li>
+    <li><span>2</span><div class="claude-step-content"><strong>연결 상태 확인</strong><p>승인을 마치면 화면에 승인 코드가 나옵니다. 그 코드를 붙여넣고 계정 연결을 누르세요.</p><form class="claude-code-form" id="claude-code-form" action="11c-project-select.html" onsubmit="setTimeout(() => location.href=this.action, 600); return false"><label for="claude-code">승인 코드 <span>필수</span></label><input id="claude-code" name="code" autocomplete="off" placeholder="승인 후 화면에 나온 코드"></form></div></li>
+  </ol>
+  <div class="claude-choice"><p>사용자 메뉴에서 나중에 연결할 수 있습니다.</p><div><form action="11c-project-select.html" onsubmit="setTimeout(() => location.href=this.action, 600); return false"><button class="claude-later-button" type="submit" data-submit-loading="나중에 연결 처리 중" data-submit-loading-tone="dark">나중에 연결</button></form><button class="claude-connect-button" type="submit" form="claude-code-form" data-submit-loading="Claude 계정 연결 중">계정 연결</button></div></div>
+</main>
+<script src="_shell.js"></script>
+</body>
+</html>

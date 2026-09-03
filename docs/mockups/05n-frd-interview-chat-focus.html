@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <link rel="stylesheet" href="../../src/main/resources/static/css/tokens.css">
+  <link rel="stylesheet" href="../../src/main/resources/static/css/reset.css">
+  <link rel="stylesheet" href="../../src/main/resources/static/css/typography.css">
+  <link rel="stylesheet" href="../../src/main/resources/static/css/components.css">
+  <link rel="stylesheet" href="../../src/main/resources/static/css/shell.css">
+  <link rel="stylesheet" href="_mock.css">
+  <link rel="stylesheet" href="../../src/main/resources/static/css/screens.css">
+  <link rel="stylesheet" href="_frd-interview-candidates.css">
+  <title>AI 인터뷰 시안 A</title>
+</head>
+<body>
+<template id="본문">
+  <main class="fic-page">
+    <header class="fic-head">
+      <div class="fic-head__copy"><span class="fic-kicker">FRD 작업 만들기 · 시안 A</span><h1>AI 인터뷰</h1><p>AI와 대화하며 개발 범위를 결정하는 데 필요한 내용만 확인합니다.</p></div>
+      <span class="fic-status">답변 필요</span>
+    </header>
+    <nav class="fic-steps" aria-label="FRD 작업 만들기 진행 단계">
+      <div class="fic-step is-done"><i>✓</i><span>요구사항 입력</span></div>
+      <div class="fic-step is-current" aria-current="step"><i>2</i><span>AI 인터뷰</span></div>
+      <div class="fic-step"><i>3</i><span>개발 범위 확인</span></div>
+    </nav>
+    <div class="fic-chat-layout">
+      <section class="fic-card fic-chat-card" aria-labelledby="chat-title">
+        <header class="fic-card__head"><div class="fic-chat-brand"><img src="claudecode-color.png" width="30" height="30" alt=""><div><h2 id="chat-title">AI 인터뷰</h2><p>필요한 내용을 한 번에 하나씩 확인합니다.</p></div></div><span class="fic-round">현재 질문 <strong>2</strong></span></header>
+        <div class="fic-thread" aria-live="polite">
+          <article class="fic-request-bubble"><span>입력한 요구사항</span><p>고유가 피해지원금 종료에 맞춰 전체 메뉴와 가맹점 찾기 안내를 정리하고, FAQ 삭제와 공지사항 게시도 확인해 주세요.</p></article>
+          <article class="fic-history-question"><small>종료 대상 범위</small><strong>고유가 피해지원금과 연결된 화면을 모두 종료 대상으로 볼까요?</strong></article>
+          <article class="fic-answer-bubble"><span>내 답변</span><p>가맹점 찾기와 상세조회 필터까지만 종료 대상으로 처리해 주세요.</p></article>
+          <article class="fic-ai-question">
+            <h2 class="fic-question-title">고유가 피해지원금 종료 처리는 언제 반영할까요?</h2>
+            <div class="fic-reason"><strong>확인이 필요한 이유</strong>메뉴, 관련 화면과 제공 데이터의 종료 상태를 같은 시점에 반영해야 사용자에게 일관된 내용이 표시됩니다.</div>
+            <fieldset class="fic-options"><legend class="sr-only">종료 처리 반영 시점</legend>
+              <label class="fic-option"><input type="radio" name="chat-scope" value="종료일"><span>종료일 00시에 반영<small>고유가 피해지원금 종료일을 기준으로 일괄 반영합니다.</small></span></label>
+              <label class="fic-option"><input type="radio" name="chat-scope" value="공지"><span>공지사항 게시와 동시에 반영<small>사용자 안내가 게시되는 시점에 종료 상태를 적용합니다.</small></span></label>
+              <label class="fic-option"><input type="radio" name="chat-scope" value="직접"><span>반영 시점 직접 입력<small>별도 배포 일정이나 적용 조건이 있다면 입력할 수 있습니다.</small></span></label>
+            </fieldset>
+            <label class="fic-direct" for="chat-direct" hidden><span>반영 시점을 입력해 주세요</span><textarea id="chat-direct" placeholder="예: 2026년 8월 31일 서비스 점검 이후"></textarea></label>
+          </article>
+        </div>
+        <footer class="fic-actions"><p id="chat-help">답변을 선택하면 필요한 경우 다음 질문을 드립니다.</p><div class="fic-actions__buttons"><button class="button" id="chat-finish" type="button">현재 내용으로 범위 정리</button><button class="button button--primary" id="chat-submit" type="button" disabled>답변 제출</button></div></footer>
+      </section>
+      <aside class="fic-side" aria-label="인터뷰 요약">
+        <section class="fic-card" aria-labelledby="progress-title"><header class="fic-card__head"><div><h2 id="progress-title">이번 인터뷰</h2><p>조사 결과와 예상 범위를 함께 확인합니다.</p></div></header><div class="fic-card__body">
+          <section class="fic-side-section" aria-labelledby="interview-progress-title">
+            <div class="fic-side-section__head"><h3 id="interview-progress-title">진행 상황</h3><span>2 / 4 완료</span></div>
+            <div class="fic-progress"><div class="fic-progress__bar" aria-label="인터뷰 진행률 50퍼센트"><i></i></div></div>
+            <ol class="fic-progress-list"><li class="is-done"><i>✓</i><strong>요구사항 이해</strong><small>완료</small></li><li class="is-done"><i>✓</i><strong>관련 화면 조사</strong><small>완료</small></li><li class="is-current" id="scope-progress"><i>3</i><strong>반영 시점 확인</strong><small>진행 중</small></li><li><i>4</i><strong>개발 범위 정리</strong><small>대기</small></li></ol>
+          </section>
+          <section class="fic-side-section" aria-labelledby="related-screen-title">
+            <div class="fic-side-section__head"><h3 id="related-screen-title">관련 화면</h3><span>2개 확인</span></div>
+            <ul class="fic-screen-list"><li><strong>가맹점 찾기</strong><small class="num">wv-merc-search-main</small></li><li><strong>가맹점 상세조회 필터</strong><small class="num">wv-modal-merc-filter</small></li></ul>
+          </section>
+          <section class="fic-side-section" aria-labelledby="expected-scope-title">
+            <div class="fic-side-section__head"><h3 id="expected-scope-title">예상 개발 범위</h3><span>현재 조사 기준</span></div>
+            <ul class="fic-scope-list"><li><strong>프론트엔드 · 2개 화면</strong><span>가맹점 찾기와 상세조회 필터의 종료 상태 반영</span></li><li><strong>백엔드 · 데이터 2개</strong><span>메뉴 노출 설정과 상품권 안내 데이터 변경</span></li><li><strong>반영 시점 · 확인 중</strong><span id="scope-timing-detail">답변을 기다리고 있습니다.</span></li></ul>
+            <p class="fic-scope-note"><strong>개발 외 확인</strong> · FAQ 삭제와 공지사항 게시는 운영 작업으로 구분합니다.</p>
+          </section>
+        </div></section>
+      </aside>
+    </div>
+  </main>
+</template>
+<script src="_shell.js"></script>
+<script>
+  틀({제목:'AI 인터뷰',모양:'산출물',지금:'frds',프로젝트이름:'G2C',프로젝트번호:1,프로젝트들:['G2C','서울페이'],사람:'이영희',안읽은알림:2});
+  const chatChoices=[...document.querySelectorAll('input[name="chat-scope"]')];
+  const chatDirect=document.getElementById('chat-direct');
+  const chatDirectWrap=chatDirect.closest('label');
+  const chatSubmit=document.getElementById('chat-submit');
+  const chatFinish=document.getElementById('chat-finish');
+  const scopeTimingDetail=document.getElementById('scope-timing-detail');
+  chatChoices.forEach(choice=>choice.addEventListener('change',()=>{chatDirectWrap.hidden=choice.value!=='직접';chatSubmit.disabled=false;if(choice.value==='종료일')scopeTimingDetail.textContent='종료일 00시에 일괄 반영';else if(choice.value==='공지')scopeTimingDetail.textContent='공지사항 게시와 동시에 반영';else{scopeTimingDetail.textContent='직접 입력한 일정에 따라 반영';chatDirect.focus();}}));
+  chatSubmit.addEventListener('click',()=>{chatSubmit.textContent='답변 반영 완료';chatSubmit.disabled=true;document.getElementById('chat-help').textContent='답변을 반영했습니다. 다음 확인 내용을 준비하고 있습니다.';const progress=document.getElementById('scope-progress');progress.classList.remove('is-current');progress.classList.add('is-done');progress.querySelector('i').textContent='✓';progress.querySelector('small').textContent='완료';});
+  chatFinish.addEventListener('click',()=>{chatFinish.textContent='범위 정리 요청 완료';chatFinish.disabled=true;document.getElementById('chat-help').textContent='지금까지 확인한 내용으로 개발 범위를 정리하고 있습니다.';});
+</script>
+</body>
+</html>

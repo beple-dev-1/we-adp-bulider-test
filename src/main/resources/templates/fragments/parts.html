@@ -1,0 +1,184 @@
+<!doctype html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<!--
+  껍데기의 조각 둘 — 머리 · 메뉴 열.
+  정본: docs/superpowers/specs/2026-08-09-screen-shell-design.md
+
+  layout(shell.html)이 이 둘을 부른다. 화면이 직접 부르지 않는다.
+  이름 규약: docs/coding-conventions.md (기계가 부르는 이름은 영문, 사람에게 하는 말은 한글)
+-->
+<body>
+
+<!--
+  머리 — 아홉 화면 전부에 붙는다.
+  인자는 프로젝트 이름 · 번호 · 다른 프로젝트 목록 · current(메뉴 열쇠)이고,
+  고르기 전이면 전부 null 을 넘긴다.
+  로그인한 사람은 조각 안에서 꺼낸다 — 화면마다 넘기게 하면 부르는 자리가 전부 바뀐다.
+
+  ⚠ current 를 받는 까닭 — 프로젝트 전환 링크가 「그 프로젝트의 같은 메뉴」로 가야 한다
+  (design: 2026-08-10-project-context-design.md 「프로젝트를 고르는 길」). 처음 구현은
+  이 값을 안 받아 매번 BRD 로 하드코딩했다 — 설계의 illustration 이 마침 BRD 라 눈에
+  안 띄었다(2026-08-10 전체 브랜치 검토가 짚었다). 모양 '꽉'(작업대)과 고르기 화면은
+  current 가 없으므로 null 이면 기본 작업 진입점인 'frds' 로 떨어진다.
+-->
+<header th:fragment="header(projectName, projectId, projects, current)" class="app-header">
+  <span class="app-header__brand">
+    WE-ADP Builder
+    <small class="app-header__version"
+           th:text="|v${@environment.getProperty('builder.application-version', '개발')}|">v개발</small>
+  </span>
+
+  <button class="app-nav-toggle" type="button" th:if="${current != null}"
+          data-nav-toggle aria-controls="builder-navigation" aria-expanded="true" aria-label="메뉴 접기" title="메뉴 접기">
+    <svg class="app-nav-toggle__collapse" viewBox="0 0 24 24" aria-hidden="true"><path d="m14 6-6 6 6 6"/></svg>
+    <svg class="app-nav-toggle__expand" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
+  </button>
+
+  <a class="app-header__builder-entry"
+     sec:authorize="hasRole('SUPER')"
+     th:if="${current == 'projects' or current == 'accounts'}"
+     th:href="@{/projects(from='admin')}">Builder로 이동</a>
+
+  <span class="app-header__gap"></span>
+
+  <!--/* 알림과 사람 자리는 로그인한 뒤에만 있다 */-->
+  <th:block sec:authorize="isAuthenticated()">
+
+    <!--/*
+      ⛔ name 을 지우지 마라 — 같은 name 을 가진 details 는 한 번에 하나만 열린다(HTML 표준).
+         없으면 알림과 사람 팝업이 둘 다 열려 **같은 자리에서 겹치고 알림이 통째로 가린다.**
+         모든 폭에서 그렇다(2026-08-09 실측 · 1440px 에서도 가렸다).
+         이걸 자바스크립트 없이 닫는 길이 이것뿐이다. 표준을 모르는 옛 브라우저에서는
+         지금과 똑같이 겹칠 뿐 더 나빠지지 않는다.
+    */-->
+    <details class="pop pop--notifications" name="headerPopup">
+      <summary class="notification-trigger"
+               th:attr="aria-label=${unreadCount != null and unreadCount > 0 ? '알림, 미확인 ' + unreadCount + '개' : '알림'}">
+        <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4"/></svg>
+        <span class="unread"
+              th:if="${unreadCount != null and unreadCount > 0}"
+              th:text="${unreadCount}"></span>
+      </summary>
+      <div class="pop__body notification-panel">
+        <header class="notification-panel__head"><div><h2>알림</h2><p th:text="${unreadCount != null and unreadCount > 0 ? '미확인 알림 ' + unreadCount + '개' : '새 알림 없음'}"></p></div></header>
+        <div class="notification-panel__list">
+          <div class="notification-empty" th:if="${notifications == null or #lists.isEmpty(notifications)}">
+            <span class="notification-empty__icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4"/></svg></span>
+            <strong>새 알림이 없습니다.</strong><p>문서 처리나 작업 변경이 생기면 알려드립니다.</p>
+          </div>
+          <a th:each="n : ${notifications}" th:href="${n.link}"
+             th:class="${n.read} ? 'notice notice--read' : 'notice notice--unread'">
+            <span class="notice__state" aria-hidden="true"></span>
+            <span class="notice__copy"><strong th:text="${n.text}"></strong><time th:text="${n.when}"></time></span>
+          </a>
+        </div>
+      </div>
+    </details>
+
+    <details class="pop" name="headerPopup">
+      <summary th:text="${#authentication.principal.name}">사람</summary>
+      <div class="pop__body">
+        <a class="app-header__builder-menu-entry"
+           sec:authorize="hasRole('SUPER')"
+           th:if="${current == 'projects' or current == 'accounts'}"
+           th:href="@{/projects(from='admin')}">Builder로 이동</a>
+        <hr class="app-header__builder-menu-entry"
+            sec:authorize="hasRole('SUPER')"
+            th:if="${current == 'projects' or current == 'accounts'}">
+        <a sec:authorize="hasRole('SUPER')" th:href="@{/admin/projects}">프로젝트 관리</a>
+        <a sec:authorize="hasRole('SUPER')" th:href="@{/admin/accounts}">사용자 관리</a>
+        <hr sec:authorize="hasRole('SUPER')">
+        <a th:href="@{/password}">비밀번호 바꾸기</a>
+        <a th:href="@{/claude/connect}">Claude 다시 연결</a>
+        <hr>
+        <form th:action="@{/logout}" method="post">
+          <button type="submit">로그아웃</button>
+        </form>
+      </div>
+    </details>
+
+  </th:block>
+</header>
+
+
+<!--
+  메뉴 열 — kind 가 '산출물' 이면 산출물 열 개, '관리' 이면 둘.
+  「current」는 그 화면이 어느 항목에 있는지를 가리키는 열쇠다.
+  지금 있는 자리에만 aria-current="page" 가 붙고, 그것이 라일락으로 찬다.
+-->
+<nav th:fragment="nav(kind, current, projectId, projects)" class="app-nav" id="builder-navigation">
+
+  <div class="app-nav__project" th:if="${kind == '산출물' and projects != null and !#lists.isEmpty(projects)}">
+    <div class="app-nav__project-combobox" data-slot="combobox" data-project-switch>
+      <button class="app-nav__project-trigger" id="project-switcher" type="button"
+              role="combobox" aria-expanded="false" aria-controls="project-switcher-list"
+              aria-haspopup="listbox" data-slot="combobox-trigger" data-project-switch-trigger>
+        <span class="app-nav__project-copy">
+          <span class="app-nav__project-label">작업그룹</span>
+          <span class="app-nav__project-value" th:text="${projectName}">프로젝트</span>
+        </span>
+        <svg class="app-nav__project-chevron" viewBox="0 0 24 24" aria-hidden="true">
+          <path d="m7 10 5 5 5-5"/>
+        </svg>
+      </button>
+      <div class="app-nav__project-list" id="project-switcher-list" role="listbox"
+           data-slot="combobox-list"
+           aria-label="프로젝트 목록" tabindex="-1" hidden>
+        <div class="app-nav__project-option" role="option" tabindex="-1"
+             data-slot="combobox-item"
+             th:each="p : ${projects}"
+             th:id="|project-switcher-option-${p.id}|"
+             th:attr="aria-selected=${p.id == projectId},data-project-url=@{/projects/{id}/artifacts/{key}(id=${p.id}, key=${current != null ? current : 'frds'})}"
+             data-project-switch-option>
+          <span class="app-nav__project-option-label" th:text="${p.name}">프로젝트</span>
+          <svg class="app-nav__project-option-check" viewBox="0 0 24 24" aria-hidden="true">
+            <path d="m5 12 4 4L19 6"/>
+          </svg>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <p class="app-nav__title" th:if="${kind != '산출물'}" th:text="${kind}">관리</p>
+
+  <th:block th:if="${kind == '산출물'}">
+    <a class="artifact-link artifact-link--white" th:href="@{/projects/{p}/artifacts/frds(p=${projectId})}"
+       th:attr="aria-current=${current == 'frds' ? 'page' : null}">FRD 작업</a>
+    <a class="artifact-link artifact-link--white" th:href="@{/projects/{p}/artifacts/srts(p=${projectId})}"
+       th:attr="aria-current=${current == 'srts' ? 'page' : null}">SRT</a>
+    <a class="artifact-link artifact-link--white" th:href="@{/projects/{p}/artifacts/dev-requests(p=${projectId})}"
+       th:attr="aria-current=${current == 'dev-requests' ? 'page' : null}">개발요청서</a>
+    <a class="artifact-link artifact-link--white" th:href="@{/projects/{p}/artifacts/menu-tree(p=${projectId})}"
+       th:attr="aria-current=${current == 'menu-tree' ? 'page' : null}">IA</a>
+    <a class="artifact-link artifact-link--white" th:href="@{/projects/{p}/artifacts/design-guide(p=${projectId})}"
+       th:attr="aria-current=${current == 'design-guide' ? 'page' : null}">디자인가이드</a>
+    <a class="artifact-link artifact-link--white" th:href="@{/projects/{p}/artifacts/business-language(p=${projectId})}"
+       th:attr="aria-current=${current == 'business-language' ? 'page' : null}">정책·표준용어</a>
+    <hr>
+    <a class="artifact-link artifact-link--red" th:href="@{/projects/{p}/artifacts/solution-mockups(p=${projectId})}"
+       th:attr="aria-current=${current == 'solution-mockups' ? 'page' : null}">솔루션 템플릿</a>
+    <hr>
+    <a class="artifact-link artifact-link--green" th:href="@{/projects/{p}/artifacts/functional-specs(p=${projectId})}"
+       th:attr="aria-current=${current == 'functional-specs' ? 'page' : null}">기능명세서</a>
+    <a class="artifact-link artifact-link--green" th:href="@{/projects/{p}/artifacts/screen-designs(p=${projectId})}"
+       th:attr="aria-current=${current == 'screen-designs' ? 'page' : null}">화면설계서</a>
+    <a class="artifact-link artifact-link--green" th:href="@{/projects/{p}/artifacts/unit-tests(p=${projectId})}"
+       th:attr="aria-current=${current == 'unit-tests' ? 'page' : null}">단위테스트</a>
+    <a class="artifact-link artifact-link--green" th:href="@{/projects/{p}/artifacts/integration-tests(p=${projectId})}"
+       th:attr="aria-current=${current == 'integration-tests' ? 'page' : null}">통합테스트</a>
+    <a class="artifact-link artifact-link--green" th:href="@{/projects/{p}/artifacts/user-manual(p=${projectId})}"
+       th:attr="aria-current=${current == 'user-manual' ? 'page' : null}">사용자 매뉴얼</a>
+  </th:block>
+
+  <th:block th:if="${kind == '관리'}">
+    <a th:href="@{/admin/projects}"
+       th:attr="aria-current=${current == 'projects' ? 'page' : null}">프로젝트 관리</a>
+    <a th:href="@{/admin/accounts}"
+       th:attr="aria-current=${current == 'accounts' ? 'page' : null}">사용자 관리</a>
+  </th:block>
+
+</nav>
+
+</body>
+</html>

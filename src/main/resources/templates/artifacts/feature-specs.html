@@ -1,0 +1,148 @@
+<!doctype html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{fragments/shell :: layout(${title}, ${shape}, ${current}, ~{:: content})}">
+<body>
+<div th:fragment="content">
+
+  <div class="list-loading-region feature-spec-list-page" data-list-loading-region>
+    <div class="page-loading-overlay list-loading-overlay" data-list-loading-overlay role="status" aria-label="조회 결과 처리 중" hidden>
+      <span class="page-loading-indicator">
+        <span class="page-loading-spinner" aria-hidden="true"></span>
+      </span>
+    </div>
+
+  <!--/*
+    공통 디자인 가이드의 filter-bar · data-table 문법을 따른다.
+    ⛔ 여기서 명세를 만들거나 고치는 문을 만들지 마라 — 정본은 기획 저장소이고 빌더는 읽기만 한다.
+  */-->
+
+  <div class="page-head list-page-head">
+    <div>
+      <h1 class="page-head__title">기능명세서</h1>
+      <p class="page-intro">화면별 기능명세서 작성 상태를 확인하고 제출용 문서를 엽니다.</p>
+    </div>
+  </div>
+
+  <form class="filter-bar filter-bar--feature-spec" th:if="${totalCount > 0}"
+        method="get" role="search" data-list-loading-trigger
+        th:action="@{/projects/{p}/artifacts/functional-specs(p=${projectId})}">
+    <div class="field">
+      <label class="field__label" for="feature-spec-system">시스템</label>
+      <select class="field__control" id="feature-spec-system" name="system">
+        <option value="">전체</option>
+        <option th:each="item : ${systems}" th:value="${item.code}" th:text="${item.label}"
+                th:selected="${item.code == systemFilter}"></option>
+      </select>
+    </div>
+    <div class="field">
+      <label class="field__label" for="feature-spec-state">생성여부</label>
+      <select class="field__control" id="feature-spec-state" name="spec">
+        <option value="">전체</option>
+        <option th:each="state : ${specStates}" th:value="${state}" th:text="${state}"
+                th:selected="${state == specFilter}"></option>
+      </select>
+    </div>
+    <div class="field feature-spec-filter-search">
+      <label class="field__label" for="feature-spec-search">화면 검색</label>
+      <input class="field__control" id="feature-spec-search" name="query" type="search"
+             placeholder="화면명, 화면 ID, 화면관리번호 또는 메뉴를 입력하세요" th:value="${query}">
+    </div>
+    <button class="button" type="submit">조회</button>
+  </form>
+
+  <section class="state-panel list-empty-state" role="status" th:if="${matchedCount == 0}">
+    <span class="list-empty-state__icon" aria-hidden="true">
+      <svg viewBox="0 0 32 32" fill="none"><path d="M6.5 7.5h19v17h-19z"/><path d="M6.5 19.5h5l2.2 3h4.6l2.2-3h5"/><path d="M11 12h10M11 15.5h7"/></svg>
+    </span>
+    <strong>조회된 내용이 없습니다.</strong>
+  </section>
+
+  <div class="table-wrap artifact-list-table-wrap feature-spec-table-wrap" tabindex="0"
+       aria-label="기능명세서 화면 목록" th:if="${matchedCount > 0}">
+    <table class="data-table data-table--dense feature-spec-table">
+      <colgroup>
+        <col class="feature-spec-col-name">
+        <col class="feature-spec-col-management">
+        <col class="feature-spec-col-id">
+        <col class="feature-spec-col-menu">
+        <col class="feature-spec-col-system">
+        <col class="feature-spec-col-state">
+        <col class="feature-spec-col-history">
+        <col class="feature-spec-col-history">
+      </colgroup>
+      <thead>
+        <tr>
+          <th scope="col">화면명</th>
+          <th scope="col">화면관리번호</th>
+          <th scope="col">화면 ID</th>
+          <th scope="col">IA 메뉴 경로</th>
+          <th scope="col">시스템</th>
+          <th scope="col">생성여부</th>
+          <th scope="col">운영 화면 수정일</th>
+          <th scope="col">문서 작성일</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr th:each="row : ${rows}">
+          <td class="feature-spec-screen-cell">
+            <a class="artifact-list-link"
+               th:href="@{/projects/{p}/artifacts/functional-specs(p=${projectId},query=${query},system=${systemFilter},spec=${specFilter},page=${page},pageSize=${pageSize},selectedSystem=${row.screen.system},selectedScreen=${row.screen.screenId})}"
+               th:title="${row.displayName}"
+               th:text="${row.displayName}"></a>
+          </td>
+          <td class="num nowrap" th:text="${row.managementNumber}"></td>
+          <td class="num nowrap" th:text="${row.screen.screenId}"></td>
+          <td class="feature-spec-menu-cell">
+            <span th:if="${!#strings.isEmpty(row.screen.menuPath)}" th:text="${row.screen.menuPath}"
+                  th:title="${row.screen.menuPath}"></span>
+            <span class="cell__sub" th:if="${#strings.isEmpty(row.screen.menuPath)}">메뉴 경로 없음</span>
+          </td>
+          <td th:text="${row.systemLabel}"></td>
+          <!--/* ⛔ 색만으로 가르지 마라 — 글자로 적는다(DQ.FLOOR). */-->
+          <td><span class="status-badge"
+                    th:classappend="${row.ready} ? 'status-badge--complete' : 'status-badge--waiting'"
+                    th:text="${row.statusLabel}"></span></td>
+          <td class="num nowrap" th:text="${row.sourceDate}"></td>
+          <td class="num nowrap" th:text="${row.documentDate}"></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="list-table-foot" th:if="${matchedCount > 0}">
+    <span aria-hidden="true"></span>
+    <nav class="list-pagination" aria-label="기능명세서 페이지 이동" data-list-loading-links>
+      <span th:if="${page == 1}" class="list-page-button" aria-disabled="true" aria-label="이전 페이지">&lsaquo;</span>
+      <a th:unless="${page == 1}" class="list-page-button" aria-label="이전 페이지" th:text="'‹'"
+         th:href="@{/projects/{p}/artifacts/functional-specs(p=${projectId},query=${query},system=${systemFilter},spec=${specFilter},pageSize=${pageSize},page=${page - 1})}"></a>
+      <a th:each="number : ${pageNumbers}" class="list-page-button"
+         th:classappend="${number == page} ? 'is-current' : ''"
+         th:attr="aria-current=${number == page} ? 'page' : null"
+         th:text="${number}"
+         th:href="@{/projects/{p}/artifacts/functional-specs(p=${projectId},query=${query},system=${systemFilter},spec=${specFilter},pageSize=${pageSize},page=${number})}"></a>
+      <span th:if="${page == pageCount}" class="list-page-button" aria-disabled="true" aria-label="다음 페이지">&rsaquo;</span>
+      <a th:unless="${page == pageCount}" class="list-page-button" aria-label="다음 페이지" th:text="'›'"
+         th:href="@{/projects/{p}/artifacts/functional-specs(p=${projectId},query=${query},system=${systemFilter},spec=${specFilter},pageSize=${pageSize},page=${page + 1})}"></a>
+    </nav>
+    <form class="list-page-size" method="get" data-list-loading-trigger
+          th:action="@{/projects/{p}/artifacts/functional-specs(p=${projectId})}">
+      <input type="hidden" name="query" th:value="${query}">
+      <input type="hidden" name="system" th:value="${systemFilter}">
+      <input type="hidden" name="spec" th:value="${specFilter}">
+      <label class="sr-only" for="feature-spec-page-size">목록 크기</label>
+      <select class="field__control" id="feature-spec-page-size" name="pageSize" data-list-loading-page-size>
+        <option th:each="option : ${pageSizes}" th:value="${option}" th:text="${option} + '개씩'"
+                th:selected="${option == pageSize}"></option>
+      </select>
+    </form>
+  </div>
+  </div>
+
+  <th:block th:if="${layerOpen}">
+    <div th:replace="~{artifacts/feature-spec :: layer}"></div>
+  </th:block>
+  <script defer th:src="@{/js/feature-spec.js}"></script>
+
+</div>
+</body>
+</html>

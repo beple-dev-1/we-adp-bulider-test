@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<link rel="stylesheet" href="../../src/main/resources/static/css/tokens.css"><link rel="stylesheet" href="../../src/main/resources/static/css/reset.css"><link rel="stylesheet" href="../../src/main/resources/static/css/typography.css"><link rel="stylesheet" href="../../src/main/resources/static/css/components.css"><link rel="stylesheet" href="../../src/main/resources/static/css/shell.css"><link rel="stylesheet" href="_mock.css"><link rel="stylesheet" href="../../src/main/resources/static/css/screens.css"><link rel="stylesheet" href="_business-documents.css"><title>사업 정책서 수정</title></head>
+<body><template id="본문"><main class="business-doc-page wiki-policy-page">
+  <div class="page-head"><div><h1 class="page-head__title">사업 정책서 수정</h1><p class="page-intro">문서 위에서 제목과 내용을 바로 고치고 필요한 항목을 자유롭게 추가합니다.</p></div></div>
+  <nav class="business-language-tabs" aria-label="정책·표준용어"><a href="_business-policy-edit.html" aria-current="page">정책서</a><a href="_business-glossary.html">표준용어</a></nav>
+  <form class="wiki-editor" action="#" onsubmit="return false">
+    <header class="wiki-editor__topbar">
+      <div><strong>G2C 사업 정책서</strong><span class="badge">수정 중</span><p>마지막 자동 저장 방금 전</p></div>
+      <div class="business-doc-actions"><a class="button" href="_business-policy.html">수정 취소</a><button class="button button--primary" type="submit">정책서 저장</button></div>
+    </header>
+    <div class="wiki-editor__layout">
+      <aside class="wiki-outline" aria-labelledby="wiki-outline-title">
+        <div class="wiki-outline__head"><h2 id="wiki-outline-title">문서 목차</h2><button class="button button--small" type="button">항목 추가</button></div>
+        <ol>
+          <li><a href="#wiki-purpose" aria-current="location"><span class="wiki-outline__handle" aria-hidden="true">⠿</span>1. 목적</a></li>
+          <li><a href="#wiki-scope"><span class="wiki-outline__handle" aria-hidden="true">⠿</span>2. 적용 범위</a></li>
+          <li><a href="#wiki-application"><span class="wiki-outline__handle" aria-hidden="true">⠿</span>3. 신청 정책</a></li>
+          <li><a href="#wiki-approval"><span class="wiki-outline__handle" aria-hidden="true">⠿</span>4. 승인 정책</a></li>
+          <li><a href="#wiki-payment"><span class="wiki-outline__handle" aria-hidden="true">⠿</span>5. 지급 정책</a></li>
+          <li><a href="#wiki-exception"><span class="wiki-outline__handle" aria-hidden="true">⠿</span>6. 예외 처리</a></li>
+        </ol>
+        <p class="wiki-outline__help">끌어서 순서를 바꿀 수 있습니다.</p>
+      </aside>
+      <section class="wiki-workspace" aria-labelledby="wiki-editor-title">
+        <h2 class="sr-only" id="wiki-editor-title">정책서 본문 편집</h2>
+        <p class="wiki-edit-hint">항목 제목이나 내용을 눌러 바로 수정하세요.</p>
+        <article class="wiki-canvas" contenteditable="true" role="textbox" aria-multiline="true" aria-label="사업 정책서 본문">
+          <div class="wiki-document-title">G2C 사업 정책서</div>
+          <p class="wiki-canvas__lead">G2C 사업에서 신청, 승인, 지급 업무에 공통으로 적용할 정책을 정합니다.</p>
+          <hr>
+          <section id="wiki-purpose"><h2>1. 목적</h2><p>이 문서는 G2C 사업의 신청, 승인, 지급 과정에서 일관되게 적용할 정책을 정합니다.</p></section>
+          <section id="wiki-scope"><h2>2. 적용 범위</h2><p>지원사업 신청자, 검토 담당자, 승인 담당자와 지급 담당자가 사용하는 모든 화면과 문서에 적용합니다.</p></section>
+          <section id="wiki-application"><h2>3. 신청 정책</h2><h3>3.1 신청 자격</h3><p>사업자등록 상태가 정상이고 공고일 기준 지원 대상 업종에 해당하는 사업자만 신청할 수 있습니다.</p><h3>3.2 중복 신청</h3><p>같은 사업자번호로 동일 사업에 두 번 신청할 수 없습니다.</p></section>
+          <section id="wiki-approval"><h2>4. 승인 정책</h2><p>필수 증빙이 모두 확인된 신청만 최종 승인할 수 있습니다.</p></section>
+          <section id="wiki-payment"><h2>5. 지급 정책</h2><p>지원금은 신청 마감 다음 달 10일에 지급합니다. 지급일이 휴일이면 다음 영업일에 지급합니다.</p><h3>5.1 지급 제한</h3><p>승인 후 사업자 상태가 휴·폐업으로 바뀌면 지급을 보류하고 담당자가 다시 확인합니다.</p></section>
+          <section id="wiki-exception"><h2>6. 예외 처리</h2><p>정책에 적히지 않은 예외는 사업 책임자의 판단을 받은 뒤 정책서에 반영합니다.</p></section>
+          <button class="wiki-block-add" type="button" contenteditable="false">＋ 새 항목 추가</button>
+        </article>
+      </section>
+    </div>
+    <footer class="wiki-editor__foot"><p>저장하면 이후 AI 작업부터 변경된 정책을 사용합니다.</p><div class="business-doc-actions"><a class="button" href="_business-policy.html">수정 취소</a><button class="button button--primary" type="submit">정책서 저장</button></div></footer>
+  </form>
+</main></template><script src="_shell.js"></script><script src="_business-documents.js"></script><script>businessDocumentCandidateShell({제목:'사업 정책서 수정',프로젝트이름:'G2C',프로젝트번호:1,프로젝트들:['G2C','서울페이'],사람:'이영희',안읽은알림:2},'policy');</script></body></html>

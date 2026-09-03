@@ -1,0 +1,85 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>스파이크 — 부모가 iframe 문서에 데모 호스트를 묶어 실행</title>
+<style>
+  body{font-family:sans-serif;margin:16px;display:flex;gap:16px}
+  iframe{width:390px;height:720px;border:1px solid #999;background:#fff}
+  pre{font-size:12px;white-space:pre-wrap;max-width:520px}
+  .col{display:flex;flex-direction:column;gap:8px}
+</style>
+<div class="col">
+  <div>탭 화면 (wv-setting-autobuy-registration)</div>
+  <iframe id="f1" sandbox="allow-same-origin" src="webview/pages/wv-setting-autobuy-registration.html"></iframe>
+</div>
+<div class="col">
+  <div>기본 화면 위에 모달 얹기 (wv-store-main-home + wv-modal-alarm · 알림 버튼이 data-nav-modal)</div>
+  <iframe id="f2" sandbox="allow-same-origin" src="webview/pages/wv-store-main-home.html"></iframe>
+</div>
+<pre id="log"></pre>
+<script>
+const log = (...a) => { document.getElementById('log').textContent += a.join(' ') + '\n'; };
+window.__result = {};
+
+async function hostSource(name) {
+  const r = await fetch('webview/assets/js/' + name);
+  return r.text();
+}
+// 핵심: 호스트 스크립트는 `document` 전역만 쓴다 → 인자로 iframe 문서를 넘겨 실행한다.
+async function runHost(name, doc, win) {
+  const src = await hostSource(name);
+  new Function('document', 'window', src)(doc, win);
+}
+
+async function tabSpike() {
+  const f = document.getElementById('f1');
+  await new Promise(r => f.addEventListener('load', r, { once: true }));
+  const doc = f.contentDocument;
+  const before = doc.querySelectorAll('.ui-tab--pnl.selected').length;
+  await runHost('demo-tab-host.js', doc, f.contentWindow);
+  const hosted = doc.querySelectorAll('[data-demo-tab-host]').length;
+  const afterInit = [...doc.querySelectorAll('.ui-tab--pnl')].map(p => p.classList.contains('selected') ? 1 : 0).join('');
+  // 부모가 두 번째 탭 버튼을 누른다 = 기획자가 데모에서 클릭
+  const btns = doc.querySelectorAll('.ui-tab--btn');
+  btns[1] && btns[1].click();
+  const afterClick = [...doc.querySelectorAll('.ui-tab--pnl')].map(p => p.classList.contains('selected') ? 1 : 0).join('');
+  const visible = [...doc.querySelectorAll('.ui-tab--pnl')].map(p => f.contentWindow.getComputedStyle(p).display !== 'none' ? 1 : 0).join('');
+  window.__result.tab = { before, hosted, afterInit, afterClick, visibleAfterClick: visible, btnCount: btns.length };
+  log('TAB', JSON.stringify(window.__result.tab));
+}
+
+async function modalOverlaySpike() {
+  const f = document.getElementById('f2');
+  await new Promise(r => f.addEventListener('load', r, { once: true }));
+  const doc = f.contentDocument;
+  // 모달 화면 HTML 을 부모가 받아 .ui-modal 조각을 기본 화면 문서에 꽂는다
+  const html = await (await fetch('webview/pages/wv-modal-alarm.html')).text();
+  const parsed = new DOMParser().parseFromString(html, 'text/html');
+  const host = parsed.querySelector('[data-screen-kind="modal"]');
+  const modal = host && (host.classList.contains('ui-modal') ? host : host.querySelector('.ui-modal'));
+  if (!modal) { window.__result.modal = { error: 'no .ui-modal in modal page', hostTag: host && host.tagName }; log('MODAL', JSON.stringify(window.__result.modal)); return; }
+  const imported = doc.importNode(modal, true);
+  // 호스트가 찾는 표식을 조각에 달아 준다(단독 화면에서는 body/root 에 있던 것)
+  imported.setAttribute('data-screen-kind', 'modal');
+  if (!imported.getAttribute('data-screen-id')) imported.setAttribute('data-screen-id', host.getAttribute('data-screen-id') || 'wv-modal-alarm');
+  doc.body.appendChild(imported);
+  await runHost('demo-modal-host.js', doc, f.contentWindow);
+  const cs = f.contentWindow.getComputedStyle(imported);
+  const rect = imported.getBoundingClientRect();
+  window.__result.modal = {
+    hostTagInModalPage: host.tagName, classes: imported.className,
+    display: cs.display, position: cs.position, opacity: cs.opacity, w: Math.round(rect.width), h: Math.round(rect.height),
+    htmlIsModal: doc.documentElement.classList.contains('is-modal'),
+    baseStillThere: !!doc.querySelector('[data-screen-id="wv-store-main-home"], .ui-base-wrap'),
+    zIndex: cs.zIndex, top: Math.round(rect.top), left: Math.round(rect.left),
+    hasDim: !!doc.querySelector('.ui-modal-dim, .ui-modal .dim, [class*="dim"]'),
+    wrapOpacity: (() => { const w = imported.querySelector('.ui-modal-wrap'); return w ? f.contentWindow.getComputedStyle(w).opacity : null; })()
+  };
+  log('MODAL', JSON.stringify(window.__result.modal));
+  // 아코디언 호스트도 같은 방식으로 붙는지(에러 없이)
+  try { await runHost('demo-accordion-host.js', doc, f.contentWindow); window.__result.accordion = 'ok'; } catch (e) { window.__result.accordion = 'ERR ' + e.message; }
+  log('ACCORDION', window.__result.accordion);
+  window.__result.done = true;
+}
+tabSpike().catch(e => log('TAB ERR', e.message));
+modalOverlaySpike().catch(e => log('MODAL ERR', e.message));
+</script>

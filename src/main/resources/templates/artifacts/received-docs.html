@@ -1,0 +1,141 @@
+<!doctype html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{fragments/shell :: layout(${title}, ${shape}, ${current}, ~{:: content})}">
+<body>
+<div th:fragment="content">
+
+  <!--/*
+    목업 docs/mockups/01-received-docs.html 이 정본이다.
+    ⛔ 「처리 구분」 열·거르개·요약(처리 대기·요구사항 대상·참고 문서)을 되살리지 마라 (2026-08-15).
+    ⛔ 부제에 「AI 가 먼저 정리합니다」를 되살리지 마라 — 늘 정리하지 않는다.
+  */-->
+
+  <div class="page-head list-page-head">
+    <div>
+      <h1 class="page-head__title">받은 문서</h1>
+      <p class="page-intro received-docs-intro">Flow 게시물이나 받은 문서를 등록하고, 필요한 문서에서 요구사항을 분석합니다.</p>
+    </div>
+    <a class="button button--primary" th:href="@{/projects/{p}/artifacts/received-docs/register(p=${projectId})}">문서 등록</a>
+  </div>
+
+  <form class="filter-bar" th:if="${totalCount > 0}"
+        th:classappend="${hasFacets} ? 'filter-bar--four' : 'filter-bar--three'"
+        method="get" role="search"
+        th:action="@{/projects/{p}/artifacts/received-docs(p=${projectId})}">
+    <div class="field">
+      <label class="field__label" for="document-search">문서명 검색</label>
+      <input class="field__control" id="document-search" name="query" type="search"
+             placeholder="문서명을 입력하세요" th:value="${query}">
+    </div>
+    <div class="field">
+      <label class="field__label" for="document-type">문서 종류</label>
+      <select class="field__control" id="document-type" name="documentType">
+        <option value="">전체</option>
+        <option th:each="type : ${documentTypes}" th:value="${type.label()}" th:text="${type.label()}"
+                th:selected="${type.label() == documentTypeFilter}"></option>
+      </select>
+    </div>
+    <div class="field">
+      <label class="field__label" for="document-status">문서 상태</label>
+      <select class="field__control" id="document-status" name="documentStatus">
+        <option value="">전체</option>
+        <option th:each="status : ${documentStatuses}" th:value="${status}" th:text="${status}"
+                th:selected="${status == documentStatusFilter}"></option>
+      </select>
+    </div>
+    <div class="field" th:if="${hasFacets}">
+      <label class="field__label" for="document-facet">적용 구분</label>
+      <select class="field__control" id="document-facet" name="facet">
+        <option value="">전체</option>
+        <option th:each="name : ${availableFacets}" th:value="${name}" th:text="${name}"
+                th:selected="${name == facetFilter}"></option>
+      </select>
+    </div>
+  </form>
+
+  <section class="state-panel list-empty-state" role="status" th:if="${matchedCount == 0}">
+    <span class="list-empty-state__icon" aria-hidden="true">
+      <svg viewBox="0 0 32 32" fill="none"><path d="M6.5 7.5h19v17h-19z"/><path d="M6.5 19.5h5l2.2 3h4.6l2.2-3h5"/><path d="M11 12h10M11 15.5h7"/></svg>
+    </span>
+    <strong>조회된 내용이 없습니다.</strong>
+  </section>
+
+  <div class="table-wrap table-wrap--tall" th:if="${matchedCount > 0}">
+    <table class="data-table data-table--dense received-docs-table">
+      <thead>
+        <tr>
+          <th scope="col">문서명</th>
+          <th scope="col">종류</th>
+          <th scope="col" th:if="${hasFacets}">적용 구분</th>
+          <th scope="col">문서 상태</th>
+          <th scope="col">생성된 요구사항</th>
+          <th scope="col">등록자</th>
+          <th scope="col">등록일시</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr th:each="row : ${rows}"
+            th:classappend="${row.contentProcessing} ? 'received-doc-row--processing' : ''">
+          <td>
+            <span class="document-detail">
+              <a class="document-link"
+                 th:href="@{/projects/{p}/artifacts/received-docs/{i}(p=${projectId},i=${row.intakeId})}"
+                 th:text="${row.title}"></a>
+              <span class="cell__sub" th:text="${row.size}"></span>
+            </span>
+          </td>
+          <td class="nowrap" th:text="${row.documentType}"></td>
+          <td th:if="${hasFacets}">
+            <span class="facet-badges">
+              <span class="badge badge--outline" th:each="facet : ${row.facets}" th:text="${facet}"></span>
+            </span>
+          </td>
+          <td>
+            <span class="cell">
+              <strong th:if="${row.contentProcessing}"
+                      class="status-badge status-badge--progress status-badge--active"
+                      th:text="${row.documentStatus}"></strong>
+              <strong th:unless="${row.contentProcessing}" th:text="${row.documentStatus}"
+                      th:classappend="${row.failed} ? 'status-error' : ''"></strong>
+            </span>
+          </td>
+          <td class="num" th:text="${row.requirementCount} + '건'"></td>
+          <td th:text="${row.uploader}"></td>
+          <td class="num nowrap" th:text="${#temporals.format(row.uploadedAt, 'MM-dd HH:mm')}"></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="list-table-foot" th:if="${matchedCount > 0}">
+    <span aria-hidden="true"></span>
+    <nav class="list-pagination" aria-label="받은 문서 페이지 이동">
+      <span th:if="${page == 1}" class="list-page-button" aria-disabled="true" aria-label="이전 페이지">&lsaquo;</span>
+      <a th:unless="${page == 1}" class="list-page-button" aria-label="이전 페이지" th:text="'‹'"
+         th:href="@{/projects/{p}/artifacts/received-docs(p=${projectId},query=${query},documentType=${documentTypeFilter},documentStatus=${documentStatusFilter},facet=${facetFilter},pageSize=${pageSize},page=${page - 1})}"></a>
+      <a th:each="number : ${pageNumbers}" class="list-page-button"
+         th:classappend="${number == page} ? 'is-current' : ''"
+         th:attr="aria-current=${number == page} ? 'page' : null"
+         th:text="${number}"
+         th:href="@{/projects/{p}/artifacts/received-docs(p=${projectId},query=${query},documentType=${documentTypeFilter},documentStatus=${documentStatusFilter},facet=${facetFilter},pageSize=${pageSize},page=${number})}"></a>
+      <span th:if="${page == pageCount}" class="list-page-button" aria-disabled="true" aria-label="다음 페이지">&rsaquo;</span>
+      <a th:unless="${page == pageCount}" class="list-page-button" aria-label="다음 페이지" th:text="'›'"
+         th:href="@{/projects/{p}/artifacts/received-docs(p=${projectId},query=${query},documentType=${documentTypeFilter},documentStatus=${documentStatusFilter},facet=${facetFilter},pageSize=${pageSize},page=${page + 1})}"></a>
+    </nav>
+    <form class="list-page-size" method="get"
+          th:action="@{/projects/{p}/artifacts/received-docs(p=${projectId})}">
+      <input type="hidden" name="query" th:value="${query}">
+      <input type="hidden" name="documentType" th:value="${documentTypeFilter}">
+      <input type="hidden" name="documentStatus" th:value="${documentStatusFilter}">
+      <input type="hidden" name="facet" th:value="${facetFilter}">
+      <label class="sr-only" for="received-page-size">목록 크기</label>
+      <select class="field__control" id="received-page-size" name="pageSize" onchange="this.form.submit()">
+        <option th:each="option : ${pageSizes}" th:value="${option}" th:text="${option} + '개씩'"
+                th:selected="${option == pageSize}"></option>
+      </select>
+    </form>
+  </div>
+
+</div>
+</body>
+</html>

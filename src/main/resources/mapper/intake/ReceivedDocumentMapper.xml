@@ -1,0 +1,151 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<!--
+    접수에 딸린 받은 문서 한 건.
+    표의 뜻은 V4__intake.sql 과 V7__received_document_flow.sql 의 COMMENT 가 정본이다.
+
+    ⚠ 표 이름 앞의 `builder.` 를 지우지 마라. 이 저장소의 표는 public 이 아니라 builder 스키마에 산다.
+      MyBatis 는 Hibernate 의 default_schema 를 안 물려받는다 — 지우면 「표가 없다」로 죽는다.
+
+    ⛔ 원문(original_name·server_path·byte_size·typed_content)을 고치는 UPDATE 를 여기 만들지 마라.
+      원본 보존이 규칙이다 — 뽑아낸 글은 extracted_content, 사람이 확인한 글은 document_content 다.
+-->
+<mapper namespace="com.bizplay.builder.intake.ReceivedDocumentMapper">
+
+    <!--
+        setter 가 없는 값 묶음이라 생성자로 담는다.
+        ⛔ 인자 순서를 바꾸지 마라 — ReceivedDocument 의 생성자와 자리로 맞춘다.
+           original_name·server_path·typed_content 는 셋 다 글자라, 뒤바뀌어도 컴파일도 되고
+           예외도 안 난다. 화면에 엉뚱한 값이 뜨는 것으로만 드러난다.
+        ⚠ DocumentType·ContentState 는 ReceivedDocument 안의 중첩 열거라 `$` 로 적는다.
+          점으로 적으면 부팅 때 죽는다.
+    -->
+    <resultMap id="receivedDocument" type="com.bizplay.builder.intake.ReceivedDocument">
+        <constructor>
+            <idArg column="id"                   javaType="java.lang.String"/>
+            <arg   column="intake_id"            javaType="java.lang.String"/>
+            <arg   column="document_type"
+                   javaType="com.bizplay.builder.intake.ReceivedDocument$DocumentType"/>
+            <arg   column="original_name"        javaType="java.lang.String"/>
+            <arg   column="server_path"          javaType="java.lang.String"/>
+            <arg   column="byte_size"            javaType="java.lang.Long"/>
+            <arg   column="typed_content"        javaType="java.lang.String"/>
+            <arg   column="meeting_at"           javaType="java.time.Instant"/>
+            <arg   column="attendees"            javaType="java.lang.String"/>
+            <arg   column="content_state"
+                   javaType="com.bizplay.builder.intake.ReceivedDocument$ContentState"/>
+            <arg   column="read_check_reason"    javaType="java.lang.String"/>
+            <arg   column="extracted_content"    javaType="java.lang.String"/>
+            <arg   column="document_content"     javaType="java.lang.String"/>
+            <arg   column="content_confirmed_at" javaType="java.time.Instant"/>
+        </constructor>
+    </resultMap>
+
+    <sql id="columns">
+        id, intake_id, document_type, original_name, server_path, byte_size, typed_content,
+        meeting_at, attendees, content_state, read_check_reason, extracted_content,
+        document_content, content_confirmed_at
+    </sql>
+
+    <!-- 접수 하나에 문서 하나다 — DB 의 UNIQUE (intake_id) 가 그것을 지킨다. -->
+    <select id="selectByIntakeId" parameterType="java.lang.String" resultMap="receivedDocument">
+        select <include refid="columns"/>
+          from builder.adk_builder_received_document
+         where intake_id = #{intakeId}
+    </select>
+
+    <!-- ⛔ 빈 목록으로 부르면 `in ()` 이 되어 SQL 이 깨진다. 부르는 쪽이 먼저 비었나를 본다. -->
+    <select id="selectByIntakeIdIn" resultMap="receivedDocument">
+        select <include refid="columns"/>
+          from builder.adk_builder_received_document
+         where intake_id in
+        <foreach item="intakeId" collection="intakeIds" open="(" separator="," close=")">
+            #{intakeId}
+        </foreach>
+    </select>
+
+    <!--
+        ⚠ id 는 넣는다. DB 에도 default 가 있지만 채번은 IdSequence 가 한다.
+        ⚠ content_confirmed_at 은 넣지 않는다 — 새로 앉는 문서에서는 늘 비어 있다.
+        ⚠ 널이 올 수 있는 인자에는 jdbcType 을 박는다 — 값이 null 이면 MyBatis 는 자바 타입으로
+          종류를 못 정해 기본값(OTHER)으로 setNull 을 부르고, PostgreSQL 이 그것을 거절한다.
+          여기서 실제로 null 이 오는 자리: 파일이 없으면 앞의 셋, 직접 입력이 없으면 typed_content,
+          회의록이 아니면 meeting_at·attendees, 읽히면 read_check_reason,
+          멀티모달을 기다리는 중이면 extracted_content·document_content.
+        ⛔ DB 의 CHECK 가 「파일 셋이 같이 차거나 같이 비고 · 그것도 아니면 직접 입력이 차야 한다」를
+          지킨다. 자바만 믿지 않는 자리라 그 CHECK 를 풀지 마라.
+    -->
+    <insert id="insert" parameterType="com.bizplay.builder.intake.ReceivedDocument">
+        insert into builder.adk_builder_received_document
+               (id, intake_id, document_type, original_name, server_path, byte_size,
+                typed_content, meeting_at, attendees, content_state, read_check_reason,
+                extracted_content, document_content)
+        values (#{id}, #{intakeId}, #{documentType},
+                #{originalName,jdbcType=VARCHAR}, #{serverPath,jdbcType=VARCHAR},
+                #{byteSize,jdbcType=BIGINT}, #{typedContent,jdbcType=VARCHAR},
+                #{meetingAt,jdbcType=TIMESTAMP}, #{attendees,jdbcType=VARCHAR},
+                #{contentState}, #{readCheckReason,jdbcType=VARCHAR},
+                #{extractedContent,jdbcType=VARCHAR}, #{documentContent,jdbcType=VARCHAR})
+    </insert>
+
+    <!--
+        지나가는 자리를 찍는다 — PROCESSING 이 여기다.
+        READY 는 분석 결과와 document_content 를 함께 저장하는 updateUnderstood 로 전환한다.
+    -->
+    <update id="updateContentState">
+        update builder.adk_builder_received_document
+           set content_state = #{state}
+         where id            = #{documentId}
+    </update>
+
+    <!-- 오류로 앉힌다. ⚠ 사람에게 할 말을 같이 적는다 — 상태만 바꾸면 화면이 아무 말도 못 한다. -->
+    <update id="updateFailed">
+        update builder.adk_builder_received_document
+           set content_state     = 'FAILED',
+               read_check_reason = #{reason,jdbcType=VARCHAR}
+         where id                = #{documentId}
+    </update>
+
+    <!-- ⛔ 원문(typed_content·파일 셋)과 document_content 는 안 건드린다. -->
+    <update id="updateUnderstood">
+        update builder.adk_builder_received_document
+           set extracted_content  = #{extractedContent,jdbcType=VARCHAR},
+               document_content   = #{extractedContent,jdbcType=VARCHAR},
+               read_check_reason  = null,
+               content_state      = 'READY'
+         where id                 = #{documentId}
+    </update>
+
+    <!-- 「내용 분석 다시 시도」 — 앞의 추출 결과를 비우고 다시 줄에 세운다. -->
+    <update id="updateRequeued">
+        update builder.adk_builder_received_document
+           set extracted_content  = null,
+               read_check_reason  = null,
+               content_state      = 'QUEUED'
+         where id                 = #{documentId}
+    </update>
+
+    <!--
+        아직 줄에 서 있는 문서. ⛔ 재기동 때 이것을 다시 데려가지 않으면 영영 대기로 남는다 —
+        줄에 세우는 것(트랜잭션 안)과 일꾼을 깨우는 것(커밋 뒤)이 다른 걸음이라, 그 사이에
+        서버가 죽거나 대기줄이 꽉 차면 깨울 사람이 사라진다.
+        ⚠ 접수 번호를 준다 — 일꾼이 접수 단위로 일한다.
+    -->
+    <select id="selectQueuedIntakeIds" resultType="java.lang.String">
+        select intake_id
+          from builder.adk_builder_received_document
+         where content_state = 'QUEUED'
+         order by intake_id
+    </select>
+
+    <!-- 재기동 청소. ⛔ 지우지 마라 — 굳은 문서가 영영 「내용 분석 중」으로 남는다. -->
+    <update id="updateStuckProcessingToFailed">
+        update builder.adk_builder_received_document
+           set content_state     = 'FAILED',
+               read_check_reason = #{reason}
+         where content_state     = 'PROCESSING'
+    </update>
+
+</mapper>

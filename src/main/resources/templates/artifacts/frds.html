@@ -1,0 +1,156 @@
+<!doctype html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{fragments/shell :: layout(${title}, ${shape}, ${current}, ~{:: content})}">
+<body>
+<div th:fragment="content">
+
+  <div class="list-loading-region" data-list-loading-region>
+    <div class="page-loading-overlay list-loading-overlay" data-list-loading-overlay
+         role="status" aria-label="조회 결과 처리 중" hidden>
+      <span class="page-loading-indicator">
+        <span class="page-loading-spinner" aria-hidden="true"></span>
+      </span>
+    </div>
+
+  <!--/*
+    목업 docs/mockups/05-frds.html·05-frds-empty.html 이 정본이다.
+    ⛔ 「작업 목업」이라는 말을 되살리지 마라 — 계획 8 이 폐기했다.
+    목록 열과 행 정보는 목업과 함께 맞춘다.
+  */-->
+
+  <div class="page-head list-page-head">
+    <div>
+      <h1 class="page-head__title">FRD 작업</h1>
+      <p class="page-intro">요구사항별 FRD 작업과 화면 진행 상태를 확인합니다.</p>
+    </div>
+    <a class="button button--primary"
+       th:href="@{/projects/{p}/artifacts/frds/new(p=${projectId})}">FRD 작업 만들기</a>
+  </div>
+
+  <form class="filter-bar filter-bar--five filter-bar--with-action" th:if="${totalCount > 0}"
+        method="get" role="search" data-list-loading-trigger
+        th:action="@{/projects/{p}/artifacts/frds(p=${projectId})}">
+    <div class="field">
+      <label class="field__label" for="frd-system">시스템</label>
+      <select class="field__control" id="frd-system" name="system">
+        <option value="">시스템 전체</option>
+        <option th:each="item : ${systemOptions}" th:value="${item.value}" th:text="${item.label}"
+                th:selected="${item.value == systemFilter}"></option>
+      </select>
+    </div>
+    <div class="field">
+      <label class="field__label" for="frd-owner">담당자</label>
+      <select class="field__control" id="frd-owner" name="owner">
+        <option value="">담당자 전체</option>
+        <option th:each="item : ${ownerOptions}" th:value="${item.value}" th:text="${item.label}"
+                th:selected="${item.value == ownerFilter}"></option>
+      </select>
+    </div>
+    <div class="field">
+      <label class="field__label" for="frd-state">상태</label>
+      <select class="field__control" id="frd-state" name="state">
+        <option value="">상태 전체</option>
+        <option th:each="item : ${stateOptions}" th:value="${item.value}" th:text="${item.label}"
+                th:selected="${item.value == stateFilter}"></option>
+      </select>
+    </div>
+    <div class="field">
+      <label class="field__label" for="frd-search">FRD 검색</label>
+      <input class="field__control" id="frd-search" name="query" type="search"
+             placeholder="FRD 번호 또는 요구사항을 입력하세요" th:value="${query}">
+    </div>
+    <button class="button" type="submit">검색</button>
+  </form>
+
+  <section class="state-panel list-empty-state" role="status" th:if="${matchedCount == 0}">
+    <span class="list-empty-state__icon" aria-hidden="true">
+      <svg viewBox="0 0 32 32" fill="none"><path d="M6.5 7.5h19v17h-19z"/><path d="M6.5 19.5h5l2.2 3h4.6l2.2-3h5"/><path d="M11 12h10M11 15.5h7"/></svg>
+    </span>
+    <strong>조회된 내용이 없습니다.</strong>
+    <a class="button button--primary empty-state__action"
+       th:href="@{/projects/{p}/artifacts/frds/new(p=${projectId})}">FRD 작업 만들기</a>
+  </section>
+
+  <div class="table-wrap artifact-list-table-wrap table-wrap--tall" th:if="${matchedCount > 0}">
+    <table class="data-table data-table--dense">
+      <thead>
+        <tr>
+          <th scope="col">FRD</th>
+          <th scope="col">요구사항</th>
+          <th scope="col">적용 대상</th>
+          <th scope="col">시스템</th>
+          <th scope="col">작업 범위</th>
+          <th scope="col">상태</th>
+          <th scope="col">담당자</th>
+          <th scope="col">생성일시</th>
+          <th scope="col">완료일시</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr th:each="row : ${rows}">
+          <td class="num nowrap">
+            <a class="artifact-list-link" th:href="@{/projects/{p}/artifacts/frds/{f}(p=${projectId},f=${row.frd.id},query=${query},state=${stateFilter},owner=${ownerFilter},system=${systemFilter},page=${page},pageSize=${pageSize})}"
+               th:text="${row.frd.label()}">FRD-001</a></td>
+          <td th:text="${row.frd.title()}">전자결재 상신 임시저장 지원</td>
+          <td>
+            <span class="cell__sub" th:if="${#lists.isEmpty(row.facets())}">—</span>
+            <span class="facet-badges" th:if="${row.allFacets()}">
+              <span class="badge badge--outline">전체</span>
+            </span>
+            <span class="facet-badges" th:if="${!row.allFacets() and !#lists.isEmpty(row.facets())}">
+              <span class="badge badge--outline" th:each="facet : ${row.facets()}" th:text="${facet}">익산</span>
+            </span>
+          </td>
+          <td>
+            <span class="cell__sub" th:if="${#lists.isEmpty(row.systems())}">—</span>
+            <span class="facet-badges" th:unless="${#lists.isEmpty(row.systems())}">
+              <span class="badge badge--outline" th:each="system : ${row.systems()}"
+                    th:text="${systemLabels.label(system)}">백오피스</span>
+            </span>
+          </td>
+          <td class="nowrap" th:text="${row.workScopeLabel()}">화면 2개 · 신규 1개 · 수정 1개 · 백엔드 3건</td>
+          <td><span class="status-badge" th:classappend="${row.stateClass()}"
+                    th:text="${row.frd.stateLabel()}">수정 중</span></td>
+          <!--/* ⚠ 계정ID 를 그대로 찍지 마라. */-->
+          <td th:text="${row.ownerLabel()}">이영희</td>
+          <td class="num nowrap" th:text="${row.frd.createdAt() == null ? '—' : #temporals.format(row.frd.createdAt(), 'yyyy-MM-dd HH:mm')}">2026-08-25 09:30</td>
+          <td class="num nowrap" th:text="${row.frd.completedAt() == null ? '—' : #temporals.format(row.frd.completedAt(), 'yyyy-MM-dd HH:mm')}">—</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="list-table-foot" th:if="${matchedCount > 0}">
+    <span aria-hidden="true"></span>
+    <nav class="list-pagination" aria-label="FRD 작업 페이지 이동" data-list-loading-links>
+      <span th:if="${page == 1}" class="list-page-button" aria-disabled="true" aria-label="이전 페이지">&lsaquo;</span>
+      <a th:unless="${page == 1}" class="list-page-button" aria-label="이전 페이지" th:text="'‹'"
+         th:href="@{/projects/{p}/artifacts/frds(p=${projectId},query=${query},state=${stateFilter},owner=${ownerFilter},system=${systemFilter},pageSize=${pageSize},page=${page - 1})}"></a>
+      <a th:each="number : ${pageNumbers}" class="list-page-button"
+         th:classappend="${number == page} ? 'is-current' : ''"
+         th:attr="aria-current=${number == page} ? 'page' : null"
+         th:text="${number}"
+         th:href="@{/projects/{p}/artifacts/frds(p=${projectId},query=${query},state=${stateFilter},owner=${ownerFilter},system=${systemFilter},pageSize=${pageSize},page=${number})}"></a>
+      <span th:if="${page == pageCount}" class="list-page-button" aria-disabled="true" aria-label="다음 페이지">&rsaquo;</span>
+      <a th:unless="${page == pageCount}" class="list-page-button" aria-label="다음 페이지" th:text="'›'"
+         th:href="@{/projects/{p}/artifacts/frds(p=${projectId},query=${query},state=${stateFilter},owner=${ownerFilter},system=${systemFilter},pageSize=${pageSize},page=${page + 1})}"></a>
+    </nav>
+    <form class="list-page-size" method="get" data-list-loading-trigger
+          th:action="@{/projects/{p}/artifacts/frds(p=${projectId})}">
+      <input type="hidden" name="query" th:value="${query}">
+      <input type="hidden" name="state" th:value="${stateFilter}">
+      <input type="hidden" name="owner" th:value="${ownerFilter}">
+      <input type="hidden" name="system" th:value="${systemFilter}">
+      <label class="sr-only" for="frds-page-size">목록 크기</label>
+      <select class="field__control" id="frds-page-size" name="pageSize" data-list-loading-page-size>
+        <option th:each="option : ${pageSizes}" th:value="${option}" th:text="${option} + '개씩'"
+                th:selected="${option == pageSize}"></option>
+      </select>
+    </form>
+  </div>
+
+  </div>
+
+</div>
+</body>
+</html>

@@ -1,0 +1,183 @@
+<!doctype html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<body>
+<dialog th:fragment="register-layer" class="dialog dialog--layer srt-register-dialog" id="srt-register-dialog"
+        aria-modal="true" aria-labelledby="srt-register-title" aria-describedby="srt-register-description"
+        th:attr="data-open=${registerOpen},data-source=${registerSource}">
+  <form id="srt-register-form" method="post" data-page-loading="false" th:action="@{/projects/{p}/artifacts/srts(p=${projectId})}">
+    <header class="dialog__header"><div class="dialog__header-copy">
+      <h2 class="dialog__title" id="srt-register-title">SRT 등록</h2>
+      <p class="dialog__description" id="srt-register-description">요청을 직접 입력하거나 플로우에서 가져옵니다.</p>
+    </div><button class="dialog__close" type="button" data-srt-register-close aria-label="SRT 등록 레이어 닫기"></button></header>
+    <div class="dialog__body" data-srt-register-content>
+      <input id="srt-register-source" name="source" type="hidden" th:value="${registerSource}">
+      <p class="source-error" th:if="${registerError}" th:text="${registerError}" role="alert"></p>
+      <p class="source-error" data-srt-register-error hidden role="alert"></p>
+      <div class="srt-source-tabs" role="tablist" aria-label="SRT 등록 방식">
+        <button class="srt-source-tab" type="button" role="tab" aria-selected="true" aria-controls="srt-direct-panel" data-srt-source="direct"><strong>직접 입력</strong><span>제목과 요청 내용을 작성합니다.</span></button>
+        <button class="srt-source-tab" type="button" role="tab" aria-selected="false" aria-controls="srt-flow-panel" data-srt-source="flow"><strong>플로우 등록</strong><span>플로우 원문을 가져옵니다.</span></button>
+      </div>
+      <fieldset class="fi-facet-picks srt-facet-picks" th:if="${!#lists.isEmpty(availableFacets)}">
+        <legend>적용 구분</legend>
+        <label class="fi-check-pill">
+          <input type="checkbox" name="facet" value="__ALL__" data-srt-facet-all
+                 th:checked="${#lists.isEmpty(typedFacets) || #lists.contains(typedFacets, '__ALL__')}">
+          <span>전체</span><small>모든 적용 구분</small>
+        </label>
+        <label class="fi-check-pill" th:each="item : ${availableFacets}">
+          <input type="checkbox" name="facet" data-srt-facet th:value="${item.name()}"
+                 th:checked="${#lists.contains(typedFacets, item.name())}">
+          <span th:text="${item.name()}">제주</span><small class="num" th:text="${item.code()}">jeju</small>
+        </label>
+      </fieldset>
+      <section class="srt-register-panel" id="srt-direct-panel" role="tabpanel" data-srt-register-panel="direct">
+        <div class="field"><label class="field__label" for="srt-direct-title">제목</label><input class="field__control" id="srt-direct-title" name="title" required placeholder="예: 그룹관리자 팝업에 직원 등록 버튼 추가" th:value="${typedTitle}"></div>
+        <div class="field"><label class="field__label" for="srt-direct-content">내용</label><textarea class="field__control" id="srt-direct-content" name="content" required placeholder="필요한 변경 내용을 자유롭게 입력해 주세요." th:text="${typedContent}"></textarea><p class="field__help">대상 화면이나 완료 조건을 알고 있다면 함께 적어 주세요.</p></div>
+      </section>
+      <section class="srt-register-panel" id="srt-flow-panel" role="tabpanel" data-srt-register-panel="flow" hidden>
+        <div class="field"><label class="field__label" for="srt-flow-task-number">플로우 업무번호</label><input class="field__control num" id="srt-flow-task-number" name="flowTaskNumber" inputmode="numeric" pattern="[0-9]{4,12}" maxlength="12" placeholder="예: 757019" th:value="${typedFlowTaskNumber}"><p class="field__help">본문과 첨부파일을 함께 가져옵니다.</p></div>
+      </section>
+    </div>
+    <div class="dialog__body" data-srt-register-loading hidden>
+      <section class="artifact-generation artifact-generation--refreshing" aria-live="polite">
+        <p class="artifact-generation__label"><span class="artifact-generation__dot" aria-hidden="true"></span>등록 및 분석 중</p>
+        <h3>SRT 원문을 등록하고 분석하고 있습니다</h3>
+        <p class="artifact-generation__description">직접 입력한 내용 또는 플로우 원문이 개발요청으로 성립하는지 확인합니다.</p>
+        <div class="artifact-generation__track" aria-hidden="true"></div>
+        <p class="artifact-generation__note">분석이 끝나면 SRT 상세로 전환됩니다.</p>
+      </section>
+    </div>
+    <div class="dialog__actions"><button class="button" type="button" data-srt-register-close data-srt-register-idle>취소</button><button class="button button--primary" type="submit" data-srt-register-idle data-submit-loading="SRT를 등록하는 중">등록</button><button class="button button--primary is-submit-loading" type="button" data-srt-register-analyzing disabled hidden>등록 및 분석 중</button></div>
+  </form>
+</dialog>
+
+<div th:fragment="detail-layer" class="srt-layer-host">
+<dialog class="dialog dialog--layer srt-detail-dialog" id="srt-detail-dialog"
+        aria-modal="true" aria-labelledby="srt-detail-title" aria-describedby="srt-detail-description"
+        th:attr="data-open=${detail != null},data-analysis-state=${analysisStatus == null ? 'READY' : analysisStatus.state.name()}"
+        th:data-srt-analysis-state="${srtAnalysisStatus == null ? 'READY' : srtAnalysisStatus.state.name()}"
+        th:data-srt-analysis-status-url="@{/projects/{p}/artifacts/srts/{s}/analysis-status(p=${projectId},s=${detail.srt.id})}"
+        th:data-status-url="@{/projects/{p}/artifacts/srts/{s}/dev-request-status(p=${projectId},s=${detail.srt.id})}"
+        th:data-detail-url="@{/projects/{p}/artifacts/srts(p=${projectId},selected=${detail.srt.id})}">
+  <header class="dialog__header"><div class="dialog__header-copy">
+    <span class="dialog__kicker num" th:text="${detail.srt.label}">SRT-001</span>
+    <h2 class="dialog__title" id="srt-detail-title" th:text="${detail.srt.title}">요청 제목</h2>
+    <p class="dialog__description" id="srt-detail-description" th:text="${detail.srt.sourceLabel + ' · ' + (detail.authorName == null ? '담당자 미확인' : detail.authorName) + ' · ' + #temporals.format(detail.srt.createdAt, 'yyyy-MM-dd HH:mm')}">직접 입력 · 이영희 · 2026-09-01 09:00</p>
+  </div><button class="dialog__close" type="button" data-srt-detail-close aria-label="SRT 상세 레이어 닫기"></button></header>
+  <div class="dialog__body">
+    <div class="srt-detail-view" data-srt-detail-view>
+      <div class="state-panel state-panel--error" th:if="${error}" role="alert">
+        <strong>개발요청서를 생성하지 못했습니다.</strong>
+        <p th:text="${error}">요청 내용을 수정한 뒤 다시 시도해 주세요.</p>
+      </div>
+      <div class="state-panel state-panel--error" data-srt-request-error hidden role="alert">
+        <strong>개발요청서를 생성하지 못했습니다.</strong>
+        <p>잠시 후 다시 시도해 주세요.</p>
+      </div>
+      <div class="state-panel state-panel--error" role="alert"
+           th:if="${analysisStatus != null and (analysisStatus.state.name() == 'REJECTED' or analysisStatus.state.name() == 'FAILED')}">
+        <strong>개발요청서를 생성하지 못했습니다.</strong>
+        <p th:text="${analysisStatus.message}">요청 내용을 수정한 뒤 다시 시도해 주세요.</p>
+      </div>
+      <section class="srt-review-panel" role="status" aria-labelledby="srt-review-title"
+               th:if="${srtAnalysisStatus != null and srtAnalysisStatus.state.name() == 'REJECTED'}">
+        <span class="srt-review-panel__icon" aria-hidden="true">!</span>
+        <div class="srt-review-panel__content">
+          <span class="status-badge status-badge--waiting">검토 필요</span>
+          <h3 id="srt-review-title">개발 변경 내용을 확인하기 어렵습니다.</h3>
+          <p class="srt-review-panel__reason" th:text="${srtAnalysisStatus.message}">개발할 대상과 변경 내용이 구체적이지 않습니다.</p>
+          <p class="srt-review-panel__next"
+             th:text="${detail.srt.sourceKind.name() == 'FLOW' ? '플로우 원문에 개발할 대상과 변경 내용을 보완한 뒤 새 SRT로 등록해 주세요.' : '아래 요청 내용에 개발할 대상과 변경 내용을 보완한 뒤 수정해 주세요.'}">요청 내용을 보완해 주세요.</p>
+        </div>
+      </section>
+      <div class="state-panel state-panel--error" role="alert"
+           th:if="${srtAnalysisStatus != null and srtAnalysisStatus.state.name() == 'FAILED'}">
+        <strong>AI 분석을 완료하지 못했습니다.</strong>
+        <p th:text="${srtAnalysisStatus.message}">잠시 후 다시 시도해 주세요.</p>
+      </div>
+      <section class="artifact-generation artifact-generation--refreshing srt-generation-status"
+               th:if="${srtAnalysisStatus != null and srtAnalysisStatus.state.name() == 'ANALYZING'}"
+               aria-live="polite">
+        <p class="artifact-generation__label"><span class="artifact-generation__dot" aria-hidden="true"></span>등록 및 분석 중</p>
+        <h3>SRT 원문을 분석하고 있습니다</h3>
+        <p class="artifact-generation__description">개발요청으로 성립하는지 확인하고 필요한 요구사항과 완료 조건을 정리합니다.</p>
+        <div class="artifact-generation__track" aria-hidden="true"></div>
+        <p class="artifact-generation__note">분석이 끝나면 이 상세 화면에서 개발요청서를 생성할 수 있습니다.</p>
+      </section>
+      <article class="srt-board" th:classappend="${detail.srt.sourceKind.name() == 'FLOW'} ? ' srt-board--flow' : ''">
+        <section class="srt-board__source">
+          <div class="srt-board__section-head"><h3>요청 내용</h3><span th:text="${detail.srt.sourceKind.name() == 'FLOW' ? '플로우 원문' : '직접 입력'}">플로우 원문</span></div>
+          <p class="srt-board__request" th:text="${detail.srt.content}">요청 내용</p>
+          <section class="srt-board__attachments" th:if="${!#lists.isEmpty(detail.attachments)}" aria-labelledby="srt-attachment-title">
+            <h3 class="sr-only" id="srt-attachment-title">첨부파일</h3>
+            <ul class="srt-file-list">
+              <li th:each="attachment, attachmentStat : ${detail.attachments}">
+                <span class="srt-file-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><path d="M14 2v6h6M8 15h8M8 18h5"/></svg></span>
+                <span class="srt-file-copy">
+                  <a class="document-link srt-file-name" th:if="${attachment.url != null && !attachment.url.isBlank()}" th:href="${attachment.url}" target="_blank" rel="noopener noreferrer" th:text="${attachment.displayName(attachmentStat.count)}">첨부파일 1</a>
+                  <span class="srt-file-name" th:if="${attachment.url == null || attachment.url.isBlank()}" th:text="${attachment.displayName(attachmentStat.count)}">첨부파일 1</span>
+                  <span class="srt-file-meta" th:if="${attachment.size == null}">파일</span>
+                  <span class="srt-file-meta" th:if="${attachment.size != null}"
+                        th:text="${attachment.size >= 1048576 ? '파일 · ' + #numbers.formatDecimal(attachment.size / 1048576.0, 1, 1) + ' MB' : (attachment.size >= 1024 ? '파일 · ' + #numbers.formatDecimal(attachment.size / 1024.0, 1, 0) + ' KB' : '파일 · ' + attachment.size + ' bytes')}">파일 · 3.7 MB</span>
+                </span>
+                <a class="srt-file-action" th:if="${attachment.url != null && !attachment.url.isBlank()}" th:href="${attachment.url}" target="_blank" rel="noopener noreferrer">다운로드</a>
+              </li>
+            </ul>
+          </section>
+        </section>
+        <section class="srt-analysis" th:if="${detail.analysis != null}">
+          <div class="srt-board__section-head"><h3>AI 분석</h3><span>요청 정리 완료</span></div>
+          <div class="srt-analysis__body">
+            <p class="srt-analysis__comment" th:text="${detail.analysis.analysisComment}">요청의 핵심 목적과 확인할 점을 정리한 코멘트입니다.</p>
+            <div class="srt-analysis__definitions">
+              <section><h4>정리된 요구사항 <span th:text="${detail.analysis.requirements.size()}">2</span></h4><ul><li th:each="requirement : ${detail.analysis.requirements}" th:text="${requirement}">요구사항</li></ul></section>
+              <section><h4>완료 조건 <span th:text="${detail.analysis.acceptanceCriteria.size()}">2</span></h4><ul><li th:each="criterion : ${detail.analysis.acceptanceCriteria}" th:text="${criterion}">완료 조건</li></ul></section>
+            </div>
+          </div>
+        </section>
+      </article>
+    </div>
+    <section class="srt-edit-view" data-srt-edit-view th:if="${detail.srt.sourceKind.name() == 'DIRECT'}" hidden>
+      <form id="srt-edit-form" method="post" th:action="@{/projects/{p}/artifacts/srts/{s}/update(p=${projectId},s=${detail.srt.id})}">
+        <div class="srt-edit-fields"><div class="field"><label class="field__label" for="srt-edit-title">제목</label><input class="field__control" id="srt-edit-title" name="title" required maxlength="255" th:value="${detail.srt.title}"></div><div class="field"><label class="field__label" for="srt-edit-content">내용</label><textarea class="field__control" id="srt-edit-content" name="content" required th:text="${detail.srt.content}"></textarea></div></div>
+      </form>
+    </section>
+  </div>
+  <div class="dialog__actions" data-srt-detail-actions>
+    <p class="dialog__action-note" data-srt-idle-action th:if="${detail.request == null and srtAnalysisStatus.state.name() != 'ANALYZING' and detail.srt.sourceKind.name() == 'DIRECT'}" th:hidden="${analysisStatus.state.name() == 'ANALYZING'}">개발요청서 생성 전까지 수정하거나 삭제할 수 있습니다.</p>
+    <p class="dialog__action-note" data-srt-idle-action th:if="${detail.request == null and srtAnalysisStatus.state.name() != 'ANALYZING' and detail.srt.sourceKind.name() == 'FLOW'}" th:hidden="${analysisStatus.state.name() == 'ANALYZING'}">개발요청서 생성 전까지 삭제할 수 있습니다.</p>
+    <button class="button button--danger-outline" type="button" data-srt-delete-open data-srt-idle-action th:if="${detail.request == null and srtAnalysisStatus.state.name() != 'ANALYZING'}" th:hidden="${analysisStatus.state.name() == 'ANALYZING'}">삭제</button>
+    <button class="button" type="button" data-srt-edit-open data-srt-idle-action th:if="${detail.request == null and srtAnalysisStatus.state.name() != 'ANALYZING' and detail.srt.sourceKind.name() == 'DIRECT'}" th:hidden="${analysisStatus.state.name() == 'ANALYZING'}">수정</button>
+    <form id="srt-create-request-form" method="post" data-page-loading="false"
+          th:if="${detail.request == null}" th:action="@{/projects/{p}/artifacts/srts/{s}/dev-request(p=${projectId},s=${detail.srt.id})}"></form>
+    <button class="button button--primary" type="submit" form="srt-create-request-form" data-srt-idle-action data-submit-loading="개발요청서 생성 요청 중" th:if="${detail.request == null and srtAnalysisStatus.state.name() == 'COMPLETE'}" th:hidden="${analysisStatus.state.name() == 'ANALYZING'}">개발요청서 생성</button>
+    <button class="button button--primary is-submit-loading" type="button" disabled data-srt-analyzing-action data-submit-loading="개발요청서 준비 중" aria-label="개발요청서 준비 중" th:if="${detail.request == null}" th:hidden="${analysisStatus.state.name() != 'ANALYZING'}">개발요청서 준비 중</button>
+    <button class="button" type="button" data-srt-detail-close th:if="${detail.request != null}">닫기</button>
+  </div>
+  <div class="dialog__actions" data-srt-edit-actions th:if="${detail.srt.sourceKind.name() == 'DIRECT'}" hidden><button class="button" type="button" data-srt-mode-cancel>취소</button><button class="button button--primary" type="submit" form="srt-edit-form" data-submit-loading="SRT를 수정하는 중">저장</button></div>
+</dialog>
+<dialog class="dialog" id="srt-delete-dialog" aria-modal="true"
+        aria-labelledby="srt-delete-title" aria-describedby="srt-delete-description">
+  <form method="post" th:action="@{/projects/{p}/artifacts/srts/{s}/delete(p=${projectId},s=${detail.srt.id})}">
+    <header class="dialog__header">
+      <div class="dialog__header-copy">
+        <span class="dialog__kicker num" th:text="${detail.srt.label}">SRT-001</span>
+        <h2 class="dialog__title" id="srt-delete-title">SRT 삭제</h2>
+        <p class="dialog__description" id="srt-delete-description">이 SRT의 모든 내용을 삭제합니다.</p>
+      </div>
+      <button class="dialog__close" type="button" data-srt-delete-close aria-label="SRT 삭제 취소"></button>
+    </header>
+    <div class="dialog__body">
+      <p class="dialog__notice"><strong th:text="${detail.srt.label + '을 삭제하시겠습니까?'}">SRT-001을 삭제하시겠습니까?</strong></p>
+      <p>등록한 원문과 AI 정리 내용이 모두 삭제되며 복구할 수 없습니다.</p>
+    </div>
+    <div class="dialog__actions">
+      <button class="button" type="button" data-srt-delete-close>취소</button>
+      <button class="button button--danger-outline" type="submit"
+              data-submit-loading="SRT 삭제 중" data-submit-loading-tone="dark">SRT 삭제</button>
+    </div>
+  </form>
+</dialog>
+</div>
+</body>
+</html>

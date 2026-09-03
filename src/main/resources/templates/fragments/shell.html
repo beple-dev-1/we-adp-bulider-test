@@ -1,0 +1,83 @@
+<!doctype html>
+<!--
+  layout — 아홉 화면이 이 조각 하나를 부른다.
+  정본: docs/superpowers/specs/2026-08-09-screen-shell-design.md
+  이름 규약: docs/coding-conventions.md (기계가 부르는 이름은 영문, 사람에게 하는 말은 한글)
+
+  화면은 한 줄로 이것을 부르고 본문만 쓴다:
+
+    <html th:replace="~{fragments/shell :: layout('BRD', '산출물', 'brd', ~{:: content})}">
+    <body>
+    <div th:fragment="content"> ...이 화면 내용만... </div>
+    </body>
+    </html>
+
+  인자 넷 —
+    title    머리에 안 쓰이고 브라우저 탭에 쓰인다. " · 빌더" 가 뒤에 붙는다
+    shape    '산출물' | '관리' | '카드' | '꽉'   ← 값은 사람이 읽는 말이라 한글 그대로다
+             산출물·관리 → 왼쪽 메뉴 열이 붙는다
+             카드         → 메뉴 없이 중앙 좁은 카드 (로그인 계열 넷)
+             꽉           → 메뉴 없이 본문이 화면을 꽉 쓴다 (작업대)
+    current  메뉴에서 지금 있는 항목의 열쇠. 메뉴가 없으면 null
+    content  화면이 넘기는 조각. ~{:: content} 로 넘긴다
+-->
+<html lang="ko" xmlns:th="http://www.thymeleaf.org"
+      th:fragment="layout(title, shape, current, content)">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title th:text="|${title} · 빌더|">빌더</title>
+
+  <!--/* 글꼴을 미리 받는다. 늦게 바뀌며 깜빡이는 것을 막는다 */-->
+  <link rel="preload" th:href="@{/fonts/PretendardVariable.woff2}"
+        as="font" type="font/woff2" crossorigin>
+
+  <!--/* 넷은 퍼블리셔에서 복사한 것이고 손대지 않는다. 빌더 몫은 마지막 둘이다 */-->
+  <link rel="stylesheet" th:href="@{/css/tokens.css}">
+  <link rel="stylesheet" th:href="@{/css/reset.css}">
+  <link rel="stylesheet" th:href="@{/css/typography.css}">
+  <link rel="stylesheet" th:href="@{/css/components.css}">
+  <link rel="stylesheet" th:href="@{/css/shell.css}">
+  <link rel="stylesheet" th:href="@{/css/screens.css}">
+  <link rel="stylesheet" th:href="@{/css/srt.css}">
+  <script defer th:src="@{/js/shell.js}"></script>
+</head>
+<!--/*
+  ⛔ 인자를 어기면 여기서 렌더가 깨진다 — ShellContract 가 던진다.
+     안 그러면 오타가 500 이 아니라 「메뉴와 프로젝트 이름이 사라진 정상 화면」으로 보인다.
+     shape 가 틀리면 전부 '꽉' 으로 흐르고, current 가 틀리면 현재 위치 표시만 조용히 사라진다.
+     조용히 틀린 화면보다 시끄럽게 깨지는 편이 싸다. 계약은 ShellContractTest 가 밟는다.
+*/-->
+<body th:with="_contract=${@shellContract.check(shape, current, projectName, projectId)}">
+
+<a class="skip-link" href="#main">본문으로 이동</a>
+
+<div th:replace="~{fragments/parts :: header(${projectName}, ${projectId}, ${projects}, ${current})}"></div>
+
+<div th:class="${shape == '산출물' or shape == '관리' ? 'app-shell'
+              : (shape == '카드' ? 'app-shell app-shell--card' : 'app-shell app-shell--wide')}">
+
+  <!--/*
+    ⚠ th:if 와 th:replace 를 같은 태그에 걸지 마라.
+    Thymeleaf 에서 th:replace 의 우선순위가 th:if 보다 높아서 th:if 가 무시되고
+    조각이 무조건 끼어든다 — 실측으로 잡았다(로그인 화면에 메뉴 열이 딸려 나왔다).
+    그래서 감싸는 th:block 이 조건을 들고 있다.
+  */-->
+  <th:block th:if="${shape == '산출물' or shape == '관리'}">
+    <div th:replace="~{fragments/parts :: nav(${shape}, ${current}, ${projectId}, ${projects})}"></div>
+  </th:block>
+
+  <main id="main" th:class="${shape == '카드'} ? 'app-card' : 'app-main'">
+    <div class="page-loading-overlay" data-page-loading-overlay role="status"
+         aria-label="화면 이동 처리 중" hidden>
+      <span class="page-loading-indicator">
+        <span class="page-loading-spinner" aria-hidden="true"></span>
+      </span>
+    </div>
+    <div th:replace="${content}"></div>
+  </main>
+
+</div>
+
+</body>
+</html>

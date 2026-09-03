@@ -1,0 +1,139 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.bizplay.builder.usermanual.UserManualMapper">
+
+    <sql id="columns">
+        project_id as projectId, system_code as systemCode, screen_id as screenId,
+        html, created_at as createdAt, generation_state as state, failed_reason as failedReason,
+        generation_id as generationId, generation_started_at as generationStartedAt,
+        source_fingerprint as sourceFingerprint, generator_version as generatorVersion
+    </sql>
+
+    <!--
+      ⚠ 시각은 여기서 넣는다 — 자바가 보내지 않는다. 시계를 한 자리에 둬야 「작성일」을 믿을 수 있다.
+      ⭐ 덮어쓰기(on conflict)라 화면 하나에 줄이 둘 되지 않는다.
+    -->
+    <insert id="upsert" parameterType="com.bizplay.builder.usermanual.UserManual">
+        insert into builder.adk_builder_user_manual
+            (project_id, system_code, screen_id, html, created_at, generation_state, failed_reason,
+             generation_id, generation_started_at, source_fingerprint, generator_version)
+        values (#{projectId}, #{systemCode}, #{screenId}, #{html}, now(), #{state}, #{failedReason},
+                concat('direct-', md5(random()::text || clock_timestamp()::text)), now(),
+                #{sourceFingerprint}, #{generatorVersion})
+        on conflict (project_id, system_code, screen_id)
+            do update set html = excluded.html, created_at = excluded.created_at,
+                          generation_state = excluded.generation_state,
+                          failed_reason = excluded.failed_reason,
+                          generation_id = excluded.generation_id,
+                          generation_started_at = excluded.generation_started_at,
+                          source_fingerprint = excluded.source_fingerprint,
+                          generator_version = excluded.generator_version,
+                          capture_bundle_path = null, capture_file_name = null,
+                          capture_label = null, capture_width = null,
+                          capture_height = null, capture_sha256 = null
+    </insert>
+
+    <!-- 정상본과 그 출처는 보존하고 현재 시도만 선점한다. -->
+    <insert id="beginGeneration">
+        insert into builder.adk_builder_user_manual
+            (project_id, system_code, screen_id, html, created_at, generation_state, failed_reason,
+             generation_id, generation_started_at)
+        values (#{projectId}, #{systemCode}, #{screenId}, null, null, 'RUNNING', null,
+                #{generationId}, now())
+        on conflict (project_id, system_code, screen_id)
+            do update set generation_state = 'RUNNING', failed_reason = null,
+                          generation_id = excluded.generation_id,
+                          generation_started_at = excluded.generation_started_at
+        where adk_builder_user_manual.generation_state != 'RUNNING'
+           or adk_builder_user_manual.generation_started_at &lt; #{staleBefore}
+    </insert>
+
+    <update id="saveDone">
+        update builder.adk_builder_user_manual
+           set html = #{html}, created_at = now(), generation_state = 'DONE', failed_reason = null,
+               source_fingerprint = #{sourceFingerprint}, generator_version = #{generatorVersion},
+        <choose>
+            <when test="capture != null">
+               capture_bundle_path = #{capture.bundlePath},
+               capture_file_name = #{capture.fileName},
+               capture_label = #{capture.label},
+               capture_width = #{capture.width},
+               capture_height = #{capture.height},
+               capture_sha256 = #{capture.sha256}
+            </when>
+            <otherwise>
+               capture_bundle_path = null, capture_file_name = null, capture_label = null,
+               capture_width = null, capture_height = null, capture_sha256 = null
+            </otherwise>
+        </choose>
+         where project_id = #{projectId}
+           and system_code = #{systemCode}
+           and screen_id = #{screenId}
+           and generation_id = #{generationId}
+           and generation_state = 'RUNNING'
+    </update>
+
+    <update id="markFailed">
+        update builder.adk_builder_user_manual
+           set generation_state = 'FAILED', failed_reason = #{reason}
+         where project_id = #{projectId}
+           and system_code = #{systemCode}
+           and screen_id = #{screenId}
+           and generation_id = #{generationId}
+           and generation_state = 'RUNNING'
+    </update>
+
+    <select id="selectOne" resultType="com.bizplay.builder.usermanual.UserManual">
+        select <include refid="columns"/>
+          from builder.adk_builder_user_manual
+         where project_id = #{projectId}
+           and system_code = #{systemCode}
+           and screen_id = #{screenId}
+    </select>
+
+    <select id="selectCapture" resultType="com.bizplay.builder.usermanual.UserManualCapture">
+        select capture_bundle_path as bundlePath, capture_file_name as fileName,
+               capture_label as label, capture_width as width, capture_height as height,
+               capture_sha256 as sha256
+          from builder.adk_builder_user_manual
+         where project_id = #{projectId}
+           and system_code = #{systemCode}
+           and screen_id = #{screenId}
+           and capture_bundle_path is not null
+    </select>
+
+    <sql id="artifactColumns">
+        project_id as projectId, system_code as systemCode, screen_id as screenId,
+        html, created_at as createdAt,
+        capture_bundle_path as captureBundlePath, capture_file_name as captureFileName,
+        capture_label as captureLabel, capture_width as captureWidth,
+        capture_height as captureHeight, capture_sha256 as captureSha256
+    </sql>
+
+    <select id="selectArtifact" resultType="com.bizplay.builder.usermanual.UserManualArtifact">
+        select <include refid="artifactColumns"/>
+          from builder.adk_builder_user_manual
+         where project_id = #{projectId}
+           and system_code = #{systemCode}
+           and screen_id = #{screenId}
+    </select>
+
+    <select id="selectArtifactsByProject" parameterType="java.lang.String"
+            resultType="com.bizplay.builder.usermanual.UserManualArtifact">
+        select <include refid="artifactColumns"/>
+          from builder.adk_builder_user_manual
+         where project_id = #{projectId}
+           and html is not null
+           and html &lt;&gt; ''
+         order by system_code, screen_id
+    </select>
+
+    <select id="selectByProject" parameterType="java.lang.String"
+            resultType="com.bizplay.builder.usermanual.UserManual">
+        select <include refid="columns"/>
+          from builder.adk_builder_user_manual
+         where project_id = #{projectId}
+    </select>
+
+</mapper>

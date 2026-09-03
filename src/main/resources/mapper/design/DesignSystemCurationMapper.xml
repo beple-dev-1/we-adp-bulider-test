@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.bizplay.builder.design.DesignSystemCurationMapper">
+    <resultMap id="curation" type="com.bizplay.builder.design.DesignSystemCuration">
+        <constructor>
+            <idArg column="project_id" javaType="java.lang.String"/>
+            <idArg column="system_id" javaType="java.lang.String"/>
+            <arg column="content_json" javaType="java.lang.String"/>
+            <arg column="version" javaType="_int"/>
+            <arg column="updated_at" javaType="java.time.Instant"/>
+            <arg column="updated_by" javaType="java.lang.String"/>
+        </constructor>
+    </resultMap>
+
+    <sql id="columns">project_id, system_id, content_json, version, updated_at, updated_by</sql>
+
+    <select id="select" resultMap="curation">
+        select <include refid="columns"/>
+          from builder.adk_builder_design_system_curation
+         where project_id = #{projectId} and system_id = #{systemId}
+    </select>
+
+    <select id="selectForUpdate" resultMap="curation">
+        select <include refid="columns"/>
+          from builder.adk_builder_design_system_curation
+         where project_id = #{projectId} and system_id = #{systemId}
+           for update
+    </select>
+
+    <insert id="insert" parameterType="com.bizplay.builder.design.DesignSystemCuration">
+        insert into builder.adk_builder_design_system_curation
+               (project_id, system_id, content_json, version, updated_by)
+        values (#{projectId}, #{systemId}, #{contentJson}, #{version}, #{updatedBy,jdbcType=VARCHAR})
+    </insert>
+
+    <update id="update">
+        update builder.adk_builder_design_system_curation
+           set content_json = #{contentJson}, version = version + 1,
+               updated_at = now(), updated_by = #{updatedBy,jdbcType=VARCHAR}
+         where project_id = #{projectId} and system_id = #{systemId}
+           and version = #{expectedVersion}
+    </update>
+</mapper>

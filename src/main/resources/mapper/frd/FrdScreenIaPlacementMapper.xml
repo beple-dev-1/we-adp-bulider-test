@@ -1,0 +1,88 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.bizplay.builder.frd.FrdScreenIaPlacementMapper">
+
+    <resultMap id="placement" type="com.bizplay.builder.frd.FrdScreenIaPlacement">
+        <constructor>
+            <idArg column="frd_screen_id" javaType="java.lang.String"/>
+            <arg column="placement_mode" javaType="com.bizplay.builder.frd.FrdScreenIaPlacement$PlacementMode"/>
+            <arg column="structure_id" javaType="java.lang.String"/>
+            <arg column="menu_path_key" javaType="java.lang.String"/>
+            <arg column="anchor_screen_id" javaType="java.lang.String"/>
+            <arg column="screen_kind" javaType="com.bizplay.builder.frd.FrdScreenIaPlacement$ScreenKind"/>
+            <arg column="status" javaType="com.bizplay.builder.frd.FrdScreenIaPlacement$Status"/>
+            <arg column="source" javaType="com.bizplay.builder.frd.FrdScreenIaPlacement$Source"/>
+            <arg column="development_file_name" javaType="java.lang.String"/>
+            <arg column="updated_at" javaType="java.time.Instant"/>
+            <arg column="updated_by" javaType="java.lang.String"/>
+        </constructor>
+    </resultMap>
+
+    <sql id="columns">
+        frd_screen_id, placement_mode, structure_id, menu_path_key, anchor_screen_id,
+        screen_kind, status, source, development_file_name, updated_at, updated_by
+    </sql>
+
+    <select id="selectByScreenId" resultMap="placement">
+        select <include refid="columns"/>
+          from builder.adk_builder_frd_screen_ia_placement
+         where frd_screen_id = #{frdScreenId}
+    </select>
+
+    <select id="selectByFrdId" resultMap="placement">
+        select p.frd_screen_id,
+               p.placement_mode,
+               p.structure_id,
+               p.menu_path_key,
+               p.anchor_screen_id,
+               p.screen_kind,
+               p.status,
+               p.source,
+               p.development_file_name,
+               p.updated_at,
+               p.updated_by
+          from builder.adk_builder_frd_screen_ia_placement p
+          join builder.adk_builder_frd_screen s on s.id = p.frd_screen_id
+         where s.frd_id = #{frdId}
+           and s.excluded_at is null
+         order by s.created_at, s.id
+    </select>
+
+    <select id="selectByDevelopmentFileName" resultMap="placement">
+        select p.frd_screen_id, p.placement_mode, p.structure_id, p.menu_path_key,
+               p.anchor_screen_id, p.screen_kind, p.status, p.source,
+               p.development_file_name, p.updated_at, p.updated_by
+          from builder.adk_builder_frd_screen_ia_placement p
+          join builder.adk_builder_frd_screen s on s.id = p.frd_screen_id
+          join builder.adk_builder_frd f on f.id = s.frd_id
+         where f.project_id = #{projectId}
+           and p.development_file_name = #{developmentFileName}
+    </select>
+
+    <insert id="upsert" parameterType="com.bizplay.builder.frd.FrdScreenIaPlacement">
+        insert into builder.adk_builder_frd_screen_ia_placement
+               (frd_screen_id, placement_mode, structure_id, menu_path_key, anchor_screen_id,
+                screen_kind, status, source, development_file_name, updated_at, updated_by)
+        values (#{frdScreenId}, #{placementMode}, #{structureId,jdbcType=VARCHAR},
+                #{menuPathKey,jdbcType=VARCHAR}, #{anchorScreenId,jdbcType=VARCHAR},
+                #{screenKind}, #{status}, #{source}, #{developmentFileName,jdbcType=VARCHAR},
+                #{updatedAt}, #{updatedBy,jdbcType=VARCHAR})
+        on conflict (frd_screen_id) do update
+           set placement_mode = excluded.placement_mode,
+               structure_id = excluded.structure_id,
+               menu_path_key = excluded.menu_path_key,
+               anchor_screen_id = excluded.anchor_screen_id,
+               screen_kind = excluded.screen_kind,
+               status = excluded.status,
+               source = excluded.source,
+               development_file_name = coalesce(excluded.development_file_name,
+                                                adk_builder_frd_screen_ia_placement.development_file_name),
+               updated_at = excluded.updated_at,
+               updated_by = excluded.updated_by
+    </insert>
+
+    <delete id="deleteByScreenId">
+        delete from builder.adk_builder_frd_screen_ia_placement where frd_screen_id = #{frdScreenId}
+    </delete>
+</mapper>

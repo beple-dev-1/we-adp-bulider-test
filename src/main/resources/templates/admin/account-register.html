@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{fragments/shell :: layout('사용자 등록', '관리', 'accounts', ~{:: content})}">
+<body>
+<div th:fragment="content">
+
+  <div class="page-head document-page-head document-register-head">
+    <div><h1 class="page-head__title">새 사용자 등록</h1></div>
+    <div class="document-register-head__actions">
+      <a class="button" th:href="@{/admin/accounts}">취소</a>
+      <button class="button button--primary" type="submit" form="user-register-form"
+              data-submit-loading="사용자 등록 중">사용자 등록</button>
+    </div>
+  </div>
+
+  <div class="error-line account-form-error" role="alert" th:if="${error}">
+    <strong>사용자를 등록하지 못했습니다.</strong>
+    <p>오류가 표시된 항목을 수정한 뒤 다시 등록해 주세요.</p>
+  </div>
+
+  <form class="admin-form-card" id="user-register-form" method="post" th:action="@{/admin/accounts}">
+    <section aria-labelledby="user-info-title">
+      <h2 id="user-info-title">사용자 정보</h2>
+      <div class="admin-field-grid">
+        <div class="field">
+          <label class="field__label" for="login-id">로그인 아이디</label>
+          <input class="field__control" id="login-id" name="loginId" autocomplete="username"
+                 th:value="${loginId}" maxlength="64" required
+                 th:attr="aria-invalid=${errorField == 'loginId' ? 'true' : null},
+                          aria-describedby=${errorField == 'loginId' ? 'login-id-error' : null},
+                          autofocus=${errorField == 'loginId' ? 'autofocus' : null}">
+          <p class="field__error" id="login-id-error" th:if="${errorField == 'loginId'}" th:text="${error}"></p>
+        </div>
+        <div class="field">
+          <label class="field__label" for="user-name">이름</label>
+          <input class="field__control" id="user-name" name="name" autocomplete="name"
+                 th:value="${name}" maxlength="64" required
+                 th:attr="aria-invalid=${errorField == 'name' ? 'true' : null},
+                          aria-describedby=${errorField == 'name' ? 'user-name-error' : null},
+                          autofocus=${errorField == 'name' ? 'autofocus' : null}">
+          <p class="field__error" id="user-name-error" th:if="${errorField == 'name'}" th:text="${error}"></p>
+        </div>
+      </div>
+      <div class="admin-field-grid">
+        <div class="field">
+          <label class="field__label" for="user-email">이메일</label>
+          <input class="field__control" id="user-email" name="email" type="email" autocomplete="email"
+                 th:value="${email}" maxlength="255" required aria-describedby="user-email-help"
+                 th:attr="aria-invalid=${errorField == 'email' ? 'true' : null},
+                          autofocus=${errorField == 'email' ? 'autofocus' : null}"
+                 th:attrappend="aria-describedby=${errorField == 'email' ? ' user-email-error' : ''}">
+          <p class="field__help" id="user-email-help">사용자 관리 화면에서 계정을 구분할 때 사용합니다.</p>
+          <p class="field__error" id="user-email-error" th:if="${errorField == 'email'}" th:text="${error}"></p>
+        </div>
+        <div class="field">
+          <label class="field__label" for="account-role">권한</label>
+          <select class="field__control" id="account-role" name="role" required aria-describedby="account-role-help"
+                  th:attr="aria-invalid=${errorField == 'role' ? 'true' : null},
+                           autofocus=${errorField == 'role' ? 'autofocus' : null}"
+                  th:attrappend="aria-describedby=${errorField == 'role' ? ' account-role-error' : ''}">
+            <option value="PLANNER" th:selected="${role == null or role == 'PLANNER'}">기획자</option>
+            <option value="SUPER" th:selected="${role == 'SUPER'}">슈퍼관리자</option>
+          </select>
+          <p class="field__help" id="account-role-help">슈퍼관리자는 프로젝트와 사용자를 관리할 수 있습니다.</p>
+          <p class="field__error" id="account-role-error" th:if="${errorField == 'role'}" th:text="${error}"></p>
+        </div>
+      </div>
+    </section>
+    <section aria-labelledby="temporary-password-title">
+      <h2 id="temporary-password-title">최초 로그인 정보</h2>
+      <div class="field">
+        <label class="field__label" for="temporary-password">임시 비밀번호</label>
+        <input class="field__control" id="temporary-password" name="temporaryPassword"
+               type="password" autocomplete="new-password" minlength="8" required
+               aria-describedby="temporary-password-help"
+               th:attr="aria-invalid=${errorField == 'temporaryPassword' ? 'true' : null},
+                        autofocus=${errorField == 'temporaryPassword' ? 'autofocus' : null}"
+               th:attrappend="aria-describedby=${errorField == 'temporaryPassword' ? ' temporary-password-error' : ''}">
+        <p class="field__help" id="temporary-password-help">8자 이상 입력해 주세요. 사용자는 최초 로그인 시 본인 비밀번호로 변경합니다.</p>
+        <p class="field__error" id="temporary-password-error" th:if="${errorField == 'temporaryPassword'}" th:text="${error}"></p>
+      </div>
+    </section>
+  </form>
+
+</div>
+</body>
+</html>

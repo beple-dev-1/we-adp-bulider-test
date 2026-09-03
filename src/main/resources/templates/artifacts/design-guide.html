@@ -1,0 +1,188 @@
+<!doctype html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{fragments/shell :: layout(${title}, ${shape}, ${current}, ~{:: content})}">
+<body>
+<div th:fragment="content">
+  <link rel="stylesheet" th:href="@{/css/design-guide.css}">
+  <link th:if="${guideReady}" id="dg-system-style" rel="stylesheet"
+        th:href="${guideAssetBase + guide.systems[0].styles[0].css}">
+  <script defer th:if="${guideReady}" th:src="@{/js/design-guide.js}"></script>
+
+  <section class="dg-native-page">
+    <div class="page-head list-page-head">
+      <div>
+        <h1 class="page-head__title">디자인 가이드</h1>
+        <p class="page-intro">시스템별 디자인 구성 요소와 스타일을 확인하고, 화면 작업에 사용할 기준을 관리합니다.</p>
+      </div>
+    </div>
+
+    <div class="state-panel state-panel--info" th:if="${guideReady && curationEditing}">
+      <strong>Builder 편집 모드</strong>
+      <p>추출 원본은 그대로 두고 이름·분류·순서·variant 표시 여부를 프로젝트 확정본으로 저장합니다.</p>
+      <a class="button button--secondary" th:href="|?|">편집 마치기</a>
+    </div>
+
+    <div class="state-panel state-panel--info" th:unless="${guideReady}">
+      <strong>최신 디자인 시스템 산출물이 없습니다.</strong>
+      <p th:text="${guide.reason}">기획 저장소를 최신으로 갱신한 뒤 다시 확인해 주세요.</p>
+    </div>
+
+    <div class="dg-native-guide" th:if="${guideReady}" data-design-guide th:data-artifact-base="${artifactBase}">
+      <div class="dg-native-toolbar">
+        <div class="dg-native-context-row">
+          <span class="dg-native-context-label" id="dg-system-label">시스템</span>
+          <div class="dg-native-systems" role="tablist" aria-labelledby="dg-system-label">
+            <button type="button" th:each="system, state : ${guide.systems}"
+                    th:data-system="${system.id}" th:classappend="${state.first} ? ' is-active'"
+                    th:attr="aria-selected=${state.first}" role="tab" th:text="${system.label}">Backoffice</button>
+          </div>
+        </div>
+        <div class="dg-native-facets">
+          <label th:each="system, state : ${guide.systems}" th:data-system-facet="${system.id}"
+                 th:classappend="${#lists.size(system.styles) == 1} ? ' dg-native-facet--single'"
+                 th:hidden="${!state.first}">
+            <span>적용 구분</span>
+            <select data-system-style>
+              <option th:each="style : ${system.styles}" th:value="${style.id}"
+                      th:data-style-href="${guideAssetBase + style.css}" th:text="${style.label}">기본</option>
+            </select>
+          </label>
+        </div>
+      </div>
+
+      <section class="dg-native-system" th:each="system, systemState : ${guide.systems}"
+               th:data-system-panel="${system.id}" th:hidden="${!systemState.first}">
+        <nav class="dg-native-tabs" aria-label="디자인 시스템 항목">
+          <button type="button" class="is-active" data-guide-tab="foundations" aria-selected="true">기본 스타일</button>
+          <button type="button" data-guide-tab="components" aria-selected="false">UI 컴포넌트</button>
+          <button type="button" data-guide-tab="layouts" aria-selected="false">화면 레이아웃</button>
+          <button type="button" data-guide-tab="templates" aria-selected="false">화면 템플릿</button>
+        </nav>
+
+        <section class="dg-native-panel" data-guide-panel="foundations">
+          <div class="dg-native-section-head"><div><p>FOUNDATIONS</p><h2>기본 스타일</h2><span>시스템 전반에 일관되게 적용되는 시각 기준입니다.</span></div></div>
+          <div class="dg-foundation-grid">
+            <article class="dg-foundation-card dg-foundation-card--colors" th:if="${!system.foundations.colors.isEmpty()}">
+              <h3>색상</h3>
+              <div class="dg-color-role" th:each="role : ${system.foundations.colors}">
+                <strong th:text="${role.label}">기본 강조</strong>
+                <div class="dg-color-role__values"><span th:each="value : ${role.values}" class="dg-color-swatch"
+                  th:style="|--dg-swatch:${value}|" th:title="${value}"><b th:text="${value}">#000000</b></span></div>
+              </div>
+            </article>
+            <article class="dg-foundation-card" th:if="${!system.foundations.fonts.isEmpty()}">
+              <h3>타이포그래피</h3>
+              <div class="dg-type-sample dg-render-scope" th:data-system="${system.id}"
+                   th:each="font : ${system.foundations.fonts}" th:style="|font-family:'${font.family}', sans-serif;|">
+                <strong th:text="${font.family}">SUIT</strong>
+                <p>화면을 이해하기 쉬운 문장</p><p lang="en">Design for better work 123</p>
+                <span th:text="|사용 굵기 ${#strings.listJoin(font.weights, ' · ')}|">사용 굵기 500 · 700</span>
+              </div>
+            </article>
+            <article class="dg-foundation-card" th:if="${!system.foundations.spacing.isEmpty()}">
+              <h3>간격</h3><div class="dg-measure-list"><span th:each="value : ${system.foundations.spacing}" th:text="${value}">16px</span></div>
+            </article>
+            <article class="dg-foundation-card" th:if="${!system.foundations.radius.isEmpty()}">
+              <h3>Shape</h3><div class="dg-radius-samples"><span th:each="value : ${system.foundations.radius}"><i th:style="|border-radius:${value}|"></i><b th:text="${value}">4px</b></span></div>
+            </article>
+          </div>
+        </section>
+
+        <section class="dg-native-panel" data-guide-panel="components" hidden>
+          <div class="dg-native-section-head"><div><p>COMPONENTS</p><h2>UI 컴포넌트</h2><span>여러 화면에서 독립적으로 다시 쓰는 기본 UI와 역할별 변형입니다.</span></div></div>
+          <div class="dg-component-workspace">
+            <nav class="dg-component-index" aria-label="컴포넌트 선택">
+              <button type="button" th:each="item : ${system.components}" th:if="${curationEditing || (!item.hidden && item.hasVisibleVariants)}"
+                      th:data-component-select="${item.id}">
+                <span th:text="${item.categoryLabel}">버튼</span><strong th:text="${item.label}">버튼</strong>
+              </button>
+            </nav>
+            <div class="dg-component-grid dg-component-grid--semantic">
+              <article class="dg-live-card dg-live-card--component" th:each="item, itemState : ${system.components}"
+                       th:if="${curationEditing || (!item.hidden && item.hasVisibleVariants)}"
+                       th:id="|dg-${system.id}-component-${item.id}|"
+                       th:data-component-panel="${item.id}"
+                       th:classappend="|${item.wideSpecimen ? 'dg-live-card--wide' : ''} ${item.hidden ? 'dg-live-card--excluded' : ''}|">
+                <header><div><p class="dg-live-card__kind" th:if="${item.categoryLabel != item.label}" th:text="${item.categoryLabel}">버튼</p><h3 th:text="${item.label}">버튼</h3>
+                  <p class="dg-live-card__description" th:if="${item.semanticDescription != null}" th:text="${item.semanticDescription}"></p></div>
+                  <div class="dg-live-card__meta"></div></header>
+                <form class="dg-curation-form" th:if="${curationEditing}" method="post"
+                      th:action="|/projects/${projectId}/artifacts/design-guide/curation/${system.id}/components/${item.id}|">
+                  <input type="hidden" name="version" th:value="${system.curationVersion}">
+                  <div class="dg-curation-fields">
+                    <label><span>표시 이름</span><input type="text" name="label" maxlength="60" required th:value="${item.label}"></label>
+                    <label><span>분류</span><select name="category">
+                      <option th:each="category : ${ {'button','text-field','textarea','select','checkbox','radio','switch','tabs','pagination','status','modal','table','upload','etc'} }"
+                              th:value="${category}" th:text="${category}" th:selected="${category == item.category}"></option>
+                    </select></label>
+                    <label><span>표시 순서</span><input type="number" name="displayOrder" min="0" max="999" th:value="${item.displayOrder}"></label>
+                    <label class="dg-curation-check"><input type="checkbox" name="hidden" value="true" th:checked="${item.hidden}"><span>컴포넌트 숨김</span></label>
+                  </div>
+                  <div class="dg-curation-variants">
+                    <strong>Variant 정리</strong>
+                    <div th:each="variant, variantState : ${item.variants}" class="dg-curation-variant">
+                      <input type="hidden" th:name="|variants[${variantState.index}].id|" th:value="${variant.id}">
+                      <code th:text="${variant.id}">bt_bu36</code>
+                      <label><span>표시 역할</span><input type="text" maxlength="60" th:name="|variants[${variantState.index}].label|" th:value="${variant.label}"></label>
+                      <label class="dg-curation-check"><input type="checkbox" value="true" th:name="|variants[${variantState.index}].hidden|" th:checked="${variant.hidden}"><span>숨김</span></label>
+                    </div>
+                  </div>
+                  <div class="dg-curation-actions"><button type="submit">이 컴포넌트 저장 및 적용</button></div>
+                </form>
+                <div class="dg-variant-bar">
+                  <div class="dg-variant-strip"><span th:each="variant : ${item.variants}" th:if="${!variant.hidden}" th:text="${variant.label}">주요 행동</span></div>
+                  <button type="button" class="dg-state-toggle" th:if="${#lists.size(item.states) > 1}" data-state-toggle aria-pressed="false">상태 함께 보기</button>
+                </div>
+                <div class="dg-live-preview" th:classappend="${item.tallSpecimen} ? ' dg-live-preview--scroll'" th:data-natural-width="${item.specimen.width}" th:data-natural-height="${item.specimen.height}">
+                  <div class="dg-live-preview__stage"><div class="dg-live-preview__canvas" th:style="|width:${item.specimen.width}px;height:${item.specimen.height}px|"><div class="dg-render-scope" th:data-system="${system.id}" th:utext="${item.specimen.html}"></div></div></div>
+                </div>
+                <footer th:if="${item.sourceScreen != null || item.evidence != null}"><a th:if="${item.sourceScreen != null}" th:href="${artifactBase + item.sourceScreen}" target="_blank" rel="noopener">원본 화면 보기</a>
+                  <details th:if="${item.evidence != null}"><summary>추출 근거</summary><code th:text="|${item.evidence.file}:${item.evidence.from}-${item.evidence.to}|">core/page.html:1-2</code></details></footer>
+              </article>
+            </div>
+          </div>
+          <div class="dg-empty" th:if="${system.components.isEmpty()}"><strong>확인된 컴포넌트가 없습니다.</strong></div>
+        </section>
+
+        <section class="dg-native-panel" data-guide-panel="layouts" hidden>
+          <div class="dg-native-section-head"><div><p>LAYOUTS</p><h2>화면 레이아웃</h2><span>콘텐츠가 바뀌어도 유지되는 사이드바·헤더·본문·하단의 공통 골격입니다.</span></div></div>
+          <div class="dg-layout-list">
+            <article class="dg-live-card dg-live-card--showcase" th:each="layout : ${system.shellLayouts}">
+              <header><div><p class="dg-live-card__kind" th:text="${layout.kind == 'shell'} ? '공통 셸' : '본문 레이아웃'">공통 셸</p><h3 th:text="${layout.label}">백오피스 공통 골격</h3><p class="dg-live-card__description" th:text="${layout.description}"></p></div>
+              </header>
+              <div class="dg-region-list"><span th:each="region : ${layout.regions}"><b th:text="${region.label}">헤더</b><small th:if="${region.size != null}" th:text="${region.size}">1390 × 42</small></span></div>
+              <div class="dg-layout-variant" th:each="specimen : ${layout.specimens}" th:data-style-variant="${specimen.styleId}">
+                <p class="dg-layout-variant__label" th:if="${#lists.size(layout.specimens) > 1}" th:text="${specimen.label}">익산</p>
+                <div class="dg-live-preview" th:data-natural-width="${specimen.width}" th:data-natural-height="${specimen.height}">
+                  <div class="dg-live-preview__stage"><div class="dg-live-preview__canvas" th:style="|width:${specimen.width}px;height:${specimen.height}px|"><div class="dg-render-scope dg-render-scope--regions" th:data-system="${system.id}" th:utext="${specimen.html}"></div></div></div>
+                </div>
+              </div>
+              <footer><span th:text="${layout.kind == 'shell'} ? '시스템 공통 영역과 메뉴 상태를 확인할 수 있습니다.' : '콘텐츠 영역의 정보 구조와 간격을 확인할 수 있습니다.'"></span><details th:if="${layout.evidence != null}"><summary>추출 근거</summary><code th:text="|${layout.evidence.file}:${layout.evidence.from}-${layout.evidence.to}|"></code></details></footer>
+            </article>
+          </div>
+          <div class="dg-empty" th:if="${system.shellLayouts.isEmpty()}"><strong>공통 레이아웃이 등록되지 않았습니다.</strong><p>시스템 전체에 공통으로 적용되는 골격이 확인되면 이곳에 표시됩니다.</p></div>
+        </section>
+
+        <section class="dg-native-panel" data-guide-panel="templates" hidden>
+          <div class="dg-native-section-head"><div><p>TEMPLATES</p><h2>화면 템플릿</h2><span>조회 목록·상세·등록수정처럼 새 화면 설계를 바로 시작할 수 있는 완성 구조입니다.</span></div></div>
+          <div class="dg-template-list">
+            <article class="dg-live-card dg-live-card--showcase" th:each="template : ${system.templates}">
+              <header><div><p class="dg-live-card__kind">화면 템플릿</p><h3 th:text="${template.item.label}">조회 목록</h3><p class="dg-live-card__description" th:text="${template.purpose}"></p></div>
+              </header>
+              <div class="dg-template-meta"><div><b>화면 구성</b><span th:each="component : ${template.components}" th:text="${component}">조회 필터</span></div>
+                <div><b>주요 영역</b><th:block th:each="region : ${template.regions}"><span th:if="${region.id != 'header' && region.id != 'sidebar' && region.id != 'content' && region.id != 'footer'}" th:text="${region.label}">목록 표</span></th:block></div></div>
+              <div class="dg-live-preview" th:data-natural-width="${template.item.specimen.width}" th:data-natural-height="${template.item.specimen.height}">
+                <div class="dg-live-preview__stage"><div class="dg-live-preview__canvas" th:style="|width:${template.item.specimen.width}px;height:${template.item.specimen.height}px|"><div class="dg-render-scope dg-render-scope--regions" th:data-system="${system.id}" th:utext="${template.item.specimen.html}"></div></div></div>
+              </div>
+              <footer><span th:text="|${template.layoutId} 레이아웃 사용|">공통 레이아웃 사용</span>
+                <details th:if="${!template.representativeScreens.isEmpty()}"><summary>실제 사용 화면</summary><ul><li th:each="screen : ${template.representativeScreens}"><a th:href="${artifactBase + screen.path}" target="_blank" rel="noopener" th:text="${screen.id}">화면</a></li></ul></details></footer>
+            </article>
+          </div>
+          <div class="dg-empty" th:if="${system.templates.isEmpty()}"><strong>등록된 화면 템플릿이 없습니다.</strong><p>반복 사용이 확인된 업무 화면 구성이 생기면 이곳에 표시됩니다.</p></div>
+        </section>
+      </section>
+    </div>
+  </section>
+</div>
+</body>
+</html>

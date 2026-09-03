@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <link rel="stylesheet" href="../../src/main/resources/static/css/tokens.css">
+  <link rel="stylesheet" href="../../src/main/resources/static/css/reset.css">
+  <link rel="stylesheet" href="../../src/main/resources/static/css/typography.css">
+  <link rel="stylesheet" href="../../src/main/resources/static/css/components.css">
+  <link rel="stylesheet" href="../../src/main/resources/static/css/shell.css">
+  <link rel="stylesheet" href="_mock.css">
+  <link rel="stylesheet" href="../../src/main/resources/static/css/screens.css">
+  <link rel="stylesheet" href="_srt-mockups.css">
+  <title>SRT</title>
+</head>
+<body>
+<template id="본문">
+  <div class="page-head list-page-head">
+    <div><h1 class="page-head__title">SRT</h1><p class="page-intro">직접 입력하거나 플로우에서 가져온 요청을 개발요청서로 처리합니다.</p></div>
+    <button class="button button--primary" id="open-srt-register" type="button">SRT 등록</button>
+  </div>
+
+  <form class="filter-bar" action="#" role="search">
+    <div class="field"><label class="field__label" for="srt-search">SRT 검색</label><input class="field__control" id="srt-search" type="search" placeholder="SRT 번호, 요청 제목 또는 플로우 업무번호"></div>
+    <div class="field"><label class="field__label" for="srt-state">처리 결과</label><select class="field__control" id="srt-state"><option>처리 결과 전체</option><option>개발요청서 생성 중</option><option>개발요청서 생성</option><option>처리 오류</option></select></div>
+    <div class="field"><label class="field__label" for="srt-owner">작성자</label><select class="field__control" id="srt-owner"><option>작성자 전체</option><option>이영희</option><option>김철수</option></select></div>
+  </form>
+
+  <div class="table-wrap table-wrap--tall" tabindex="0" aria-label="SRT 목록 표">
+    <table class="data-table data-table--dense srt-list-table">
+      <thead><tr><th scope="col">SRT</th><th scope="col">요청 내용</th><th scope="col">등록 방식</th><th scope="col">처리 결과</th><th scope="col">작성자</th><th scope="col">연결 작업</th><th scope="col">생성일시</th></tr></thead>
+      <tbody>
+        <tr><td><button class="srt-row-link num" type="button" data-open-srt-detail="flow">SRT-003</button></td><td><button class="srt-row-link" type="button" data-open-srt-detail="flow">그룹관리자 팝업에 직원 등록 버튼 추가</button></td><td class="nowrap">플로우 등록</td><td><span class="status-badge status-badge--complete">개발요청서 생성</span></td><td class="nowrap">이영희</td><td><a class="num" href="06a-dev-request-detail.html">DR-008</a></td><td class="num nowrap">08-31 23:24</td></tr>
+        <tr><td><button class="srt-row-link num" type="button" data-open-srt-detail="direct">SRT-002</button></td><td><button class="srt-row-link" type="button" data-open-srt-detail="direct">권한 신청 화면 안내 문구 수정</button></td><td class="nowrap">직접 입력</td><td><span class="status-badge status-badge--complete">개발요청서 생성</span></td><td class="nowrap">김철수</td><td><a class="num" href="06a-dev-request-detail.html">DR-007</a></td><td class="num nowrap">08-31 17:08</td></tr>
+        <tr><td><span class="num">SRT-001</span></td><td>사용자 목록 다운로드 문구 변경</td><td class="nowrap">직접 입력</td><td><span class="status-badge status-badge--progress">개발요청서 생성 중</span></td><td class="nowrap">이영희</td><td>—</td><td class="num nowrap">08-31 14:12</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="list-table-foot"><span aria-hidden="true"></span><nav class="list-pagination" aria-label="SRT 페이지 이동"><span class="list-page-button" aria-disabled="true" aria-label="이전 페이지">‹</span><a class="list-page-button is-current" href="#" aria-current="page">1</a><span class="list-page-button" aria-disabled="true" aria-label="다음 페이지">›</span></nav><div class="list-page-size"><label class="sr-only" for="srt-page-size">목록 크기</label><select class="field__control" id="srt-page-size"><option>10개씩</option><option>20개씩</option><option>50개씩</option></select></div></div>
+
+  <dialog class="dialog dialog--layer srt-register-dialog" id="srt-register-dialog" aria-labelledby="srt-register-title" aria-describedby="srt-register-description">
+    <form id="srt-register-form" onsubmit="return false">
+      <header class="dialog__header"><div class="dialog__header-copy"><h2 class="dialog__title" id="srt-register-title">SRT 등록</h2><p class="dialog__description" id="srt-register-description">요청을 직접 입력하거나 플로우에서 가져옵니다.</p></div><button class="dialog__close" id="close-srt-register" type="button" aria-label="SRT 등록 레이어 닫기"></button></header>
+      <div class="dialog__body">
+        <div class="srt-source-tabs" role="tablist" aria-label="SRT 등록 방식"><button class="srt-source-tab" type="button" role="tab" aria-selected="true" aria-controls="srt-direct-panel" data-srt-source="direct"><strong>직접 입력</strong><span>제목과 요청 내용을 작성합니다.</span></button><button class="srt-source-tab" type="button" role="tab" aria-selected="false" aria-controls="srt-flow-panel" data-srt-source="flow"><strong>플로우 등록</strong><span>플로우 원문을 가져옵니다.</span></button></div>
+        <section class="srt-register-panel" id="srt-direct-panel" role="tabpanel"><div class="field"><label class="field__label" for="srt-direct-title">제목</label><input class="field__control" id="srt-direct-title" placeholder="예: 그룹관리자 팝업에 직원 등록 버튼 추가" required></div><div class="field"><label class="field__label" for="srt-direct-content">내용</label><textarea class="field__control" id="srt-direct-content" placeholder="필요한 변경 내용을 자유롭게 입력해 주세요." required></textarea><p class="field__help">대상 화면이나 완료 조건을 알고 있다면 함께 적어 주세요.</p></div></section>
+        <section class="srt-register-panel" id="srt-flow-panel" role="tabpanel" hidden><div class="field"><label class="field__label" for="srt-flow-work">플로우 업무번호 또는 주소</label><input class="field__control num" id="srt-flow-work" placeholder="예: 757019 또는 플로우 업무 주소"><p class="field__help">본문, 첨부파일, 댓글을 함께 가져옵니다.</p></div></section>
+      </div>
+      <div class="dialog__actions"><button class="button" id="cancel-srt-register" type="button">취소</button><button class="button button--primary" type="submit">등록</button></div>
+    </form>
+  </dialog>
+
+  <dialog class="dialog dialog--layer" id="srt-detail-drawer" aria-labelledby="srt-detail-title" aria-describedby="srt-detail-description">
+    <form id="srt-detail-form" onsubmit="return false">
+      <header class="dialog__header"><div class="dialog__header-copy"><span class="dialog__kicker num" id="srt-detail-number">SRT-003</span><h2 class="dialog__title" id="srt-detail-title">그룹관리자 팝업에 직원 등록 버튼 추가</h2><p class="dialog__description" id="srt-detail-description">전송 전 내용을 확인해 주세요.</p></div><button class="dialog__close" id="close-srt-detail" type="button" aria-label="SRT 상세 레이어 닫기"></button></header>
+      <div class="dialog__body">
+        <div class="srt-detail-view" id="srt-flow-detail" data-srt-detail-panel="flow">
+          <article class="srt-board"><section class="srt-board__content"><h3>내용</h3><p>그룹관리자 등록 팝업 오른쪽 아래에 선택한 직원을 등록하는 버튼을 추가해 주세요.
+
+같은 직원이 두 번 등록되지 않도록 확인해 주세요.</p></section><section class="srt-board__section"><h3>첨부파일 <span>1개</span></h3><ul class="srt-file-list"><li><a class="document-link" href="#" download>그룹관리자_팝업.png</a><span>PNG · 842 KB</span></li></ul></section><section class="srt-board__section"><h3>댓글 <span>2개</span></h3><ol class="srt-comment-list"><li><div><strong>박민수</strong><time class="num" datetime="2026-08-31T23:22">2026-08-31 23:22</time></div><p>버튼 위치는 팝업 오른쪽 아래로 부탁드립니다.</p></li><li><div><strong>김지수</strong><time class="num" datetime="2026-08-31T23:23">2026-08-31 23:23</time></div><p>같은 직원이 두 번 등록되지 않게 확인해 주세요.</p></li></ol></section></article>
+        </div>
+        <div class="srt-detail-view" id="srt-direct-detail" data-srt-detail-panel="direct" hidden>
+          <article class="srt-board"><section class="srt-board__content"><h3>내용</h3><p>권한 신청 화면 하단의 안내 문구를 다음과 같이 수정해 주세요.
+
+신청한 권한은 담당자 승인 후 사용할 수 있습니다.</p></section></article>
+        </div>
+        <section class="srt-send-view" id="srt-send-view" hidden>
+          <section class="dev-delivery-summary" aria-label="전송 대상"><span>전송 대상</span><strong id="srt-send-target">그룹관리자 팝업에 직원 등록 버튼 추가</strong><small><b id="srt-send-number">SRT-003</b>에서 생성한 개발요청서를 전송합니다.</small></section>
+          <div class="srt-send-fields"><div class="dev-delivery-date-grid"><div class="field"><label class="field__label" for="srt-development-completed-on">개발 완료일 <span>선택</span></label><input class="field__control" id="srt-development-completed-on" type="date"><p class="field__help">개발 완료를 요청하는 날짜입니다.</p></div><div class="field"><label class="field__label" for="srt-deployment-on">배포일 <span>선택</span></label><input class="field__control" id="srt-deployment-on" type="date"><p class="field__help">운영 반영을 요청하는 날짜입니다.</p></div></div><div class="field"><label class="field__label" for="srt-planner-comment">개발팀 전달사항 <span>선택</span></label><textarea class="field__control" id="srt-planner-comment" rows="5" maxlength="4000" placeholder="일정, 우선순위, 개발 시 주의사항을 입력해 주세요."></textarea><p class="field__help">개발요청서 본문에 없는 추가 안내만 입력해 주세요.</p></div><div class="field"><label class="field__label" for="srt-delivery-attachment">첨부파일 <span>선택</span></label><label class="dev-delivery-file" for="srt-delivery-attachment"><strong>파일 선택</strong><span id="srt-delivery-file-name">전달할 파일이 있으면 추가해 주세요.</span></label><input class="sr-only" id="srt-delivery-attachment" type="file"><p class="field__help">파일 1개, 최대 20MB까지 첨부할 수 있습니다.</p></div></div>
+        </section>
+      </div>
+      <div class="dialog__actions"><p class="dialog__action-note" id="srt-detail-note">생성된 개발요청서를 확인한 뒤 전송합니다.</p><button class="button" id="srt-detail-secondary" type="button">닫기</button><button class="button button--primary" id="srt-detail-primary" type="button">개발요청 보내기</button></div>
+    </form>
+  </dialog>
+</template>
+<script src="_shell.js"></script>
+<script>
+틀({제목:'SRT',모양:'산출물',지금:'srts',프로젝트이름:'G2C',프로젝트번호:1,프로젝트들:['G2C','서울페이'],사람:'이영희',안읽은알림:2});
+
+const 등록창=document.getElementById('srt-register-dialog');
+const 등록탭=[...document.querySelectorAll('[data-srt-source]')];
+const 직접패널=document.getElementById('srt-direct-panel');
+const 플로우패널=document.getElementById('srt-flow-panel');
+function 등록방식(방식){등록탭.forEach(탭=>탭.setAttribute('aria-selected',String(탭.dataset.srtSource===방식)));직접패널.hidden=방식!=='direct';플로우패널.hidden=방식!=='flow';document.getElementById('srt-direct-title').required=방식==='direct';document.getElementById('srt-direct-content').required=방식==='direct';document.getElementById('srt-flow-work').required=방식==='flow';}
+document.getElementById('open-srt-register').addEventListener('click',()=>{등록방식('direct');등록창.showModal();});
+등록탭.forEach(탭=>탭.addEventListener('click',()=>등록방식(탭.dataset.srtSource)));
+document.getElementById('close-srt-register').addEventListener('click',()=>등록창.close());
+document.getElementById('cancel-srt-register').addEventListener('click',()=>등록창.close());
+document.getElementById('srt-register-form').addEventListener('submit',event=>{event.preventDefault();등록창.close();});
+
+const 상세창=document.getElementById('srt-detail-drawer');
+const 상세제목=document.getElementById('srt-detail-title');
+const 상세번호=document.getElementById('srt-detail-number');
+const 상세설명=document.getElementById('srt-detail-description');
+const 전송화면=document.getElementById('srt-send-view');
+const 보조버튼=document.getElementById('srt-detail-secondary');
+const 주요버튼=document.getElementById('srt-detail-primary');
+let 현재상세='flow';
+const 상세정보={flow:{번호:'SRT-003',제목:'그룹관리자 팝업에 직원 등록 버튼 추가',설명:'플로우 등록 · 이영희 · 2026-08-31 23:24'},direct:{번호:'SRT-002',제목:'권한 신청 화면 안내 문구 수정',설명:'직접 입력 · 김철수 · 2026-08-31 17:08'}};
+function 상세단계(){document.querySelectorAll('[data-srt-detail-panel]').forEach(패널=>패널.hidden=패널.dataset.srtDetailPanel!==현재상세);전송화면.hidden=true;상세번호.textContent=상세정보[현재상세].번호;상세제목.textContent=상세정보[현재상세].제목;상세설명.textContent=상세정보[현재상세].설명;보조버튼.textContent='닫기';주요버튼.textContent='개발요청 보내기';document.getElementById('srt-detail-note').textContent='생성된 개발요청서를 확인한 뒤 전송합니다.';}
+function 상세열기(방식){현재상세=방식;상세단계();상세창.showModal();}
+function 전송단계(){document.querySelectorAll('[data-srt-detail-panel]').forEach(패널=>패널.hidden=true);전송화면.hidden=false;상세번호.textContent=상세정보[현재상세].번호;상세제목.textContent='개발요청 보내기';상세설명.textContent='개발팀에 함께 전달할 내용을 확인해 주세요.';document.getElementById('srt-send-target').textContent=상세정보[현재상세].제목;document.getElementById('srt-send-number').textContent=상세정보[현재상세].번호;보조버튼.textContent='이전';주요버튼.textContent='개발요청 보내기';document.getElementById('srt-detail-note').textContent='전송 후에는 개발팀의 접수 결과를 기다립니다.';}
+document.querySelectorAll('[data-open-srt-detail]').forEach(버튼=>버튼.addEventListener('click',()=>상세열기(버튼.dataset.openSrtDetail)));
+document.getElementById('close-srt-detail').addEventListener('click',()=>상세창.close());
+보조버튼.addEventListener('click',()=>전송화면.hidden?상세창.close():상세단계());
+주요버튼.addEventListener('click',()=>{if(전송화면.hidden){전송단계();return;}주요버튼.textContent='전송 중';주요버튼.disabled=true;});
+document.getElementById('srt-delivery-attachment').addEventListener('change',event=>{document.getElementById('srt-delivery-file-name').textContent=event.target.files[0]?.name||'전달할 파일이 있으면 추가해 주세요.';});
+
+if(location.hash==='#register-direct'){등록방식('direct');등록창.showModal();}
+if(location.hash==='#register-flow'){등록방식('flow');등록창.showModal();}
+if(location.hash==='#detail-flow')상세열기('flow');
+if(location.hash==='#detail-direct')상세열기('direct');
+if(location.hash==='#send-flow'){상세열기('flow');전송단계();}
+if(location.hash==='#send-direct'){상세열기('direct');전송단계();}
+</script>
+</body>
+</html>

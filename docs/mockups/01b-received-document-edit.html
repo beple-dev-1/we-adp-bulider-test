@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" href="../../src/main/resources/static/css/tokens.css">
+  <link rel="stylesheet" href="../../src/main/resources/static/css/reset.css">
+  <link rel="stylesheet" href="../../src/main/resources/static/css/typography.css">
+  <link rel="stylesheet" href="../../src/main/resources/static/css/components.css">
+  <link rel="stylesheet" href="../../src/main/resources/static/css/shell.css">
+  <link rel="stylesheet" href="_mock.css">
+  <link rel="stylesheet" href="../../src/main/resources/static/css/screens.css">
+  <title>받은 문서 상세</title>
+</head>
+<body>
+<template id="본문">
+  <div class="page-head document-page-head document-compare-head">
+    <div>
+      <h1 class="page-head__title">8/13 운영회의 회의록</h1>
+    </div>
+    <div class="document-compare-head__actions">
+      <a class="button" href="01-received-docs.html">목록으로</a>
+    </div>
+  </div>
+
+  <dl class="document-compare-meta" aria-label="문서 정보">
+    <div><dt>문서 상태</dt><dd>등록 완료</dd></div>
+    <div><dt>문서 종류</dt><dd>회의록</dd></div>
+    <div><dt>적용 구분</dt><dd><span class="facet-badges"><span class="badge badge--outline">익산</span><span class="badge badge--outline">제주</span></span></dd></div>
+    <div><dt>회의 일시</dt><dd class="num">2026-08-13 09:00</dd></div>
+    <div><dt>참석자</dt><dd>이영희 외 2명</dd></div>
+    <div><dt>등록 파일</dt><dd><a href="#">8월13일_운영회의록.pdf · 1.8 MB</a></dd></div>
+  </dl>
+
+  <div class="document-compare-workspace document-compare-workspace--single">
+    <section class="document-compare-pane" aria-labelledby="document-content-title">
+      <header class="document-compare-pane__head">
+        <div><h2 id="document-content-title">문서 내용</h2></div>
+        <span class="edit-hint">첨부파일에서 확인한 내용</span>
+      </header>
+      <div class="document-source-copy document-content-body">상신 화면에서 임시 저장이 됐으면 좋겠다. 1분마다 자동으로 저장하는 것도 필요하다. 직접 누르는 임시 저장도 있어야 한다.
+
+저장 여부와 마지막 저장 시각이 보이면 좋겠다.
+
+보관 기간하고 복구 기준은 다음 회의에서 정한다.</div>
+      <footer class="document-compare-pane__foot">
+        <span>등록한 원문은 그대로 보존됩니다.</span>
+      </footer>
+    </section>
+  </div>
+
+  <section class="requirement-summary" aria-labelledby="requirement-summary-title">
+    <h2 id="requirement-summary-title">생성된 요구사항 <span class="num">1건</span></h2>
+    <div class="requirement-summary__guide">
+      <p>다시 분석하려면 기존 요구사항을 삭제해야 합니다. 확정하거나 직접 고친 내용도 함께 사라지며 되돌릴 수 없습니다.</p>
+      <div class="requirement-summary__actions">
+        <a class="button button--small" href="02-requirements.html">요구사항 확인</a>
+        <button class="button button--small button--danger-outline" id="delete-generated-requirements"
+                type="button">생성된 요구사항 삭제</button>
+      </div>
+    </div>
+  </section>
+</template>
+<script src="_shell.js"></script>
+<script>틀({제목:'받은 문서 상세',모양:'산출물',지금:'received-docs',프로젝트이름:'G2C',프로젝트번호:1,프로젝트들:['G2C','서울페이'],사람:'이영희',안읽은알림:2});</script>
+</body>
+</html>

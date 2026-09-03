@@ -1,0 +1,106 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.bizplay.builder.screendesign.ScreenDesignMapper">
+
+    <sql id="currentColumns">
+        project_id as projectId, system_code as systemCode, screen_id as screenId,
+        current_revision_id as currentRevisionId, current_revision_no as currentRevisionNo,
+        generation_state as state, generation_id as generationId,
+        generation_started_at as generationStartedAt,
+        requested_source_fingerprint as requestedSourceFingerprint,
+        requested_generator_version as requestedGeneratorVersion,
+        requested_schema_version as requestedSchemaVersion,
+        failed_reason as failedReason, retry_after as retryAfter, updated_at as updatedAt
+    </sql>
+
+    <sql id="revisionColumns">
+        revision_id as revisionId, project_id as projectId, system_code as systemCode,
+        screen_id as screenId, revision_no as revisionNo, source_fingerprint as sourceFingerprint,
+        generator_version as generatorVersion, schema_version as schemaVersion,
+        content_json as contentJson, document_html as documentHtml,
+        bundle_path as bundlePath, bundle_manifest_json as bundleManifestJson,
+        created_at as createdAt
+    </sql>
+
+    <insert id="beginGeneration">
+        insert into builder.adk_builder_screen_design
+            (project_id, system_code, screen_id, generation_state, generation_id,
+             generation_started_at, requested_source_fingerprint, requested_generator_version,
+             requested_schema_version, failed_reason, retry_after, updated_at)
+        values (#{projectId}, #{systemCode}, #{screenId}, 'RUNNING', #{generationId}, now(),
+                #{sourceFingerprint}, #{generatorVersion}, #{schemaVersion}, null, null, now())
+        on conflict (project_id, system_code, screen_id)
+            do update set generation_state = 'RUNNING', generation_id = excluded.generation_id,
+                          generation_started_at = excluded.generation_started_at,
+                          requested_source_fingerprint = excluded.requested_source_fingerprint,
+                          requested_generator_version = excluded.requested_generator_version,
+                          requested_schema_version = excluded.requested_schema_version,
+                          failed_reason = null, retry_after = null, updated_at = now()
+        where (adk_builder_screen_design.generation_state != 'RUNNING'
+                   or adk_builder_screen_design.generation_started_at &lt; #{staleBefore})
+          and (adk_builder_screen_design.retry_after is null
+                   or adk_builder_screen_design.retry_after &lt;= #{retryNow})
+    </insert>
+
+    <select id="selectCurrent" resultType="com.bizplay.builder.screendesign.ScreenDesignCurrent">
+        select <include refid="currentColumns"/> from builder.adk_builder_screen_design
+         where project_id = #{projectId} and system_code = #{systemCode} and screen_id = #{screenId}
+    </select>
+
+    <select id="lockCurrent" resultType="com.bizplay.builder.screendesign.ScreenDesignCurrent">
+        select <include refid="currentColumns"/> from builder.adk_builder_screen_design
+         where project_id = #{projectId} and system_code = #{systemCode} and screen_id = #{screenId}
+         for update
+    </select>
+
+    <select id="selectByProject" resultType="com.bizplay.builder.screendesign.ScreenDesignCurrent">
+        select <include refid="currentColumns"/> from builder.adk_builder_screen_design
+         where project_id = #{projectId}
+    </select>
+
+    <select id="selectRevision" resultType="com.bizplay.builder.screendesign.ScreenDesignRevision">
+        select <include refid="revisionColumns"/> from builder.adk_builder_screen_design_revision
+         where revision_id = #{revisionId}
+    </select>
+
+    <select id="selectCurrentRevisionsByProject" resultType="com.bizplay.builder.screendesign.ScreenDesignRevision">
+        select revision.revision_id as revisionId, revision.project_id as projectId,
+               revision.system_code as systemCode, revision.screen_id as screenId,
+               revision.revision_no as revisionNo, revision.source_fingerprint as sourceFingerprint,
+               revision.generator_version as generatorVersion, revision.schema_version as schemaVersion,
+               revision.content_json as contentJson, revision.document_html as documentHtml,
+               revision.bundle_path as bundlePath, revision.bundle_manifest_json as bundleManifestJson,
+               revision.created_at as createdAt
+          from builder.adk_builder_screen_design_revision revision
+          join builder.adk_builder_screen_design current
+            on current.current_revision_id = revision.revision_id
+         where current.project_id = #{projectId}
+    </select>
+
+    <insert id="insertRevision" parameterType="com.bizplay.builder.screendesign.ScreenDesignRevision">
+        insert into builder.adk_builder_screen_design_revision
+            (revision_id, project_id, system_code, screen_id, revision_no,
+             source_fingerprint, generator_version, schema_version, content_json,
+             document_html, bundle_path, bundle_manifest_json, created_at)
+        values (#{revisionId}, #{projectId}, #{systemCode}, #{screenId}, #{revisionNo},
+                #{sourceFingerprint}, #{generatorVersion}, #{schemaVersion}, #{contentJson},
+                #{documentHtml}, #{bundlePath}, #{bundleManifestJson}, now())
+    </insert>
+
+    <update id="promote">
+        update builder.adk_builder_screen_design
+           set current_revision_id = #{revisionId}, current_revision_no = #{revisionNo},
+               generation_state = 'DONE', failed_reason = null, retry_after = null, updated_at = now()
+         where project_id = #{projectId} and system_code = #{systemCode} and screen_id = #{screenId}
+           and generation_id = #{generationId} and generation_state = 'RUNNING'
+    </update>
+
+    <update id="markFailed">
+        update builder.adk_builder_screen_design
+           set generation_state = 'FAILED', failed_reason = #{reason},
+               retry_after = #{retryAfter}, updated_at = now()
+         where project_id = #{projectId} and system_code = #{systemCode} and screen_id = #{screenId}
+           and generation_id = #{generationId} and generation_state = 'RUNNING'
+    </update>
+</mapper>

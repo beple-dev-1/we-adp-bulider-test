@@ -1,0 +1,196 @@
+<!doctype html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{fragments/shell :: layout(${title}, ${shape}, ${current}, ~{:: content})}">
+<body>
+<div th:fragment="content">
+
+  <!--/* 목업 docs/mockups/01a-received-document-register.html 이 정본이다 (2026-08-15 병주 확정). */-->
+
+  <div class="page-head document-page-head document-register-head">
+    <div>
+      <h1 class="page-head__title">문서 등록</h1>
+    </div>
+    <div class="document-register-head__actions">
+      <a class="button" th:href="@{/projects/{p}/artifacts/received-docs(p=${projectId})}">목록으로</a>
+      <button class="button button--primary" form="document-register-form" type="submit">문서 등록</button>
+    </div>
+  </div>
+
+  <p class="source-error" th:if="${error}" th:text="${error}"></p>
+
+  <form class="document-register-workspace" id="document-register-form" method="post"
+        enctype="multipart/form-data"
+        th:action="@{/projects/{p}/artifacts/received-docs(p=${projectId})}">
+
+    <section class="document-register-meta document-register-meta--pending" aria-labelledby="register-basic-title">
+      <h2 class="sr-only" id="register-basic-title">문서 기본 정보</h2>
+        <div class="field document-register-type-field">
+          <label class="field__label" for="register-document-type">문서 종류 <span aria-hidden="true">*</span></label>
+          <select class="field__control" id="register-document-type" name="documentType" required>
+            <option value="" disabled th:selected="${selectedDocumentType == null}">문서 종류를 선택하세요</option>
+            <option th:each="type : ${documentTypes}" th:value="${type}" th:text="${type.label()}"
+                    th:selected="${selectedDocumentType == type}"></option>
+          </select>
+        </div>
+
+        <div class="field document-register-meta__name" data-manual-meta hidden>
+          <label class="field__label" for="register-title">문서명 <span aria-hidden="true">*</span></label>
+          <input class="field__control" id="register-title" name="title" type="text"
+                 placeholder="예: 8/13 운영회의 회의록" required th:value="${typedTitle}">
+        </div>
+
+        <div class="field document-register-flow-post" data-flow-source hidden>
+          <label class="field__label" for="flow-post-id">게시물 ID <span aria-hidden="true">*</span></label>
+          <input class="field__control num" id="flow-post-id" name="postId" type="text"
+                 inputmode="numeric" pattern="[0-9]{1,15}" maxlength="15"
+                 placeholder="예: 40001" th:value="${typedFlowPostId}">
+        </div>
+
+      <!--/* ⚠ 적용 구분이 없는 프로젝트에서는 이 구역이 아예 안 뜬다 (facet-axis) */-->
+        <fieldset class="field document-register-facets" th:unless="${#lists.isEmpty(availableFacets)}" hidden
+                  aria-describedby="register-facet-help register-facet-error">
+          <legend class="field__label">적용 구분 <span aria-hidden="true">*</span></legend>
+          <div class="facet-checks">
+            <label th:each="facet : ${availableFacets}">
+              <input name="facets" type="checkbox" th:value="${facet}">
+              <span th:text="${facet}"></span>
+            </label>
+          </div>
+          <p class="field__help" id="register-facet-help">두 적용 구분에 공통인 문서는 둘 다 선택하세요.</p>
+          <p class="source-error" id="register-facet-error" hidden>이 문서가 해당하는 적용 구분을 하나 이상 선택해 주세요.</p>
+        </fieldset>
+
+      <!--/* 회의 정보는 회의록일 때만 쓰는 선택 입력이다. ⛔ AI가 못 찾은 값을 임의로 채우지 않는다 */-->
+        <div class="field document-register-meeting" data-meeting-fields hidden>
+          <label class="field__label" for="register-meeting-at">회의 일시 <span class="field__optional">선택</span></label>
+          <input class="field__control" id="register-meeting-at" name="meetingAt" type="datetime-local">
+        </div>
+        <div class="field document-register-meeting" data-meeting-fields hidden>
+          <label class="field__label" for="register-attendees">참석자 <span class="field__optional">선택</span></label>
+          <input class="field__control" id="register-attendees" name="attendees" type="text"
+                 placeholder="이름을 쉼표로 구분해 입력">
+        </div>
+    </section>
+
+    <section class="document-register-source" data-manual-source hidden aria-labelledby="register-source-title">
+      <h2 class="sr-only" id="register-source-title">원문 입력</h2>
+      <div class="document-register-source__body">
+        <div class="document-register-file">
+          <label class="document-register-file__picker" for="register-file">
+            <input id="register-file" name="file" type="file">
+            <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M12 16V4m0 0L7.5 8.5M12 4l4.5 4.5M5 14v4a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-4"/></svg>
+            <strong>원본 파일 선택</strong>
+            <span class="file-picker__name">선택된 파일 없음</span>
+            <small>선택한 파일은 변경하지 않고 보존합니다. 파일은 최대 20MB까지 등록할 수 있습니다.</small>
+          </label>
+        </div>
+        <div class="document-register-editor">
+          <label for="register-content">
+            <strong>직접 입력 또는 파일 보충 설명</strong>
+            <span>회의 메모나 전달받은 내용을 붙여 넣을 수 있습니다.</span>
+          </label>
+          <textarea id="register-content" name="typedContent"
+                    placeholder="문서 내용을 입력하거나, 첨부파일에서 AI가 추가로 알아야 할 내용을 적어 주세요."
+                    th:text="${typedContentValue}"></textarea>
+        </div>
+      </div>
+      <p class="source-error" data-source-error hidden>첨부파일 또는 문서 내용을 하나 이상 입력해 주세요.</p>
+    </section>
+  </form>
+
+  <!--/*
+    ⚠ 실물 화면에 처음 들어가는 스크립트다 (2026-08-15). 목업 01a 가 요구하는 동작 셋이라
+      마크업만으로는 못 낸다 — 회의록일 때만 회의 정보 · 고른 파일 이름 · 미입력 경고.
+    ⛔ 여기서 막는 것은 <b>사람이 고칠 수 있는 실수</b>뿐이다. 진짜 판정은 서버가 다시 한다
+      (IntakeService). 스크립트가 꺼져도 등록은 되고, 거절 사유는 위 ${error} 로 돌아온다.
+  */-->
+  <script th:inline="none">
+    (function () {
+      var form = document.getElementById('document-register-form');
+      if (!form) { return; }
+
+      var fileInput = document.getElementById('register-file');
+      var fileName = form.querySelector('.file-picker__name');
+      var titleInput = document.getElementById('register-title');
+      var typeInput = document.getElementById('register-document-type');
+      var contentInput = document.getElementById('register-content');
+      var sourceError = form.querySelector('[data-source-error]');
+      var documentMeta = form.querySelector('.document-register-meta');
+      var manualMeta = form.querySelector('[data-manual-meta]');
+      var manualSource = form.querySelector('[data-manual-source]');
+      var flowSource = form.querySelector('[data-flow-source]');
+      var flowPostId = document.getElementById('flow-post-id');
+      var meetingFields = form.querySelectorAll('[data-meeting-fields]');
+      var facetFieldset = form.querySelector('.document-register-facets');
+      var facetInputs = Array.prototype.slice.call(form.querySelectorAll('input[name="facets"]'));
+      var facetError = document.getElementById('register-facet-error');
+
+      fileInput.addEventListener('change', function () {
+        var chosen = fileInput.files[0];
+        fileName.textContent = chosen ? chosen.name : '선택된 파일 없음';
+        if (chosen && !titleInput.value) {
+          titleInput.value = chosen.name.replace(/\.[^.]+$/, '');
+        }
+        if (chosen) { sourceError.hidden = true; }
+      });
+
+      contentInput.addEventListener('input', function () {
+        if (contentInput.value.trim()) { sourceError.hidden = true; }
+      });
+
+      function reflectDocumentType() {
+        var documentType = typeInput.value;
+        var selected = documentType !== '';
+        var flow = documentType === 'FLOW';
+        manualMeta.hidden = !selected || flow;
+        manualSource.hidden = !selected || flow;
+        flowSource.hidden = !selected || !flow;
+        if (facetFieldset) { facetFieldset.hidden = !selected; }
+        documentMeta.classList.toggle('document-register-meta--pending', !selected);
+        documentMeta.classList.toggle('document-register-meta--flow', flow);
+        titleInput.required = selected && !flow;
+        flowPostId.required = selected && flow;
+        sourceError.hidden = true;
+        Array.prototype.forEach.call(meetingFields, function (field) {
+          field.hidden = flow || documentType !== 'MEETING_MINUTES';
+        });
+      }
+
+      typeInput.addEventListener('change', reflectDocumentType);
+      reflectDocumentType();
+
+      facetInputs.forEach(function (input) {
+        input.addEventListener('change', function () {
+          if (facetInputs.some(function (item) { return item.checked; })) {
+            facetError.hidden = true;
+          }
+        });
+      });
+
+      form.addEventListener('submit', function (event) {
+        if (facetInputs.length && !facetInputs.some(function (input) { return input.checked; })) {
+          event.preventDefault();
+          facetError.hidden = false;
+          facetInputs[0].focus();
+          return;
+        }
+        if (typeInput.value === 'FLOW') {
+          if (!flowPostId.value.trim()) {
+            event.preventDefault();
+            flowPostId.focus();
+          }
+          return;
+        }
+        if (!fileInput.files.length && !contentInput.value.trim()) {
+          event.preventDefault();
+          sourceError.hidden = false;
+          form.querySelector('.document-register-source').scrollIntoView({ behavior: 'smooth', block: 'center' });
+          contentInput.focus({ preventScroll: true });
+        }
+      });
+    })();
+  </script>
+
+</div>
+</body>
+</html>

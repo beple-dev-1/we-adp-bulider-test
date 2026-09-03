@@ -1,0 +1,140 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>기능명세서 양식 시안</title>
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="../../src/main/resources/static/css/tokens.css">
+  <link rel="stylesheet" href="../../src/main/resources/static/css/reset.css">
+  <link rel="stylesheet" href="../../src/main/resources/static/css/typography.css">
+  <link rel="stylesheet" href="_artifact-document-standard.css">
+</head>
+<body>
+<main class="artifact-stage">
+  <!-- 사용자 매뉴얼의 문서 제목부와 번호형 절을 기술 산출물 폭에 맞춘 비교용 시안이다. -->
+  <article class="artifact-paper" aria-labelledby="artifact-title">
+    <header class="artifact-head">
+      <p class="artifact-head__kind">기능명세서</p>
+      <h1 id="artifact-title">지출결의 작성</h1>
+      <dl class="artifact-meta">
+        <div>
+          <dt>시스템</dt>
+          <dd>업무관리 시스템</dd>
+        </div>
+        <div>
+          <dt>화면 ID</dt>
+          <dd>EXP-REQ-001</dd>
+        </div>
+        <div>
+          <dt>개정</dt>
+          <dd>3차</dd>
+        </div>
+        <div>
+          <dt>작성일</dt>
+          <dd>2026-08-28</dd>
+        </div>
+      </dl>
+    </header>
+
+    <div class="artifact-body">
+      <section class="artifact-section" aria-labelledby="section-overview">
+        <h2 id="section-overview">문서 개요</h2>
+        <dl class="artifact-definitions">
+          <dt>화면 목적</dt>
+          <dd>사용자가 지출 내역과 증빙을 입력하고 결재를 요청할 지출결의서를 작성한다.</dd>
+          <dt>IA 메뉴 경로</dt>
+          <dd>경비 관리 &gt; 지출결의 &gt; 지출결의 작성</dd>
+          <dt>적용 구분</dt>
+          <dd>공통</dd>
+          <dt>관련 FRD</dt>
+          <dd>FRD-2026-014 · 지출결의 임시 저장과 제출 검증 개선</dd>
+        </dl>
+      </section>
+
+      <section class="artifact-section" aria-labelledby="section-functions">
+        <h2 id="section-functions">기능 명세</h2>
+        <div class="artifact-table-wrap">
+          <table class="artifact-table">
+            <thead>
+            <tr>
+              <th scope="col">기능 ID</th>
+              <th scope="col">기능명</th>
+              <th scope="col">입력·조건</th>
+              <th scope="col">처리 내용</th>
+              <th scope="col">처리 결과</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr>
+              <td>FN-001</td>
+              <td><strong>지출 내역 입력</strong></td>
+              <td>사용일, 지출 유형, 거래처, 금액을 입력한다.</td>
+              <td>필수값과 금액 형식을 확인하고 합계 금액을 다시 계산한다.</td>
+              <td>정상 입력값을 지출 내역에 반영한다.</td>
+            </tr>
+            <tr>
+              <td>FN-002</td>
+              <td><strong>작성 내용 임시 저장</strong></td>
+              <td>제목과 한 건 이상의 지출 내역이 입력되어 있다.</td>
+              <td>현재 입력값과 첨부된 증빙 정보를 임시 상태로 저장한다.</td>
+              <td>저장 시각을 표시하고 사용자가 계속 작성할 수 있게 한다.</td>
+            </tr>
+            <tr>
+              <td>FN-003</td>
+              <td><strong>지출결의 제출</strong></td>
+              <td>필수값과 증빙이 모두 등록되어 있다.</td>
+              <td>누락 항목과 합계 금액을 확인한 뒤 결재 요청을 등록한다.</td>
+              <td>요청 번호를 안내하고 지출결의 상세 화면으로 이동한다.</td>
+            </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="artifact-section" aria-labelledby="section-rules">
+        <h2 id="section-rules">입력 및 업무 규칙</h2>
+        <div class="artifact-table-wrap">
+          <table class="artifact-table">
+            <thead>
+            <tr>
+              <th scope="col">항목</th>
+              <th scope="col">필수</th>
+              <th scope="col">입력 규칙</th>
+              <th scope="col">오류 안내</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr>
+              <td>사용일</td>
+              <td>필수</td>
+              <td>오늘보다 늦은 날짜를 선택할 수 없다.</td>
+              <td>사용일은 오늘 이전 날짜로 선택해 주세요.</td>
+            </tr>
+            <tr>
+              <td>금액</td>
+              <td>필수</td>
+              <td>0보다 큰 원 단위 정수만 입력한다.</td>
+              <td>금액은 1원 이상으로 입력해 주세요.</td>
+            </tr>
+            <tr>
+              <td>증빙</td>
+              <td>조건부 필수</td>
+              <td>지출 유형에 따라 증빙 등록 여부를 확인한다.</td>
+              <td>선택한 지출 유형에 필요한 증빙을 등록해 주세요.</td>
+            </tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="artifact-note"><strong>업무 규칙:</strong> 제출에 실패하면 입력 내용은 유지하고, 문제가 있는 항목 가까이에 이유와 다음 행동을 함께 표시한다.</p>
+      </section>
+    </div>
+
+    <footer class="artifact-foot">
+      <span>화면 HTML · 화면 명세 · IA 기준</span>
+      <span>기능명세서 3차 · 2026-08-28</span>
+    </footer>
+  </article>
+</main>
+</body>
+</html>

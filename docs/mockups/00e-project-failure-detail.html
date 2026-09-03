@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <link rel="stylesheet" href="../../src/main/resources/static/css/tokens.css"><link rel="stylesheet" href="../../src/main/resources/static/css/reset.css"><link rel="stylesheet" href="../../src/main/resources/static/css/typography.css"><link rel="stylesheet" href="../../src/main/resources/static/css/components.css"><link rel="stylesheet" href="../../src/main/resources/static/css/shell.css"><link rel="stylesheet" href="_mock.css"><link rel="stylesheet" href="../../src/main/resources/static/css/screens.css"><link rel="stylesheet" href="_requirement-concepts.css">
+  <title>프로젝트 상세</title>
+</head>
+<body><template id="본문">
+  <div class="requirement-concept">
+    <header class="rq-head">
+      <div class="rq-head__copy"><span class="rq-kicker num">PJT-003</span><h1>출장비 정산 개선</h1></div>
+      <div class="rq-head__actions"><span class="status-badge status-badge--error">실패</span><button class="button button--primary" type="button" data-submit-loading="저장소 받기 재시도 중">저장소 받기 재시도</button></div>
+    </header>
+
+    <main>
+      <section class="rq-card" aria-labelledby="project-error-title">
+        <div class="rq-card__head"><div><span class="rq-kicker">실패 이유</span><h2 id="project-error-title">저장소 연결 중단</h2></div><button class="button" type="button" data-open-project-token aria-expanded="false">기획 저장소 토큰 변경</button></div>
+        <div class="rq-card__body"><p class="rq-lead">저장소 연결이 중간에 끊겨 프로젝트를 준비하지 못했습니다.</p><p class="rq-copy">GitLab 저장소에 접속할 수 있는지 확인한 뒤 저장소를 다시 받아 주세요.</p><dl class="project-info-list"><div><dt>기획 저장소</dt><dd>gitlab.example.com/planning/travel-expense</dd></div><div><dt>기본 브랜치</dt><dd class="num">main</dd></div><div><dt>플랫폼 코드</dt><dd class="num">PS</dd></div><div><dt>실패 단계</dt><dd>저장소 받기</dd></div></dl><form class="project-token-form" data-project-token-form hidden><label class="field"><span class="field__label">새 기획 저장소 토큰</span><input class="field__control" type="password"></label><div class="project-token-form__actions"><button class="button" type="button" data-close-project-token>취소</button><button class="button button--primary" type="button">토큰 변경</button></div></form></div>
+      </section>
+    </main>
+  </div>
+</template><script src="_shell.js"></script><script>틀({제목:'프로젝트 상세',모양:'관리',지금:'projects',사람:'슈퍼관리자',슈퍼계정:true,안읽은알림:0});const 토큰버튼=document.querySelector('[data-open-project-token]');const 토큰폼=document.querySelector('[data-project-token-form]');토큰버튼.addEventListener('click',()=>{토큰폼.hidden=false;토큰버튼.setAttribute('aria-expanded','true');토큰폼.querySelector('input').focus();});document.querySelector('[data-close-project-token]').addEventListener('click',()=>{토큰폼.hidden=true;토큰버튼.setAttribute('aria-expanded','false');});</script></body>
+</html>

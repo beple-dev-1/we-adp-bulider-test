@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.bizplay.builder.devrequest.DevRequestDeliveryMapper">
+    <resultMap id="attempt" type="com.bizplay.builder.devrequest.DevRequestDeliveryAttempt">
+        <constructor>
+            <idArg column="id" javaType="java.lang.String"/>
+            <arg column="dev_request_id" javaType="java.lang.String"/>
+            <arg column="delivery_key" javaType="java.lang.String"/>
+            <arg column="body_fingerprint" javaType="java.lang.String"/>
+            <arg column="outcome" javaType="com.bizplay.builder.devrequest.DeliveryOutcome"/>
+            <arg column="http_status" javaType="java.lang.Integer"/>
+            <arg column="response_id" javaType="java.lang.String"/>
+            <arg column="failure" javaType="java.lang.String"/>
+            <arg column="requested_by" javaType="java.lang.String"/>
+            <arg column="started_at" javaType="java.time.Instant"/>
+            <arg column="finished_at" javaType="java.time.Instant"/>
+        </constructor>
+    </resultMap>
+
+    <insert id="insert" parameterType="com.bizplay.builder.devrequest.DevRequestDeliveryAttempt">
+        insert into builder.adk_builder_dev_request_delivery
+               (id, dev_request_id, delivery_key, body_fingerprint, outcome, requested_by)
+        values (#{id}, #{devRequestId}, #{deliveryKey}, #{bodyFingerprint}, #{outcome},
+                #{requestedBy,jdbcType=VARCHAR})
+    </insert>
+
+    <update id="finish">
+        update builder.adk_builder_dev_request_delivery
+           set outcome = #{outcome},
+               http_status = #{httpStatus,jdbcType=INTEGER},
+               response_id = #{responseId,jdbcType=VARCHAR},
+               failure = #{failure,jdbcType=VARCHAR},
+               finished_at = now()
+         where id = #{id}
+    </update>
+
+    <select id="selectByRequestId" parameterType="java.lang.String" resultMap="attempt">
+        select id, dev_request_id, delivery_key, body_fingerprint, outcome, http_status,
+               response_id, failure, requested_by, started_at, finished_at
+          from builder.adk_builder_dev_request_delivery
+         where dev_request_id = #{devRequestId}
+         order by started_at desc, id desc
+    </select>
+
+    <!-- 목록의 「요청일시」는 문서 updated_at 이 아니라 실제 꾸러미 전송 시작 시각이다. -->
+    <select id="selectLatestHandoffByRequestIds" resultMap="attempt">
+        select distinct on (dev_request_id)
+               id, dev_request_id, delivery_key, body_fingerprint, outcome, http_status,
+               response_id, failure, requested_by, started_at, finished_at
+          from builder.adk_builder_dev_request_delivery
+         where dev_request_id in
+        <foreach collection="requestIds" item="requestId" open="(" separator="," close=")">
+            #{requestId}
+        </foreach>
+           and body_fingerprint is not null
+         order by dev_request_id, started_at desc, id desc
+    </select>
+
+    <!--
+      ⛔ 「전송중」일 때만 옮긴다. 조건 없이 쓰면 그 사이 슈퍼계정이 손으로 갈라 준 것을
+         늦게 도착한 응답이 되돌린다.
+    -->
+    <update id="moveFromSending">
+        update builder.adk_builder_dev_request
+           set delivery_state = #{outcome},
+               development_state = case when #{outcome} = 'SENT' then 'INTAKE'
+                                        else development_state end,
+               development_checked_at = case when #{outcome} = 'SENT' then null
+                                             else development_checked_at end,
+               development_sync_error = case when #{outcome} = 'SENT' then null
+                                             else development_sync_error end,
+               development_merged_sha = case when #{outcome} = 'SENT' then null
+                                            else development_merged_sha end,
+               development_merged_at = case when #{outcome} = 'SENT' then null
+                                           else development_merged_at end,
+               updated_at = now()
+         where id = #{id} and delivery_state = 'SENDING'
+    </update>
+
+    <delete id="deleteByRequestId" parameterType="java.lang.String">
+        delete from builder.adk_builder_dev_request_delivery where dev_request_id = #{devRequestId}
+    </delete>
+</mapper>

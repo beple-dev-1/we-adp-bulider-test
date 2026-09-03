@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.bizplay.builder.screenid.ScreenStandardIdMapper">
+
+    <!-- ⛔ 인자 순서를 바꾸지 마라 — ScreenStandardId 의 생성자와 자리로 맞춘다. -->
+    <resultMap id="screenStandardId" type="com.bizplay.builder.screenid.ScreenStandardId">
+        <constructor>
+            <idArg column="id"          javaType="java.lang.String"/>
+            <arg   column="project_id"  javaType="java.lang.String"/>
+            <arg   column="screen_id"   javaType="java.lang.String"/>
+            <arg   column="standard_id" javaType="java.lang.String"/>
+            <arg   column="origin"      javaType="com.bizplay.builder.screenid.ScreenStandardId$Origin"/>
+            <arg   column="sort_no"     javaType="_int"/>
+        </constructor>
+    </resultMap>
+
+    <!-- ⚠ flushCache: 개발요청서 만들기가 한 트랜잭션 안에서 「박고 → 다시 읽고 → 다음 것을 박는」 사슬을 돈다.
+         세션 캐시가 낡은 목록을 돌려주면 기준을 못 찾아 신규 화면이 채번을 못 받는다 (2026-08-25 실물 의심). 싼 조회다. -->
+    <select id="selectByProject" parameterType="java.lang.String" resultMap="screenStandardId" flushCache="true" useCache="false">
+        select id, project_id, screen_id, standard_id, origin, sort_no
+          from builder.adk_builder_screen_standard_id
+         where project_id = #{projectId}
+         order by sort_no
+    </select>
+
+    <insert id="insert" parameterType="com.bizplay.builder.screenid.ScreenStandardId">
+        insert into builder.adk_builder_screen_standard_id
+               (id, project_id, screen_id, standard_id, origin, sort_no)
+        values (#{id}, #{projectId}, #{screenId}, #{standardId}, #{origin}, #{sortNo})
+    </insert>
+
+</mapper>
