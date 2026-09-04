@@ -438,8 +438,7 @@ class ScreenMockupTest extends AbstractDbTest {
     @Test
     void 베이스_화면_파일이_없으면_claude_를_부르지_않고_실패로_닫는다() {
         // ⚠ 클론에 화면 html 을 심지 않는다 — 파일이 없는 자리다.
-        // ⛔ data-root 가 고정된 공유 임시 폴더라(AbstractDbTest) 예전 실행이 남긴 같은 번호
-        //   프로젝트의 파일이 있을 수 있다 — 확실히 지우고 시작한다.
+        // ⚠ 「없다」를 재는 시험이라 없다는 것을 스스로 만들어 둔다 (까닭은 deleteCloneScreen 주석).
         deleteCloneScreen(project, "webview", "wv-appr-write");
 
         worker.generate(screenRowId);
@@ -625,9 +624,10 @@ class ScreenMockupTest extends AbstractDbTest {
     /**
      * 「파일이 없다」를 재는 시험이 확실히 없는 자리에서 출발하게 한다.
      *
-     * <p>⛔ {@code AbstractDbTest} 의 data-root 는 고정된 공유 임시 폴더다 — 매 실행마다 프로젝트
-     * 번호가 1 부터 다시 매겨져, 예전 실행이 남긴 같은 번호의 클론 파일이 「없다」고 믿은 자리에
-     * 그대로 남아 있을 수 있다.
+     * <p>⚠ <b>2026-09-04(작업 002-2)부터 data-root 는 실행·컨텍스트마다 갈린다</b>({@code AbstractDbTest}) —
+     * 종전처럼 <b>예전 실행이 남긴</b> 같은 번호의 클론 파일이 오는 일은 없다.
+     * 그래도 이 지우기는 남긴다: 한 실행 안에서 앞 시험이 심어 둔 것은 여전히 올 수 있고,
+     * 「없다」를 재는 시험은 없다는 것을 <b>스스로 만들어</b> 두는 편이 맞다.
      */
     private void deleteCloneScreen(Project project, String system, String screenId) {
         try {

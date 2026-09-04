@@ -237,7 +237,10 @@ class FeatureSpecScreenTest extends AbstractDbTest {
 
         String html = detail(project.getId(), "bo-delivery-detail");
 
-        assertThat(html).doesNotContain("추출 근거", "역추출 소스", "--- 정의 ---", "AI", "해시");
+        // ⚠ CSRF 토큰만 걷어내고 본다 — 난수라 "AI" 두 글자가 우연히 섞여 확률적으로 깨진다
+        //    (2026-09-04 실측, 까닭은 withoutCsrfTokens). ⛔ 금지어는 하나도 안 뺐다.
+        assertThat(withoutCsrfTokens(html))
+                .doesNotContain("추출 근거", "역추출 소스", "--- 정의 ---", "AI", "해시");
     }
 
     @Test
