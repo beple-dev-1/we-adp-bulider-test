@@ -93,39 +93,107 @@ public class IaService {
 
     /** 상세 화면을 처음 열면 ia.md와 index/4 화면 분류를 한 번만 DB에 가져온다. */
     public Workbench findOrImport(String projectId, String systemCode, String accountId) {
-        Optional<Workbench> stored = find(projectId, systemCode);
+        String system = checkedSystem(systemCode);
+        Optional<Workbench> stored = find(projectId, system);
         if (stored.isPresent()) {
-            return legacyUntouched(stored.get())
-                    ? upgradeUntouched(projectId, systemCode, accountId)
+            RebuildJudgment judgment = judgeRebuild(projectId, system, stored.get());
+            return judgment.rebuild()
+                    ? upgradeUntouched(projectId, system, accountId, judgment.prepared())
                     : stored.get();
         }
         try {
-            importOnce(projectId, systemCode, accountId);
+            importOnce(projectId, system, accountId);
         } catch (IllegalArgumentException raced) {
-            Optional<Workbench> concurrent = find(projectId, systemCode);
+            Optional<Workbench> concurrent = find(projectId, system);
             if (concurrent.isPresent()) return concurrent.get();
             throw raced;
         }
-        return find(projectId, systemCode)
+        return find(projectId, system)
                 .orElseThrow(() -> new IllegalStateException("메뉴구조도 최초 가져오기를 완료하지 못했습니다."));
     }
 
-    private boolean legacyUntouched(Workbench workbench) {
+    /**
+     * ④ 재작성 판정 (브리프 §3-1 「④의 비교 기준」 원문이 정본이다).
+     *
+     * <p>⛔ {@code version}·{@code currentRevision} 이 둘 다 0이 아니면 <b>파일을 읽지 않고
+     * 바로 거짓이다</b> — 사람이 고친 구조를 지우지 않으려고 순서를 이렇게 둔다. 둘 다 0일
+     * 때만 {@link #prepare} 로 지금 색인을 다시 세워, 저장된 행의 (순번·경로키·뎁스·화면ID)
+     * 네 값을 {@link IaTreeBuilder.Tree#placements()} 의 같은 네 값과 <b>순서까지</b> 견준다.
+     *
+     * <p>⚠ {@code prepare()} 가 예외를 내거나(클론 없음·파일 없음) 못 읽으면 <b>거짓으로
+     * 본다</b> — 저장된 구조는 클론이 없어도 그대로 열려야 한다.
+     *
+     * <p>⭐ 판정에 쓴 {@link Prepared} 를 {@link RebuildJudgment} 로 되돌려 {@link #upgradeUntouched}
+     * 가 재사용하게 한다. 그러지 않으면 작업대 한 번 여는 데 {@code prepare()}(파일 읽기 +
+     * {@link IaTreeBuilder#of} 순수 계산)가 판정·재확인·재작성 세 번 돈다.
+     *
+     * <p>⛔ <b>{@code importedHash} 로 먼저 걸러 대부분의 열기에서 이 계산을 건너뛰지 않는다</b>
+     * (코드리뷰가 제안했지만 반영하지 않았다, 2026-09-04) — 이번에 모양이 바뀐 까닭은
+     * {@code ia.md} 내용이 아니라 <b>코드</b>다({@link IaTreeBuilder}). 해시는 그대로인데 뎁스
+     * 조립 결과만 달라지므로, 해시로 먼저 걸러 내면 <b>이 과업이 필요로 하는 재작성 자체가
+     * 안 돈다</b> — 낡은 행이 영원히 남는다. 다음에 같은 최적화를 또 제안받으면 이 문단을 본다.
+     *
+     * <p>⛔ <b>{@code catch (RuntimeException)} 은 좁히지 않는다</b> — 브리프가 「클론이 없어도
+     * 저장된 구조는 열려야 한다」를 요구했다. 클론이 없거나 {@code ia.md} 가 없으면
+     * {@link #prepare} 가 {@link IllegalArgumentException} 을, 색인이 깨졌으면
+     * {@link IaTreeBuilder#of} 쪽에서 다른 런타임 예외가 날 수 있는데, 어느 쪽이든 <b>재작성
+     * 판정만 포기하고 저장된 구조는 그대로 열려야 한다.</b> 이 패키지에는 로거가 없으므로
+     * 새로 들이지 않는다 — 예외를 조용히 삼키는 대신 「거짓으로 본다」는 분기 자체가 그
+     * 실패를 드러낸다.
+     */
+    private RebuildJudgment judgeRebuild(String projectId, String systemCode, Workbench workbench) {
         IaStructure structure = workbench.structure();
-        if (structure.version() != 0 || structure.currentRevision() != 0) return false;
-        return workbench.rows().stream()
-                .filter(IaRow::hasScreen)
-                .anyMatch(row -> !row.pathKey().endsWith("/" + row.screenId()));
+        if (structure.version() != 0 || structure.currentRevision() != 0) {
+            return new RebuildJudgment(false, null);
+        }
+        Prepared prepared;
+        try {
+            prepared = prepare(projectId, systemCode);
+        } catch (RuntimeException unreadable) {
+            return new RebuildJudgment(false, null);
+        }
+        return new RebuildJudgment(shapeDiffers(workbench, prepared), prepared);
     }
 
-    private Workbench upgradeUntouched(String projectId, String systemCode, String accountId) {
+    /**
+     * 이미 세운 {@link Prepared} 를 재사용하는 순수 비교 — 파일을 다시 읽지 않는다.
+     *
+     * <p>⛔ 이름이 「손 안 댄 옛 구조인가」가 아니다 — 되돌리는 값은 <b>저장된 모양이 지금 다시
+     * 세운 모양과 다른가</b>다({@link #sameShape} 의 부정). 이름과 뜻이 갈렸던 자리라
+     * {@code shapeDiffers} 로 바꿨다(코드리뷰 반영, 2026-09-04).
+     */
+    private boolean shapeDiffers(Workbench workbench, Prepared prepared) {
+        IaStructure structure = workbench.structure();
+        if (structure.version() != 0 || structure.currentRevision() != 0) return false;
+        if (prepared == null) return false;
+        return !sameShape(workbench.rows(), prepared.tree().placements());
+    }
+
+    /** {@code Tree.skipped}·{@code kept} 는 비교 대상이 아니다 — {@code Placement} 네 값만 본다. */
+    private static boolean sameShape(List<IaRow> rows, List<IaDocumentCodec.Placement> placements) {
+        List<IaRow> screenRows = rows.stream().filter(IaRow::hasScreen).toList();
+        if (screenRows.size() != placements.size()) return false;
+        for (int index = 0; index < screenRows.size(); index++) {
+            IaRow row = screenRows.get(index);
+            IaDocumentCodec.Placement placement = placements.get(index);
+            if (row.rowOrder() != placement.order()) return false;
+            if (!row.pathKey().equals(placement.pathKey())) return false;
+            if (!row.screenId().equals(placement.screenId())) return false;
+            if (!row.depths().equals(placement.depths())) return false;
+        }
+        return true;
+    }
+
+    private record RebuildJudgment(boolean rebuild, Prepared prepared) {
+    }
+
+    private Workbench upgradeUntouched(String projectId, String systemCode, String accountId, Prepared prepared) {
         String system = checkedSystem(systemCode);
-        Prepared prepared = prepare(projectId, system);
         return transactions.execute(status -> {
             IaStructure structure = mapper.selectStructure(projectId, system).orElse(null);
             if (structure == null) return workbench(projectId, insert(projectId, system, accountId, prepared));
             Workbench current = workbench(projectId, structure);
-            if (!legacyUntouched(current)) return current;
+            if (!shapeDiffers(current, prepared)) return current;
             if (mapper.deleteStructure(structure.id(), structure.version()) != 1) {
                 return find(projectId, system).orElseThrow();
             }
@@ -243,6 +311,16 @@ public class IaService {
             String oldPrefix = current.nodeKey();
             String leafKey = oldPrefix.substring(oldPrefix.lastIndexOf('/') + 1);
             String newPrefix = parentNodeKey == null ? leafKey : parentNodeKey + "/" + leafKey;
+
+            // ⑤ 경로키 중복 거절(브리프 §3-1) — 옮기지 않는 나머지 행(자기 자신·자기 하위 제외)의
+            // pathKey 를 미리 모아 둔다. ⚠ codec.validateRows(:320 언저리)도 같은 중복을 잡지만
+            // 「어느 행과 부딪혔는지」를 못 담는다 — 그래서 여기서 먼저 걸러 사람이 무엇을 어떻게
+            // 고쳐야 하는지 아는 문구를 낸다. 이름 중복 검사(바로 위)와 같은 자리·같은 꼴로 둔다.
+            Map<String, IaRow> untouchedByPathKey = rows.stream()
+                    .filter(existing -> !existing.id().equals(rowId) && !existing.pathKey().startsWith(oldPrefix + "/"))
+                    .collect(java.util.stream.Collectors.toMap(IaRow::pathKey, existing -> existing, (a, b) -> a));
+            rejectIfPathCollides(newPrefix, untouchedByPathKey);
+
             IaRow updated = relocated(before, structure, newPrefix, depths,
                     before.menuType(), before.screenId(), accountId);
 
@@ -263,7 +341,10 @@ public class IaService {
                 if (descendantDepths.size() > IaTreeBuilder.MAX_DEPTH) {
                     throw new IllegalArgumentException("상위 메뉴를 변경하면 하위 메뉴가 최대 뎁스를 초과합니다.");
                 }
+                // ⚠ 딸려 옮겨지는 하위 행도 부딪힐 수 있다 — untouchedByPathKey 는 자손을 이미
+                // 뺐으므로, 옮기지 않는 나머지 행과만 견준다(브리프 §6-3 위험 3).
                 String descendantPath = newPrefix + existing.pathKey().substring(oldPrefix.length());
+                rejectIfPathCollides(descendantPath, untouchedByPathKey);
                 IaRow descendant = relocated(existing, structure, descendantPath, descendantDepths,
                         existing.menuType(), existing.screenId(), accountId);
                 proposed.add(descendant);
@@ -792,6 +873,46 @@ public class IaService {
     private IaStructure required(String projectId, String systemCode) {
         return mapper.selectStructure(projectId, checkedSystem(systemCode))
                 .orElseThrow(() -> new IllegalArgumentException("먼저 ia.md를 최초 가져오기 해주세요."));
+    }
+
+    /**
+     * ⑤ 상위 메뉴 변경이 만든 경로키가 옮기지 않는 다른 행과 같아지면 거절한다.
+     *
+     * <p>예 — {@code EXW/UWV/20}(휴대폰 본인인증)을 {@code EXW/UWV/50} 밑으로 옮기면
+     * {@code newPrefix} 가 {@code EXW/UWV/50/20} 인데 거기 이미 「충전」이 앉아 있다. 라벨이
+     * 달라 형제 이름 중복 검사는 통과하지만 두 행의 경로키가 같아진다 — 그것을 여기서 막는다.
+     *
+     * <p>⭐ <b>「행」만 보고 「마디」를 안 보면 못 잡는 반례가 있다 (코드리뷰 2차 CRITICAL,
+     * 2026-09-04)</b> — {@code untouchedByPathKey} 는 {@code pathKey} 정확 일치 맵이다.
+     * 옮길 자리에 {@code approval/target/movegroup} 행은 없고 그 자손
+     * {@code approval/target/movegroup/other-child} 행만 있으면, 정확 일치로는 못 잡고 남의
+     * 자손 밑으로 조용히 접붙는다. 그래서 <b>새 경로키가 다른 행의 경로키의 앞머리</b>이면
+     * (그 행이 옮기는 가지 밖이면) 그것도 거절한다 — 자손 경로를 검사하는 호출(:347 언저리)에도
+     * 같은 메서드가 그대로 걸린다.
+     */
+    private void rejectIfPathCollides(String candidatePathKey, Map<String, IaRow> untouchedByPathKey) {
+        IaRow exact = untouchedByPathKey.get(candidatePathKey);
+        if (exact != null) {
+            rejectCollision(candidatePathKey, exact, exact.depths().size() - 1);
+            return;
+        }
+        String descendantPrefix = candidatePathKey + "/";
+        int candidateDepth = candidatePathKey.split("/").length;
+        untouchedByPathKey.values().stream()
+                .filter(row -> row.pathKey().startsWith(descendantPrefix))
+                .findFirst()
+                .ifPresent(row -> rejectCollision(candidatePathKey, row, candidateDepth - 1));
+    }
+
+    private void rejectCollision(String candidatePathKey, IaRow collided, int labelIndex) {
+        List<String> collidedDepths = collided.depths();
+        // ⚠ depth1 이 빈 값이면 DB 제약(V19:32)이 막아 지금까지 collidedDepths 가 최소 한 칸은
+        //    있다고 가정해 왔다 — 그 보증이 마이그레이션 제약 하나에 매달려 있다(코드리뷰 지적,
+        //    2026-09-04). 그 제약이 없어지거나 우회되어도 여기서는 안 터지게 candidatePathKey 로
+        //    대신한다. 자손으로 잡은 경우도 마찬가지로 인덱스가 범위를 벗어날 수 있어 같은 방어를 쓴다.
+        String collidedLabel = labelIndex >= 0 && labelIndex < collidedDepths.size()
+                ? collidedDepths.get(labelIndex) : candidatePathKey;
+        throw new IllegalArgumentException("이동할 위치에 이미 '" + collidedLabel + "' 메뉴가 있습니다.");
     }
 
     private IaRow ownedRow(IaStructure structure, String rowId) {
