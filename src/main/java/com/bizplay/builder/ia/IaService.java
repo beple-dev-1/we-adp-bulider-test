@@ -713,7 +713,7 @@ public class IaService {
                 screen == null ? null : screen.screenName(), row == null ? null : row.standardScreenId(),
                 screen == null ? null : screen.kind(), screen == null ? null : screen.screenType(),
                 screen != null && screen.typeNeedsReview(), row == null ? null : row.row().screenId(),
-                screen == null ? null : screen.summary());
+                screen == null ? null : screen.summary(), screen != null);
     }
 
     private String cacheKey(String projectId, String systemCode) {
@@ -1014,7 +1014,10 @@ public class IaService {
                                 boolean canMoveUp, boolean canMoveDown, int depth, String menuType,
                                  String applicationTarget,
                                  String screenName, String standardScreenId, String screenKind, String screenType,
-                                 boolean screenTypeNeedsReview, String originalScreenId, String screenSummary) {}
+                                 boolean screenTypeNeedsReview, String originalScreenId, String screenSummary,
+                                 // ⚠ 색인 유무다. 실물(html) 유무가 아니다 — 실물이 없어도 눌러서
+                                 //   빈 상태에 닿는 것이 확정된 결정이다 (002 계획서 §4).
+                                 boolean canOpenScreen) {}
     public record Workbench(IaStructure structure, List<IaRow> rows, List<RowView> rowViews,
                             List<TreeNode> tree,
                             List<SolutionScreen> screens,

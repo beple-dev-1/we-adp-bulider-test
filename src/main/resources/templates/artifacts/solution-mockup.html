@@ -53,8 +53,12 @@
           <!--/*
             ⛔ 확대·축소를 빼지 마라 — 백오피스 운영 화면은 1200px 안팎이라 이 칸에 안 들어간다.
                2026-08-16 에 한 번 뺐다가 목업 검사기가 잡았다.
+            ⚠ 아래 th:if 는 그 ⛔ 를 어긴 것이 아니다 — 기능을 뺀 것이 아니라 **끼울 화면이
+               없을 때만** 감춘다. 확대할 것이 없는데 눌리는 단추를 두면 눌러도 아무 일이
+               안 나서 고장으로 읽힌다. 목업 08a(실물 있는 상태)는 셋을 그대로 갖고 있다.
           */-->
-          <div class="preview-zoom" role="group" aria-label="미리보기 확대 및 축소">
+          <div class="preview-zoom" role="group" aria-label="미리보기 확대 및 축소"
+               th:if="${previewExists}">
             <button type="button" id="zoom-out" aria-label="미리보기 축소">&minus;</button>
             <button type="button" id="zoom-reset" aria-label="미리보기 배율 초기화">
               <output id="zoom-level">100%</output>
@@ -71,13 +75,15 @@
           </button>
           <button class="icon-button preview-tool-button preview-feature-toggle" id="toggle-solution-features" type="button"
                   aria-label="기능 위치 표시" title="기능 위치 표시" aria-pressed="false"
-                  th:disabled="${!screenDocument.hasFunctions()}">
+                  th:disabled="${!screenDocument.hasFunctions() or !previewExists}">
             <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
               <path d="M5 4h14a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-8l-5 3v-3H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2Z"></path>
               <path d="M8 8h8M8 12h6"></path>
             </svg>
           </button>
+          <!--/* 실물이 없으면(previewExists=false) 눌러도 404 로 가는 링크를 남기지 않는다. */-->
           <a class="icon-button preview-open-window" target="_blank" rel="noopener"
+             th:if="${previewExists}"
              aria-label="새 창으로 열기" title="새 창으로 열기"
              th:href="@{/projects/{p}/artifacts/solution-mockups/files/{f}(p=${projectId},f=${previewPath},skin=${variant})}">
             <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
@@ -111,8 +117,15 @@
         <div class="preview-review" id="preview-review">
           <div class="preview-canvas" id="preview-canvas">
             <iframe class="preview-frame" sandbox="allow-same-origin"
+                    th:if="${previewExists}"
                     th:title="${screen.screenName} + ' 운영 화면 미리보기'"
                     th:src="@{/projects/{p}/artifacts/solution-mockups/files/{f}(p=${projectId},f=${previewPath},skin=${variant})}"></iframe>
+            <div class="empty-state solution-preview-empty" th:unless="${previewExists}">
+              <div class="empty-state__copy">
+                <h3>현재 운영 화면이 아직 없습니다</h3>
+                <p>이 화면의 운영 화면 파일(html)을 기획 저장소에서 찾지 못했습니다. 기획 저장소 갱신 상태를 확인해 주세요.</p>
+              </div>
+            </div>
           </div>
           <aside class="preview-feature-panel" id="solution-feature-panel" aria-labelledby="solution-feature-panel-title" hidden>
             <header class="preview-feature-panel__head">

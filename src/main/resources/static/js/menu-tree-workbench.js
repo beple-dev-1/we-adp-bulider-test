@@ -4,6 +4,8 @@
 
   const selectionCache = new Map();
   const basePath = window.location.pathname.replace(/\/$/, "");
+  // ⚠ basePath 는 menu-tree 경로다 — 솔루션 목록 주소는 앵커의 data-* 에 심어 둔 값을 쓴다.
+  const openScreenBase = document.querySelector("[data-menu-open-screen]")?.dataset.openScreenBase || "";
   let activeRequest;
   let activeEditRequest;
   let editTrigger;
@@ -189,6 +191,12 @@
       edit.hidden = !selection.rowId;
       edit.href = selection.rowId
         ? `${basePath}/rows/${encodeURIComponent(selection.rowId)}/edit` : "#";
+    }
+    const openScreen = document.querySelector("[data-menu-open-screen]");
+    if (openScreen) {
+      openScreen.hidden = !selection.canOpenScreen;
+      openScreen.href = selection.canOpenScreen
+        ? `${openScreenBase}/${encodeURIComponent(selection.originalScreenId)}` : "#";
     }
 
     text("[data-selection-label]", selection.label);

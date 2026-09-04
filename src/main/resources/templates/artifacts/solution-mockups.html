@@ -110,6 +110,7 @@
                 */-->
                 <span class="badge badge--outline" th:if="${row.hasMismatch}"
                       th:text="'⚑ 실물과 다름 ' + ${row.mismatchCount}"></span>
+                <span class="badge badge--outline" th:if="${row.hasPreview}">미리보기 있음</span>
               </span>
             </span>
           </td>
