@@ -79,6 +79,12 @@ class IaScreenTest extends AbstractDbTest {
                 "moveTreeNode(result.nodeKey, result.direction)",
                 "\"Accept\": \"application/json\"",
                 "data-menu-tree-feedback",
+                // ⛔ 「화면 열기」는 최초 렌더와 인플레이스 둘 다 고쳐야 한다(과업 002).
+                //   여기가 빠지면 트리에서 마디를 눌렀을 때 버튼이 안 따라온다.
+                "selection.canOpenScreen",
+                "encodeURIComponent(selection.originalScreenId)",
+                // ⚠ basePath 는 menu-tree 경로다 — 그것으로 솔루션 주소를 만들면 죽은 주소가 난다.
+                "dataset.openScreenBase",
                 "setBusy(true)",
                 "ia-detail-loading",
                 "window.history.pushState",
@@ -86,8 +92,11 @@ class IaScreenTest extends AbstractDbTest {
                 .doesNotContain("synchronizeTree(nextDocument)", "window.setTimeout(");
         assertThat(styles).contains(
                 ".ia-tree-toggle:hover",
-                ".ia-tree-tools .button:not(:disabled), .ia-detail-edit { cursor: pointer; }",
+                ".ia-tree-tools .button:not(:disabled), .ia-detail-edit, .ia-detail-open-screen { cursor: pointer; }",
                 ".ia-tree-tools .button:not(:disabled):hover, .ia-detail-edit:hover",
+                // ⚠ 「화면 열기」가 연필과 같은 아이콘 단추라 같은 선택자 묶음에 얹혔다(과업 002).
+                //   이 줄에서 빠지면 svg 에 크기 규칙이 안 걸려 머리글이 통째로 밀린다.
+                ".ia-tree-tools svg, .ia-detail-edit svg, .ia-detail-open-screen svg { width: 14px;",
                 ".ia-tree-tools .button:disabled { transform: none; cursor: not-allowed; }",
                 ".ia-tree-label strong { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;",
                 ".ia-detail-loading",
@@ -228,6 +237,54 @@ class IaScreenTest extends AbstractDbTest {
                 .findFirst().orElseThrow();
         assertThat(untouchedDetail.pathKey()).isEqualTo(legacy.pathKey())
                 .doesNotEndWith("/bo-appr-detail");
+    }
+
+    /**
+     * 과업 002 의 끝 조건이 지나는 자리 — IA 에서 솔루션 템플릿으로 건너가는 길.
+     *
+     * <p>⚠ <b>{@code canOpenScreen} 은 색인 유무이지 실물(html) 유무가 아니다.</b> 실물이 없어도
+     * 버튼은 뜨고, 눌러 닿은 상세가 「아직 없다」를 말한다. 감추면 기획자가 <b>왜 없는지</b>를
+     * 읽을 자리가 사라진다(002 계획서 §4 확정 결정).
+     *
+     * <p>⛔ 화면이 안 걸린 <b>그룹 마디</b>에서는 감춘다 — 누르면 404 로 가는 단추다.
+     */
+    @Test
+    void 화면이_걸린_마디만_솔루션_템플릿으로_가는_길을_낸다() throws Exception {
+        Project project = readyProject("IA 화면 열기 시험");
+        seedPlanningRepo(project.getId());
+        String base = "/projects/" + project.getId() + "/artifacts/menu-tree/backoffice";
+
+        String onScreen = mvc.perform(get(base)
+                        .queryParam("nodeKey", "approval/document/write/basic/bo-appr-list")
+                        .with(user(superUser())))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString(StandardCharsets.UTF_8);
+        assertThat(onScreen)
+                .as("화면이 걸린 마디는 그 화면ID 의 솔루션 템플릿 상세를 가리킨다")
+                .contains("ia-detail-open-screen", "aria-label=\"화면 열기\"", "title=\"화면 열기\"",
+                        "/projects/" + project.getId() + "/artifacts/solution-mockups/bo-appr-list");
+        assertThat(openScreenAnchor(onScreen))
+                .as("화면이 걸렸으면 안 감춘다")
+                .doesNotContain("hidden");
+        assertThat(onScreen)
+                .as("⚠ JS 는 menu-tree 경로를 못 쓴다 — 기준 주소를 앵커에 심어 넘긴다")
+                .contains("data-open-screen-base=\"/projects/" + project.getId()
+                        + "/artifacts/solution-mockups\"");
+
+        String onGroup = mvc.perform(get(base)
+                        .queryParam("nodeKey", "approval/document")
+                        .with(user(superUser())))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString(StandardCharsets.UTF_8);
+        assertThat(openScreenAnchor(onGroup))
+                .as("화면이 안 걸린 그룹 마디에서는 감추고 죽은 주소를 안 남긴다")
+                .contains("hidden")
+                .contains("href=\"#\"");
+    }
+
+    /** 「화면 열기」 앵커 한 개를 여는 태그까지만 떼어 온다. */
+    private String openScreenAnchor(String html) {
+        int at = html.indexOf("ia-detail-open-screen");
+        assertThat(at).as("「화면 열기」 앵커가 화면에 있어야 한다").isNotNegative();
+        return html.substring(html.lastIndexOf('<', at), html.indexOf('>', at) + 1);
     }
 
     @Test

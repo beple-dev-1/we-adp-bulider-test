@@ -122,7 +122,8 @@ public class SolutionMockupController {
                 .map(screen -> new Row(screen,
                         displayStandardId(standardIdByScreen.get(screen.screenId()), screen.screenId()),
                         mismatchCounts.getOrDefault(screen.screenId(), 0L),
-                        systemLabels.label(screen.system())))
+                        systemLabels.label(screen.system()),
+                        solutions.hasPreview(projectId, screen)))
                 .toList());
         model.addAttribute("matchedCount", matched.size());
         model.addAttribute("page", current);
@@ -183,6 +184,7 @@ public class SolutionMockupController {
         model.addAttribute("variant", chosen);
         model.addAttribute("systemLabel", projectSystems.labels(projectId).label(screen.system()));
         model.addAttribute("previewPath", screen.previewPath(chosen));
+        model.addAttribute("previewExists", solutions.previewExists(projectId, screen, chosen));
         model.addAttribute("screenDocument", featureSpecs.document(projectId, screen));
         model.addAttribute("mismatches", solutions.mismatchesOf(projectId, screenId));
         model.addAttribute("iaLink", ia.links(projectId).get(screenId));
@@ -279,7 +281,8 @@ public class SolutionMockupController {
      * <p>⚠ 시스템 이름이 여기 실리는 까닭 — {@link SolutionScreen} 은 클론의 파일에서 읽은 값
      * 묶음이라 자기가 어느 프로젝트인지 모른다. 이름은 프로젝트 등록 자료에 있다.
      */
-    public record Row(SolutionScreen screen, String standardId, long mismatchCount, String systemLabel) {
+    public record Row(SolutionScreen screen, String standardId, long mismatchCount, String systemLabel,
+                      boolean hasPreview) {
 
         public boolean hasMismatch() {
             return mismatchCount > 0;

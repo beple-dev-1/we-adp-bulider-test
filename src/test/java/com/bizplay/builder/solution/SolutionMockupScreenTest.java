@@ -63,6 +63,7 @@ class SolutionMockupScreenTest extends AbstractDbTest {
     @Autowired ProjectFacetMapper projectFacets;
     @Autowired ScreenStandardIdMapper standardIds;
     @Autowired ProjectSystemService projectSystems;
+    @Autowired SolutionMockupService solutions;
 
     // ── 클론이 없을 때 ────────────────────────────────────────────────────
 
@@ -496,12 +497,150 @@ class SolutionMockupScreenTest extends AbstractDbTest {
                 .contains(">버전</th>", ">v2</td>");
     }
 
+    /**
+     * 미리보기 실물이 없는 화면 — <b>스프링 오류 페이지 대신 빈 상태</b>를 그린다 (과업 002).
+     *
+     * <p>⭐ <b>실물이 없는 것은 결함이 아니라 정상 상태다.</b> 화면을 소스에서 뽑아 기획 저장소에
+     * 넣는 것은 기획 세션 몫이고, 빌더는 들어온 것을 띄우기만 한다. 2026-09-04 실물에서
+     * 색인 449장 중 실물이 있는 것이 14장이었다 — <b>대부분이 이 갈래를 지난다.</b>
+     *
+     * <p>⛔ 그때 {@code <iframe>} 을 그대로 그리면 그 안이 404 를 받아 <b>Whitelabel Error Page</b>
+     * 가 미리보기 칸을 채운다. 기획자에게 영어 스택 화면이 보인다.
+     */
+    @Test
+    void 미리보기_실물이_없으면_오류_페이지_대신_빈_상태를_그린다() throws Exception {
+        Project p = readyProject("탐나는전");
+        seedClone(p.getId());
+
+        String html = detail(p.getId(), "bo-sample-gone");
+
+        assertThat(html)
+                .as("⛔ 영어 스택 화면을 기획자에게 보이지 않는다")
+                .doesNotContain("Whitelabel Error Page");
+        assertThat(html)
+                .as("빈 상태는 옆 선례(기능정의서 없음)와 같은 뼈대·말투다")
+                .contains("empty-state solution-preview-empty",
+                        "현재 운영 화면이 아직 없습니다",
+                        "이 화면의 운영 화면 파일(html)을 기획 저장소에서 찾지 못했습니다."
+                                + " 기획 저장소 갱신 상태를 확인해 주세요.");
+        assertThat(html)
+                .as("끼울 것이 없으면 iframe 을 아예 안 그린다 — 그려야 404 가 안 들어온다")
+                .doesNotContain("class=\"preview-frame\"");
+        assertThat(html)
+                .as("눌러도 404 로 가는 단추를 남기지 않는다 — 새 창 열기와 확대·축소 둘 다")
+                .doesNotContain("preview-open-window", "id=\"zoom-in\"");
+    }
+
+    /**
+     * 실물이 있는 화면은 <b>손대기 전과 똑같이</b> 뜬다 — 과업 002 의 회귀 경계.
+     *
+     * <p>⚠ 이 시험이 깨지면 002 가 「없을 때」를 고치다 「있을 때」를 함께 바꾼 것이다.
+     */
+    @Test
+    void 미리보기_실물이_있으면_iframe_과_보조_단추가_그대로다() throws Exception {
+        Project p = readyProject("탐나는전");
+        seedClone(p.getId());
+
+        String html = detail(p.getId(), "bo-sample-list");
+
+        assertThat(html).contains("class=\"preview-frame\"", "sandbox=\"allow-same-origin\"",
+                        "preview-open-window", "id=\"zoom-in\"", "id=\"zoom-out\"", "id=\"zoom-reset\"")
+                .doesNotContain("solution-preview-empty", "현재 운영 화면이 아직 없습니다");
+    }
+
+    /**
+     * 목록은 <b>있는 쪽</b>에 표시를 단다.
+     *
+     * <p>⭐ 실물이 449 중 14장뿐이라(2026-09-04 실측) 「없음」을 달면 435줄이 표시로 덮인다.
+     * 사람이 찾는 것은 <b>열리는 화면</b>이다.
+     */
+    @Test
+    void 목록은_미리보기가_있는_줄에만_표시를_단다() throws Exception {
+        Project p = readyProject("탐나는전");
+        seedClone(p.getId());
+
+        String html = list(p.getId());
+
+        assertThat(html).contains("미리보기 있음");
+        assertThat(countOf(html, "미리보기 있음"))
+                .as("씨앗 넷 중 실물이 있는 셋에만 붙는다 — 갈래 화면은 기관 파일이 실물이다")
+                .isEqualTo(3);
+    }
+
+    /**
+     * 존재 확인의 울타리 — <b>클론 밖은 있어도 없는 것</b>이다.
+     *
+     * <p>⛔ {@code Files.exists()} 를 단독으로 부르면 여기가 뚫린다. {@code system}·{@code screenId}
+     * 는 <b>남의 저장소</b>인 기획 레포 색인에서 온 검증 안 된 글자다 — {@code ../} 가 섞이면
+     * 클론 밖을 가리키고, 그러면 「그 경로에 파일이 있나」를 밖으로 흘리는 문이 된다.
+     */
+    @Test
+    void 존재_확인은_클론_밖을_가리키는_경로를_거절한다() throws Exception {
+        Project p = readyProject("탐나는전");
+        seedClone(p.getId());
+        Path outside = clone(p.getId()).getParent().resolve("클론밖.html");
+        write(outside, "<html>밖에 있는 파일</html>");
+        SolutionScreen escaping = screenOf("../../클론밖", "backoffice");
+
+        assertThat(Files.isRegularFile(outside))
+                .as("먼저 그 파일이 진짜로 있는 것을 확인한다 — 없으면 이 시험이 아무것도 안 잰다")
+                .isTrue();
+        assertThat(solutions.previewExists(p.getId(), escaping, null))
+                .as("깊은 문(상세)이 거절한다")
+                .isFalse();
+        assertThat(solutions.hasPreview(p.getId(), escaping))
+                .as("얕은 문(목록)도 같이 거절한다 — 여기만 뚫리면 「있음」이 오라클이 된다")
+                .isFalse();
+    }
+
+    /**
+     * ⛔ <b>정규화만으로는 심볼릭 링크를 못 막는다.</b> 클론 안의 링크가 밖을 가리키면
+     * 글자로는 울타리 안인데 <b>가리키는 것은 밖</b>이다. 클론은 우리가 만든 것이 아니라 남의
+     * 저장소라 이 길이 실재한다.
+     *
+     * <p>⚠ 상세(깊은 문)만 {@code toRealPath} 로 이것을 잰다. 목록(얕은 문)이 안 재는 것은
+     * <b>정한 것</b>이다 — 최대 100장마다 실제 경로를 펴면 파일 계통 호출이 곱절로 나고,
+     * 목록이 내는 것은 「있음」 표시 하나라 밖의 내용이 안 샌다.
+     */
+    @Test
+    void 깊은_문은_클론_밖을_가리키는_심볼릭_링크를_거절한다() throws Exception {
+        Project p = readyProject("탐나는전");
+        seedClone(p.getId());
+        Path outside = clone(p.getId()).getParent().resolve("링크대상.html");
+        write(outside, "<html>밖에 있는 파일</html>");
+        Path link = clone(p.getId()).resolve("core/backoffice/pages/bo-link.html");
+        try {
+            Files.createSymbolicLink(link, outside);
+        } catch (IOException | UnsupportedOperationException notAllowed) {
+            // ⚠ 윈도우는 개발자 모드나 관리자 자격이 없으면 링크를 못 만든다. 그때는 잴 것이 없다.
+            org.junit.jupiter.api.Assumptions.abort("이 기계에서 심볼릭 링크를 못 만든다: " + notAllowed);
+            return;
+        }
+
+        assertThat(Files.isRegularFile(link))
+                .as("글자로는 클론 안이고 실제로 읽히기까지 한다 — 그래서 normalize 만으로는 안 걸린다")
+                .isTrue();
+        assertThat(solutions.previewExists(p.getId(), screenOf("bo-link", "backoffice"), null))
+                .as("실경로로 다시 재서 거절한다")
+                .isFalse();
+    }
+
+    /** 존재 확인만 재는 데 필요한 최소 화면 하나. 색인을 거치지 않고 곧장 문에 넣는다. */
+    private SolutionScreen screenOf(String screenId, String system) {
+        return new SolutionScreen(screenId, screenId, system, "화면", "목록", "ID", "", "",
+                null, null, java.util.List.of(), java.util.List.of(), null, java.util.List.of(),
+                false, ScreenHistory.EMPTY);
+    }
+
     // ── 씨앗 ──────────────────────────────────────────────────────────────
 
     /**
-     * 진짜 클론을 흉내 낸 것 — 색인 하나 · 화면 셋(백오피스 둘 · 웹뷰 갈래 하나) · 곁의 css 하나.
+     * 진짜 클론을 흉내 낸 것 — 색인 하나 · 화면 넷(백오피스 셋 · 웹뷰 갈래 하나) · 곁의 css 하나.
      *
      * <p>⚠ 갈래 화면에는 {@code pages/<ID>.html} 을 <b>일부러 안 만든다.</b> 실물이 그렇다.
+     *
+     * <p>⚠ {@code bo-sample-gone} 도 <b>일부러 html 이 없다</b> — 화면 md 만 있고 운영 화면은
+     * 아직 안 뽑힌 것이다. 실물 클론에서 이쪽이 다수다(2026-09-04 실측 · 449 중 435).
      */
     private void seedClone(String projectId) throws IOException {
         Path core = clone(projectId).resolve("core");
@@ -512,11 +651,12 @@ class SolutionMockupScreenTest extends AbstractDbTest {
                   "screens": {
                     "bo-sample-list":  {"system": "backoffice", "ia": {"경로": "sample/list", "종류": "화면"}},
                     "bo-sample-pop":   {"system": "backoffice", "ia": {"경로": "sample/list", "종류": "팝업"}},
-                    "wv-sample-home":  {"system": "webview",    "ia": {"경로": "home", "종류": "화면"}}
+                    "wv-sample-home":  {"system": "webview",    "ia": {"경로": "home", "종류": "화면"}},
+                    "bo-sample-gone":  {"system": "backoffice", "ia": {"경로": "sample/gone", "종류": "화면"}}
                   },
                   "facetIndex": {"jeju": ["bo-sample-pop"]},
                   "variantIndex": {"iksan": ["wv-sample-home"], "jeju": ["wv-sample-home"]},
-                  "counts": {"screens": 3}
+                  "counts": {"screens": 4}
                 }
                 """);
 
@@ -526,6 +666,9 @@ class SolutionMockupScreenTest extends AbstractDbTest {
                 markdown("bo-sample-pop", "backoffice", "선불카드 관리 > 상세 > 확인팝업", "카드상태 확인 팝업"));
         write(core.resolve("webview/pages/wv-sample-home.md"),
                 markdown("wv-sample-home", "webview", "홈 > 메인", "메인 홈"));
+        // ⛔ 짝이 되는 html 을 만들지 마라 — 「운영 화면이 아직 없는 화면」이 이 씨앗의 몫이다.
+        write(core.resolve("backoffice/pages/bo-sample-gone.md"),
+                markdown("bo-sample-gone", "backoffice", "선불카드 관리 > 아직 없는 화면", "아직 안 뽑힌 화면"));
 
         write(core.resolve("backoffice/pages/bo-sample-list.html"),
                 page("선불카드 목록 운영화면"));

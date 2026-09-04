@@ -1644,6 +1644,9 @@ body:has(.setup-screen) > .app-header {
    ⛔ 칸의 높이를 고정해 둬라. transform 은 배치를 안 바꾸므로, 안 고정하면 축소했을 때
       줄어든 만큼(80%에서 175px 실측) 밑에 빈 회색이 남는다. */
 .preview-canvas { height: 640px; overflow: hidden; display: flex; justify-content: center; align-items: flex-start; border: 1px solid var(--color-line); border-radius: var(--radius-control); background: var(--color-canvas); }
+/* previewExists=false 일 때의 빈 상태. preview-canvas 는 iframe 을 위쪽에 붙이지만
+   빈 상태는 고정 높이(640px) 칸 안에서 세로로 가운데 두는 것이 맞아 align-self 만 덧대었다. */
+.solution-preview-empty { align-self: center; }
 /* ⛔ sandbox 를 빼지 마라 — 추출 html 에 남의 <script> 가 남아 있다. */
 .preview-frame { flex: 0 0 auto; display: block; width: min(1280px, calc(100% / var(--preview-zoom, 1))); height: calc(640px / var(--preview-zoom, 1)); margin-inline: auto; border: 0; background: #fff; transform: scale(var(--preview-zoom, 1)); transform-origin: top center; transition: transform 140ms ease; }
 
@@ -2306,11 +2309,11 @@ body.is-frd-focus .wm-focus-toggle__restore { display: block; }
 .ia-tree--lines > ul ul > li:last-child::after { bottom: auto; height: 20px; }
 .ia-tree--lines .ia-tree-row.is-path + .ia-tree-toggle { border-color: #d6d0df; color: #66527f; }
 .ia-tree-tools { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 5px; }
-.ia-tree-tools .button, .ia-detail-edit { width: 30px; height: 30px; min-height: 30px; padding: 0; display: inline-grid; place-items: center; }
-.ia-tree-tools .button:not(:disabled), .ia-detail-edit { cursor: pointer; }
-.ia-tree-tools .button:not(:disabled):hover, .ia-detail-edit:hover { border-color: #c9bfd8; color: #66527f; background: #faf8fc; box-shadow: 0 2px 7px rgb(83 61 112 / 14%); }
+.ia-tree-tools .button, .ia-detail-edit, .ia-detail-open-screen { width: 30px; height: 30px; min-height: 30px; padding: 0; display: inline-grid; place-items: center; }
+.ia-tree-tools .button:not(:disabled), .ia-detail-edit, .ia-detail-open-screen { cursor: pointer; }
+.ia-tree-tools .button:not(:disabled):hover, .ia-detail-edit:hover, .ia-detail-open-screen:hover { border-color: #c9bfd8; color: #66527f; background: #faf8fc; box-shadow: 0 2px 7px rgb(83 61 112 / 14%); }
 .ia-tree-tools .button:disabled { transform: none; cursor: not-allowed; }
-.ia-tree-tools svg, .ia-detail-edit svg { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.ia-tree-tools svg, .ia-detail-edit svg, .ia-detail-open-screen svg { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
 .ia-menu-link svg { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
 
 @media (max-width: 900px) {

@@ -1,8 +1,13 @@
 package com.bizplay.builder.solution;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -16,6 +21,8 @@ import java.util.stream.Collectors;
  */
 @Service
 public class SolutionMockupService {
+
+    private static final Logger log = LoggerFactory.getLogger(SolutionMockupService.class);
 
     private final SolutionScreenReader reader;
     private final MockupMismatchMapper mismatches;
@@ -33,6 +40,65 @@ public class SolutionMockupService {
         return reader.read(projectId).stream()
                 .filter(screen -> screen.screenId().equals(screenId))
                 .findFirst();
+    }
+
+    /**
+     * 미리보기 html 이 클론에 실제로 있나 — <b>상세 1건/요청</b>용 깊은 문.
+     *
+     * <p>{@code toRealPath()} 까지 재서 클론 안 심볼릭 링크가 밖을 가리키는 것까지 막는다
+     * ({@code FeatureSpecService.insideCloneForReal} 과 같은 등급).
+     */
+    public boolean previewExists(String projectId, SolutionScreen screen, String variant) {
+        try {
+            Path file = previewPath(projectId, screen, variant);
+            if (file == null || !Files.isRegularFile(file)) {
+                return false;
+            }
+            Path realCore = reader.coreRoot(projectId).toAbsolutePath().normalize().toRealPath();
+            return file.toRealPath().startsWith(realCore);
+        } catch (IOException | RuntimeException unresolvable) {
+            // ⚠ 못 잰다고 상세 화면을 깨뜨리지 않는다 — 못 재면 「없다」로 보고 빈 상태를 그린다.
+            //   색인의 화면ID 가 경로로 못 쓸 글자면 여기서 500 이 나던 자리다.
+            log.warn("미리보기가 있는지 못 쟀다: {}", screen.screenId(), unresolvable);
+            return false;
+        }
+    }
+
+    /**
+     * 같은 질문을 <b>목록(최대 100건/요청)</b>용으로 얕게 잰다.
+     *
+     * <p>⚠ <b>{@code toRealPath()} 를 일부러 생략한다</b> — 목록 한 번에 최대 100장을 재는데
+     * 매 장마다 실제 경로를 펴면 파일 계통 호출이 곱절로 난다. 그리고 이 문이 내는 것은
+     * 「있음」 배지 하나뿐이라 밖의 내용이 새지 않는다 — 실제 서빙은
+     * {@code SolutionPreviewController} 가 다시 전부 막는다
+     * ({@code FeatureSpecService.hasDocument} 와 같은 선례).
+     *
+     * <p>⚠ <b>갈래 화면은 첫 기관 파일로 잰다</b>({@code variant} 를 안 넘긴다) — 목록은 기관을
+     * 안 고른 자리라 고를 것이 없다. 그래서 기관마다 실물이 갈리는 화면에서는 목록의 「있음」과
+     * 상세의 판정이 갈릴 수 있다. 지금 클론은 갈래 화면이 0장이라 그 자리가 안 선다.
+     */
+    public boolean hasPreview(String projectId, SolutionScreen screen) {
+        try {
+            Path file = previewPath(projectId, screen, null);
+            return file != null && Files.isRegularFile(file);
+        } catch (RuntimeException unreadable) {
+            // ⚠ 화면 하나를 못 재는 것으로 목록 전체를 깨뜨리지 않는다.
+            log.warn("미리보기가 있는지 못 쟀다: {}", screen.screenId(), unreadable);
+            return false;
+        }
+    }
+
+    /**
+     * 클론 안 미리보기 파일 경로 — 울타리(클론 경계) 안일 때만 돌려준다.
+     *
+     * <p>⛔ {@code Files.exists()} 단독 호출 금지 — {@code system}·{@code screenId} 는 기획
+     * 저장소 색인에서 온 검증 안 된 글자라 {@code ../} 가 섞이면 클론 밖을 가리킨다.
+     */
+    private Path previewPath(String projectId, SolutionScreen screen, String variant) {
+        Path core = reader.coreRoot(projectId).toAbsolutePath().normalize();
+        Path file = reader.fileInClone(projectId, screen.previewPath(variant))
+                .toAbsolutePath().normalize();
+        return file.startsWith(core) ? file : null;
     }
 
     /** 화면ID 마다 몇 건 짚혔나. 목록이 배지를 다는 데 쓴다. */
