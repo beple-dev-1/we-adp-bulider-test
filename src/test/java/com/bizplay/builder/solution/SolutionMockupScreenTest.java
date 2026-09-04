@@ -287,6 +287,32 @@ class SolutionMockupScreenTest extends AbstractDbTest {
                 .andExpect(status().isNotFound());
     }
 
+    /**
+     * ⚠ 위 시험(「그런화면없다」)과 다르다 — 저건 <b>한 번도 없던 ID</b>고, 이건
+     * <b>색인에 있다가 IA 개정으로 사라진 키</b>다. 화면 md·html 파일은 클론에 그대로 남는다
+     * (2026-08-27 개정 문서의 「표준화면ID 옛 발번은 죽은 채 남는다」와 같은 모양) — 색인
+     * ({@code index.json} 의 {@code screens}) 에서만 키가 빠진다.
+     *
+     * <p>⚠ <b>MockMvc 는 오류 디스패치를 안 탄다</b>(2026-09-04 실측, {@code ErrorScreenTest}) —
+     * 이 경로(컨트롤러가 {@code ResponseStatusException} 을 던지는 실제 요청)의 응답 본문은
+     * 비어 있다. 그래서 여기서는 <b>상태 404 만</b> 단정한다. 오류 화면 본문에
+     * {@code Whitelabel} 이 없는지는 {@code ErrorScreenTest} 가 맡는다 — 빈 본문을 그 증거로
+     * 쓰지 않는다.
+     */
+    @Test
+    void 색인에서_사라진_화면키를_열면_404_이고_흰_오류판이_아니다() throws Exception {
+        Project p = readyProject("탐나는전");
+        seedClone(p.getId());
+        assertThat(Files.exists(clone(p.getId()).resolve("core/backoffice/pages/bo-sample-list.md")))
+                .as("색인에서만 빠진다 — 파일은 죽은 채 남는다")
+                .isTrue();
+
+        dropFromIndex(p.getId(), "bo-sample-list");
+
+        mvc.perform(get(base(p.getId()) + "/bo-sample-list").with(user(superUser())))
+                .andExpect(status().isNotFound());
+    }
+
     /** ⚠ 클론이 프로젝트마다 따로라 남의 프로젝트 화면은 주소를 알아도 안 열린다. */
     @Test
     void 남의_프로젝트_화면은_주소를_알아도_안_열린다() throws Exception {
@@ -686,6 +712,39 @@ class SolutionMockupScreenTest extends AbstractDbTest {
         projectSystems.syncFromRepo(projectId);
         projectSystems.replaceNames(projectId,
                 new java.util.LinkedHashMap<>(java.util.Map.of("backoffice", "백오피스", "webview", "웹뷰")));
+    }
+
+    /**
+     * IA 개정 흉내 — {@code seedClone} 이 심은 넷 중 {@code screenId} 하나만 색인에서 뺀다.
+     * 화면 파일(md·html)은 건드리지 않는다. 지금은 {@code bo-sample-list} 만 지원한다.
+     */
+    private void dropFromIndex(String projectId, String screenId) throws IOException {
+        if (!"bo-sample-list".equals(screenId)) {
+            throw new IllegalArgumentException("이 도우미는 bo-sample-list 만 뺄 수 있다: " + screenId);
+        }
+        // ⛔ 아래는 색인을 통째로 덮어쓴다. seedClone 에 화면이 늘면 이 사본이 그것까지 조용히
+        //    되돌리고 시험은 그대로 초록이 된다 — 그래서 덮기 전에 씨앗과 대조해 시끄럽게 깬다.
+        String seeded = Files.readString(clone(projectId).resolve("index.json"), StandardCharsets.UTF_8);
+        assertThat(seeded)
+                .as("씨앗 색인이 바뀌었다 — dropFromIndex 의 사본을 함께 고쳐라")
+                .contains("\"bo-sample-list\"", "\"bo-sample-pop\"", "\"wv-sample-home\"", "\"bo-sample-gone\"");
+        assertThat(seeded.split("\"system\"", -1).length - 1)
+                .as("씨앗 색인에 화면이 늘었다 — dropFromIndex 의 사본을 함께 고쳐라")
+                .isEqualTo(4);
+
+        write(clone(projectId).resolve("index.json"), """
+                {
+                  "schema": "we-adk-index/3",
+                  "screens": {
+                    "bo-sample-pop":   {"system": "backoffice", "ia": {"경로": "sample/list", "종류": "팝업"}},
+                    "wv-sample-home":  {"system": "webview",    "ia": {"경로": "home", "종류": "화면"}},
+                    "bo-sample-gone":  {"system": "backoffice", "ia": {"경로": "sample/gone", "종류": "화면"}}
+                  },
+                  "facetIndex": {"jeju": ["bo-sample-pop"]},
+                  "variantIndex": {"iksan": ["wv-sample-home"], "jeju": ["wv-sample-home"]},
+                  "counts": {"screens": 3}
+                }
+                """);
     }
 
     /** 한 쪽(20줄)에 안 들어가는 수를 깐다. 쪽 이동을 재려면 이것이 있어야 한다. */

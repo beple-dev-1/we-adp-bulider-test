@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <link rel="stylesheet" href="../../src/main/resources/static/css/tokens.css">
+  <link rel="stylesheet" href="../../src/main/resources/static/css/reset.css">
+  <link rel="stylesheet" href="../../src/main/resources/static/css/typography.css">
+  <link rel="stylesheet" href="../../src/main/resources/static/css/components.css">
+  <link rel="stylesheet" href="../../src/main/resources/static/css/shell.css">
+  <link rel="stylesheet" href="_mock.css">
+  <link rel="stylesheet" href="../../src/main/resources/static/css/screens.css">
+  <title>오류 · 화면을 찾지 못함</title>
+</head>
+<body>
+<!--
+  ⚠ 전역 오류 화면 — 404 상태만 그린다. 500 계열 짝은 `09a-error-failed.html`.
+    실물은 `src/main/resources/templates/error.html` 한 장이고 `${status}` 로 두 상태를 가른다.
+  ⛔ 「뒤로 가기」를 더하지 마라 — 뒤가 없는 진입(북마크·직접 입력)이 이 결함의 출처다.
+-->
+<template id="본문">
+  <section class="stack" aria-labelledby="error-title">
+    <h1 id="error-title">화면을 찾지 못했습니다</h1>
+
+    <section class="state-panel state-panel--error" role="alert">
+      <p>요청하신 주소에 해당하는 화면이 없습니다. 주소가 바뀌었거나 삭제된 화면일 수 있습니다.</p>
+      <p>프로젝트 목록에서 다시 찾아 주세요.</p>
+    </section>
+
+    <p class="error-code num">상태 코드 404</p>
+
+    <a class="button button--primary" href="11c-project-select.html">프로젝트 목록으로 이동</a>
+  </section>
+</template>
+<script src="_shell.js"></script>
+<script>틀({제목:'오류',모양:'카드',지금:null});</script>
+</body>
+</html>

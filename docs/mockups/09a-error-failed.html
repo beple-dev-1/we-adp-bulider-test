@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <link rel="stylesheet" href="../../src/main/resources/static/css/tokens.css">
+  <link rel="stylesheet" href="../../src/main/resources/static/css/reset.css">
+  <link rel="stylesheet" href="../../src/main/resources/static/css/typography.css">
+  <link rel="stylesheet" href="../../src/main/resources/static/css/components.css">
+  <link rel="stylesheet" href="../../src/main/resources/static/css/shell.css">
+  <link rel="stylesheet" href="_mock.css">
+  <link rel="stylesheet" href="../../src/main/resources/static/css/screens.css">
+  <title>오류 · 화면을 여는 중 문제 발생</title>
+</head>
+<body>
+<!--
+  ⚠ 전역 오류 화면 — 500 계열 상태만 그린다. 404 짝은 `09-error-not-found.html`.
+    실물은 `src/main/resources/templates/error.html` 한 장이고 `${status}` 로 두 상태를 가른다.
+    404 가 아닌 모든 상태(그리고 status 자체가 없을 때)가 이 갈래로 온다 — 안전한 기본값이다.
+  ⛔ 경로·예외 메시지·스택을 찍지 마라 — 사용자에게 뜻이 없고 노출 위험만 있다.
+-->
+<template id="본문">
+  <section class="stack" aria-labelledby="error-title">
+    <h1 id="error-title">화면을 여는 중 문제가 생겼습니다</h1>
+
+    <section class="state-panel state-panel--error" role="alert">
+      <p>서버가 요청을 끝내지 못했습니다.</p>
+      <p>잠시 후 다시 시도해 주세요. 계속되면 관리자에게 알려 주세요.</p>
+    </section>
+
+    <p class="error-code num">상태 코드 500</p>
+
+    <a class="button button--primary" href="11c-project-select.html">프로젝트 목록으로 이동</a>
+  </section>
+</template>
+<script src="_shell.js"></script>
+<script>틀({제목:'오류',모양:'카드',지금:null});</script>
+</body>
+</html>

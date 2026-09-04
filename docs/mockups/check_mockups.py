@@ -41,6 +41,8 @@ PRODUCT_PAGES = [
     "07a-menu-tree-workbench.html",
     "08-solution-mockups.html",
     "08a-solution-mockup-detail.html",
+    "09-error-not-found.html",
+    "09a-error-failed.html",
     "10-other.html",
 ]
 FORBIDDEN_COPY = (
