@@ -1,0 +1,152 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <link rel="stylesheet" href="../../src/main/resources/static/css/tokens.css">
+  <link rel="stylesheet" href="../../src/main/resources/static/css/reset.css">
+  <link rel="stylesheet" href="../../src/main/resources/static/css/typography.css">
+  <link rel="stylesheet" href="../../src/main/resources/static/css/components.css">
+  <link rel="stylesheet" href="../../src/main/resources/static/css/shell.css">
+  <link rel="stylesheet" href="_mock.css">
+  <link rel="stylesheet" href="../../src/main/resources/static/css/screens.css">
+  <title>솔루션 목업 상세 · 운영 화면 없음</title>
+</head>
+<body>
+<!--
+  ⚠ 이 화면은 `08a-solution-mockup-detail.html`(실물 있는 상태)의 짝이다 — previewExists=false 한 상태만 그린다.
+    한 HTML 에는 한 상태만 그린다(docs/mockup-conventions.md). 08a 는 그대로 두고 미리보기 칸만 여기서 바꿨다.
+  ⛔ 「새 창으로 열기」 단추를 되살리지 마라 — 실물 파일이 없어 누르면 404 로 간다
+    (src/main/resources/templates/artifacts/solution-mockup.html 의 `th:if="${previewExists}"`가 같은 이유로 감춘다).
+  ⛔ 확대·축소 단추를 여기에 되살리지 마라 — 끼울 실물이 없어 확대할 대상 자체가 없다.
+    눌러도 아무 일이 안 나는 단추는 고장으로 읽힌다. 셋을 갖춘 정상 상태는 08a 가 그린다.
+-->
+<template id="본문">
+  <div class="solution-detail">
+    <header class="rq-head">
+      <div class="rq-head__copy">
+        <span class="rq-kicker num">bo-bizcard-detail · 백오피스</span>
+        <h1>선불카드 관리 상세</h1>
+      </div>
+      <div class="rq-head__actions">
+        <a class="button" href="08-solution-mockups.html">목록</a>
+      </div>
+    </header>
+
+    <dl class="rq-meta">
+      <div><dt>화면관리번호</dt><dd class="num">PS-BO-MRC-010-D01-S</dd></div>
+      <div><dt>화면 ID</dt><dd class="num">bo-bizcard-detail</dd></div>
+      <div><dt>최초 작성일</dt><dd class="num">2026-08-11</dd></div>
+      <div><dt>최종 수정</dt><dd><span class="num">2026-08-15</span> · 이병주</dd></div>
+    </dl>
+
+    <main class="solution-detail-main">
+      <section class="preview-stage" aria-labelledby="solution-preview-title">
+        <header class="preview-stage__head">
+          <h2 id="solution-preview-title"><span class="sr-only">작업 목업 기준 화면: </span><span class="num">bo-bizcard-detail</span> · 선불카드 관리 상세</h2>
+          <!--/*
+            ⛔ 확대·축소를 빼지 마라 — 백오피스 운영 화면은 1200px 안팎이라 이 칸에 안 들어간다.
+               ⚠ 여기 없는 것은 그 ⛔ 를 어긴 것이 아니다. **이 화면은 끼울 실물이 없는 상태**라
+                 확대할 대상 자체가 없다. 확대·축소가 있는 정상 상태는 08a 가 그린다.
+          */-->
+          <button class="icon-button preview-tool-button preview-document-button" id="open-solution-document" type="button"
+                  aria-label="기능정의서 보기" title="기능정의서 보기"
+                  aria-controls="solution-document-dialog" aria-expanded="false">
+            <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 4H6v17h12V4h-3M9 3h6v4H9V3Z"></path><path d="m9 12 1.3 1.3L13 10.5M14.5 12H16M9 17h7"></path></svg>
+          </button>
+          <!--/* 기능 위치 표시는 운영 화면 위에 표식을 얹는 것이라 실물이 없으면 잠근다. */-->
+          <button class="icon-button preview-tool-button preview-feature-toggle" id="toggle-solution-features" type="button"
+                  aria-label="기능 위치 표시" title="기능 위치 표시" aria-pressed="false" disabled>
+            <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4h14a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-8l-5 3v-3H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2Z"></path><path d="M8 8h8M8 12h6"></path></svg>
+          </button>
+          <!--/* previewExists=false → 「새 창으로 열기」는 그리지 않는다(눌러도 404). */-->
+        </header>
+        <!--/* 기관 갈래가 있는 화면에서만 뜬다. 기저 html 이 없고 기관별 html 만 있어서다. */-->
+        <div class="preview-stage__tabs" role="tablist" aria-label="기관 갈래" hidden>
+          <a class="preview-tab is-current" role="tab" aria-selected="true" href="#">익산</a>
+          <a class="preview-tab" role="tab" aria-selected="false" href="#">제주</a>
+        </div>
+        <div class="preview-review" id="preview-review">
+          <div class="preview-canvas" id="preview-canvas">
+            <!-- previewExists=false — iframe 대신 빈 상태. 골격은 아래 solution-document-empty 와 같다. -->
+            <div class="empty-state solution-preview-empty">
+              <div class="empty-state__copy">
+                <h3>현재 운영 화면이 아직 없습니다</h3>
+                <p>이 화면의 운영 화면 파일(html)을 기획 저장소에서 찾지 못했습니다. 기획 저장소 갱신 상태를 확인해 주세요.</p>
+              </div>
+            </div>
+          </div>
+          <aside class="preview-feature-panel" id="solution-feature-panel" aria-labelledby="solution-feature-panel-title" hidden>
+            <header class="preview-feature-panel__head"><div><h3 id="solution-feature-panel-title">기능 설명</h3><p>화면 명세에 기록된 기능과 현재 표시 상태입니다.</p></div><span class="badge badge--outline">3개</span></header>
+            <ol class="preview-feature-list" id="solution-feature-list"></ol>
+          </aside>
+        </div>
+      </section>
+
+      <section class="rq-card" aria-labelledby="solution-history-title">
+        <div class="rq-card__head">
+          <div><h2 id="solution-history-title">수정 이력</h2><p>기획 저장소에서 이 화면이 바뀐 때와 수정자입니다.</p></div>
+          <span class="badge badge--outline">3개</span>
+        </div>
+        <div class="rq-card__body"><div class="table-wrap"><table class="data-table data-table--dense solution-history-table"><thead><tr><th scope="col">수정일</th><th scope="col">수정자</th><th scope="col">무엇을 고쳤나</th></tr></thead><tbody><tr><td class="num">2026-08-15</td><td>이병주</td><td>팝업·모달 소속 기준 변경</td></tr><tr><td class="num">2026-08-13</td><td>이병주</td><td>IA 배치 표 반영</td></tr><tr><td class="num">2026-08-11</td><td>이병주</td><td>백오피스 243화면 최초 등록</td></tr></tbody></table></div></div>
+      </section>
+    </main>
+  </div>
+
+  <dialog class="dialog dialog--layer solution-document-dialog" id="solution-document-dialog"
+          aria-modal="true" aria-labelledby="solution-document-title" aria-describedby="solution-document-description">
+    <div class="solution-document-dialog__frame">
+      <header class="dialog__header dialog__header--with-meta">
+        <div class="dialog__header-copy">
+          <span class="dialog__kicker">기능정의서</span>
+          <h2 class="dialog__title" id="solution-document-title">선불카드 관리 상세</h2>
+          <p class="dialog__description" id="solution-document-description">현재 화면에 연결된 기능과 처리 기준입니다.</p>
+        </div>
+        <span class="dialog__meta num">bo-bizcard-detail</span>
+        <button class="dialog__close" type="button" data-solution-document-close aria-label="기능정의서 닫기"></button>
+      </header>
+      <div class="dialog__body solution-document-dialog__body">
+        <div class="solution-document-content">
+          <section class="rq-card" aria-labelledby="solution-document-overview-title">
+            <div class="rq-card__head"><div><h3 id="solution-document-overview-title">화면 개요</h3><p>화면 명세에 기록된 목적과 진입 정보입니다.</p></div></div>
+            <div class="rq-card__body"><dl class="rq-meta rq-meta--stack"><div><dt>목적</dt><dd>선불카드의 발급 정보와 이용 상태를 확인합니다.</dd></div><div><dt>경로</dt><dd>카드 관리 &gt; 선불카드 관리 &gt; 상세</dd></div><div><dt>진입</dt><dd>선불카드 관리 목록에서 행을 선택합니다.</dd></div></dl></div>
+          </section>
+          <section class="rq-card" aria-labelledby="solution-document-functions-title">
+            <div class="rq-card__head"><div><h3 id="solution-document-functions-title">기능과 화면 항목</h3><p>화면 명세가 요소별로 짚어 둔 내용입니다.</p></div><span class="badge badge--outline">3개</span></div>
+            <div class="rq-card__body"><div class="table-wrap" tabindex="0" aria-label="기능과 화면 항목"><table class="data-table data-table--dense solution-document-table"><thead><tr><th scope="col">번호</th><th scope="col">구분</th><th scope="col">이름</th><th scope="col">처리 기준</th></tr></thead><tbody><tr><td class="num">e01</td><td><span class="badge badge--outline">기능</span></td><td>이용 정지</td><td>이용 중인 카드를 정지 상태로 변경합니다.</td></tr><tr><td class="num">e02</td><td><span class="badge badge--outline">기능</span></td><td>재발급</td><td>재발급 신청 화면을 엽니다.</td></tr><tr><td class="num">e03</td><td><span class="badge badge--outline">항목</span></td><td>카드 상태</td><td>현재 카드 이용 상태를 표시합니다.</td></tr></tbody></table></div></div>
+          </section>
+          <details class="rq-card feature-spec-raw"><summary>화면 명세 원문 보기</summary><pre class="feature-spec-raw__body">--- 화면명세 ---
+화면명: 선불카드 관리 상세
+목적: 선불카드의 발급 정보와 이용 상태를 확인합니다.</pre></details>
+        </div>
+      </div>
+      <footer class="dialog__actions"><button class="button" type="button" data-solution-document-close>닫기</button></footer>
+    </div>
+  </dialog>
+  <ul id="solution-feature-data" hidden>
+    <li data-no="e01" data-kind="기능" data-locator="id=stop-use" data-anchor="bo-bizcard-detail-e01" data-label="이용 정지" data-detail="이용 중인 카드를 정지 상태로 변경합니다."></li>
+    <li data-no="e02" data-kind="기능" data-locator="id=reissue" data-anchor="bo-bizcard-detail-e02" data-label="재발급" data-detail="재발급 신청 화면을 엽니다."></li>
+    <li data-no="e03" data-kind="항목" data-locator="id=card-state" data-anchor="bo-bizcard-detail-e03" data-label="카드 상태" data-detail="현재 카드 이용 상태를 표시합니다."></li>
+  </ul>
+</template>
+<script src="_shell.js"></script>
+<script>틀({제목:'솔루션 목업 상세',모양:'산출물',지금:'solution-mockups',프로젝트이름:'G2C',프로젝트번호:1,프로젝트들:['G2C','서울페이'],사람:'이영희',안읽은알림:2});</script>
+<script>
+  const documentButton = document.getElementById('open-solution-document');
+  const documentDialog = document.getElementById('solution-document-dialog');
+  const closeDocument = () => {
+    if (!documentDialog.open) return;
+    documentDialog.close();
+    documentButton.setAttribute('aria-expanded', 'false');
+    documentButton.focus();
+  };
+  documentButton.addEventListener('click', () => {
+    documentDialog.showModal();
+    documentButton.setAttribute('aria-expanded', 'true');
+  });
+  documentDialog.querySelectorAll('[data-solution-document-close]').forEach(button => button.addEventListener('click', closeDocument));
+  documentDialog.addEventListener('close', () => documentButton.setAttribute('aria-expanded', 'false'));
+  // ⚠ 기능 위치 표시 대본은 여기 없다 — 표식을 얹을 운영 화면이 없다. 정상 상태는 08a 가 그린다.
+</script>
+</body>
+</html>

@@ -69,6 +69,7 @@ python -m http.server 8099 --bind 127.0.0.1
 | 07e | `07e-menu-tree-groups.html` | 트리 계층과 연결 화면을 같은 행에 정렬하는 C형 트리 시안 3 |
 | 08 | `08-solution-mockups.html` | 작업 목업의 기준이 되는 운영 화면의 버전·종류·메뉴구조도 연결·최초 작성일·수정일 확인 |
 | 08a | `08a-solution-mockup-detail.html` | 기준 화면의 종류·적용 구분·작성일·수정일·수정자·수정 이력 확인 |
+| 08b | `08b-solution-mockup-detail-empty.html` | 기준 화면의 운영 화면 실물을 기획 저장소에서 찾지 못했을 때의 빈 상태 확인 |
 | 10 | `10-other.html` | 개발요청서별 후속 산출물 확인 |
 | 12 | `12-design-guide.html` | 추출기가 만든 독립 HTML 디자인가이드를 Builder 안에서 안전하게 열어 실제 렌더 결과를 확인한다 |
 
