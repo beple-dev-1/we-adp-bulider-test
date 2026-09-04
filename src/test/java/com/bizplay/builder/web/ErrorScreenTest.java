@@ -85,7 +85,8 @@ class ErrorScreenTest extends AbstractDbTest {
      */
     @Test
     void 상태값이_HTTP_상태가_아니면_상태_코드_줄을_안_그린다() throws Exception {
-        assertThat(errorBody(999, Map.of())).doesNotContain("상태 코드", "999");
+        // ⚠ CSRF 토큰을 걷어내고 본다 — "999" 도 난수에 섞일 수 있다(까닭은 withoutCsrfTokens).
+        assertThat(withoutCsrfTokens(errorBody(999, Map.of()))).doesNotContain("상태 코드", "999");
         // ⭐ 999 는 응답 상태로도 안 나간다 — 스프링이 500 으로 눌러 담는다. 모델의 status(999)와
         //    응답 상태(500)가 갈리는 자리라, 화면이 모델 값을 그대로 찍으면 사람이 헛짚는다.
         assertThat(mvc.perform(get("/error")
