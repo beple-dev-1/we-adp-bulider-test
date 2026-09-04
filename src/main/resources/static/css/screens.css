@@ -1355,6 +1355,15 @@ body:has(.setup-screen) > .app-header {
   }
 }
 
+/* 전역 오류 화면(/error) — 문의할 때 대는 상태 코드 한 줄. 본문 흐름의 맨 끝이다.
+ * ⚠ 세로 쌓기는 새로 안 지었다 — shell.css 의 `.stack` 이 글자까지 같은 규칙이고
+ *   projects.html 이 이미 카드 화면에서 그렇게 쓴다. 정본: templates/error.html */
+.error-code {
+  margin: 0;
+  color: var(--color-muted);
+  font-size: 0.75rem;
+}
+
 .claude-steps {
   margin: 0;
   padding: 0;

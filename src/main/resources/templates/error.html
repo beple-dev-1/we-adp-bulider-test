@@ -1,0 +1,51 @@
+<!doctype html>
+<!--/*
+  전역 오류 화면 — 스프링 부트가 예외·404 를 여기로 몬다.
+  파일 이름이 배선이다: `DefaultErrorViewResolver` 가 `error/{status}` 를 먼저 찾으므로
+  `error/404.html` 같은 하위 파일을 만들면 500 계열이 다시 스프링 기본 화면으로 빈다. 컨트롤러·
+  `@ControllerAdvice`·`server.error.*` 도 두지 않는다 — 이 한 장이 전부다.
+  정본(목업): docs/mockups/09-error-not-found.html · docs/mockups/09a-error-failed.html
+
+  ⛔ 이 파일의 주석은 반드시 타임리프 주석 꼴(여는 자리에 슬래시별, 닫는 자리에 별슬래시)로 써라.
+     보통 html 주석은 Thymeleaf 가 안 지워 오류 응답 본문에 그대로 실려 나간다 (2026-09-04 실측).
+     오류 화면은 아무 것도 흘리지 않는 것이 일이라 그 자리가 특히 나쁘다.
+  ⛔ 주석 안에 html 주석 닫는 기호를 글자로 적지 마라 — 거기서 주석이 끊겨 뒷글이 새어 나간다.
+     이것도 2026-09-04 에 실제로 냈다.
+*/-->
+<html lang="ko" xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{fragments/shell :: layout('오류', '카드', null, ~{:: content})}">
+<body>
+<div th:fragment="content">
+  <!--/*
+    /error 는 ProjectContextInterceptor(/projects/**) 밖이라 projectName·projectId 가 없다.
+    모양은 '카드' 로 고정한다 — '산출물'·'관리' 로 두면 ShellContract 가 그 값을 요구해 던지고,
+    고치려던 오류 화면 대신 스프링 기본 오류 화면이 다시 뜬다.
+
+    status 가 404 인지로만 가른다. status 자체가 없을 때(직접 /error 를 열 때)는
+    th:unless 쪽(500 계열 문구)이 기본이 되게 짠다 — 안전한 쪽이 기본이어야 한다.
+  */-->
+  <section class="stack" aria-labelledby="error-title">
+    <h1 id="error-title"
+        th:text="${status == 404} ? '화면을 찾지 못했습니다' : '화면을 여는 중 문제가 생겼습니다'">화면을 여는 중 문제가 생겼습니다</h1>
+
+    <section class="state-panel state-panel--error" role="alert">
+      <p th:if="${status == 404}">요청하신 주소에 해당하는 화면이 없습니다. 주소가 바뀌었거나 삭제된 화면일 수 있습니다.</p>
+      <p th:unless="${status == 404}">서버가 요청을 끝내지 못했습니다.</p>
+      <p th:if="${status == 404}">프로젝트 목록에서 다시 찾아 주세요.</p>
+      <p th:unless="${status == 404}">잠시 후 다시 시도해 주세요. 계속되면 관리자에게 알려 주세요.</p>
+    </section>
+
+    <!--/*
+      문의할 때 참고하는 보조 정보다. ⚠ 진짜 HTTP 상태일 때만 그린다 —
+      /error 를 사람이 직접 열면 BasicErrorController 가 status 자리에 999 를 넣는데,
+      그 숫자는 HTTP 상태가 아니라 「모른다」는 뜻이라 화면에 뜨면 읽는 사람을 헷갈리게 한다.
+      2026-09-04 트랙2 에서 실제로 「상태 코드 999」가 떠서 막았다.
+    */-->
+    <p class="error-code num" th:if="${status != null and status ge 400 and status lt 600}"
+       th:text="|상태 코드 ${status}|">상태 코드 500</p>
+
+    <a class="button button--primary" th:href="@{/projects}">프로젝트 목록으로 이동</a>
+  </section>
+</div>
+</body>
+</html>
