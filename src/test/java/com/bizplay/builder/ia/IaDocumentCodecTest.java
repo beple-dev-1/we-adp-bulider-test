@@ -96,6 +96,22 @@ class IaDocumentCodecTest {
                 .hasMessageContaining("Depth");
     }
 
+    @Test
+    void 같은_경로키가_두_행에_있으면_거절한다() {
+        // ⑥ 마지막 그물(브리프 §3-1) — path_key 에는 UNIQUE 도 인덱스도 없다(V19:43-44 실측).
+        // 화면ID 는 서로 다르게 둬서, 경로키 중복만으로 걸리는지 본다(화면ID 중복 검사와 헷갈리지 않게).
+        IaRow first = new IaRow("0000001", "0000001", 10, "approval/document", "전자결재",
+                "결재 문서", null, null, null, null, null, null, null, null, "bo-appr-list", null, null);
+        IaRow second = new IaRow("0000002", "0000001", 20, "approval/document", "전자결재",
+                "결재 문서", null, null, null, null, null, null, null, null, "bo-appr-detail", null, null);
+
+        // ⚠ "경로" 만으로 좁히면 validatePath 의 다른 두 오류도 걸린다 — "두 번" 으로 좁힌다
+        //    (코드리뷰 지적, 2026-09-04).
+        assertThatThrownBy(() -> codec.validateRows(List.of(first, second)))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("두 번");
+    }
+
     private IaRow row(String id, int order, String key, String d1, String d2, String d3, String screen) {
         return new IaRow(id, "0000001", order, key, d1, d2, d3, null, null, null, null,
                 null, null, null, screen, null, null);

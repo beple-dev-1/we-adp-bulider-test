@@ -138,8 +138,15 @@ public class IaDocumentCodec {
         }
         Set<Integer> orders = new LinkedHashSet<>();
         Set<String> screens = new LinkedHashSet<>();
+        // ⑥ 마지막 그물(브리프 §3-1) — path_key 에는 UNIQUE 도 인덱스도 없다(V19:43-44 실측).
+        // 최초 가져오기·재작성은 IaTreeBuilder.of 가 이미 부딪힘을 갈라놓지만, 사람이 손으로
+        // 고치는 다섯 경로(:206·:272·:313·:527·:756)는 이 그물 하나로 막는다.
+        Set<String> pathKeys = new LinkedHashSet<>();
         for (IaRow row : rows) {
             validatePath(row.pathKey());
+            if (!pathKeys.add(row.pathKey())) {
+                throw new IllegalArgumentException("같은 경로 식별자가 두 번 있습니다: " + row.pathKey());
+            }
             if (row.rowOrder() < 1 || row.rowOrder() > 999) {
                 throw new IllegalArgumentException("순서는 001부터 999 사이여야 합니다.");
             }

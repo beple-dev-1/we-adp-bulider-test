@@ -27,6 +27,7 @@ import java.nio.file.Path;
 import java.nio.file.attribute.FileTime;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -172,6 +173,61 @@ class IaScreenTest extends AbstractDbTest {
         assertThat(upgraded.structure().id()).isNotEqualTo(imported.structure().id());
         assertThat(detail.pathKey()).endsWith("/bo-appr-detail");
         assertThat(detail.depths()).endsWith("결재 문서 목록", "결재 상세");
+
+        // ⛔ 가장 값비싼 실패 모드 — 비교가 한 글자라도 어긋나면 열 때마다 다시 세운다(브리프 §6-1).
+        //    재작성 뒤에는 저장된 네 값과 prepare() 네 값이 같아지므로, 같은 시스템을 다시 열어도
+        //    구조 id 가 그대로여야 한다.
+        IaService.Workbench reopened = iaService.findOrImport(project.getId(), "backoffice", accountId);
+        assertThat(reopened.structure().id()).isEqualTo(upgraded.structure().id());
+    }
+
+    @Test
+    void 손댄_구조는_version이_0이_아니면_다시_세우지_않는다() throws Exception {
+        Project project = readyProject("IA 손댄 구조 유지 시험");
+        seedPlanningRepo(project.getId());
+        String accountId = accounts.selectByLoginId("admin").orElseThrow().getId();
+        IaService.Workbench imported = iaService.findOrImport(project.getId(), "backoffice", accountId);
+        String base = "/projects/" + project.getId() + "/artifacts/menu-tree/backoffice";
+
+        // 이동할 형제가 있어야 옮길 수 있다 — 메뉴_기능_버튼으로... 시험과 같은 자리다.
+        IaRow sibling = new IaRow(ids.next(IdSequence.Kind.IA_ROW), imported.structure().id(), 30,
+                "approval/other", "전자결재", "기타", null, null, null, null, null,
+                null, null, null, null, null, accountId);
+        iaRows.insertRow(sibling);
+
+        // 사람이 메뉴를 한 번 옮겨 version 을 0에서 올린다 — ④는 그 뒤로 파일을 읽지도 않아야 한다.
+        mvc.perform(post(base + "/nodes/move")
+                        .with(user(superUser())).with(csrf())
+                        .accept(MediaType.APPLICATION_JSON)
+                        .param("version", Integer.toString(imported.structure().version()))
+                        .param("nodeKey", "approval/document")
+                        .param("direction", "down"))
+                .andExpect(status().isOk());
+
+        IaStructure touched = iaRows.selectStructure(project.getId(), "backoffice").orElseThrow();
+        assertThat(touched.version()).isGreaterThan(0);
+
+        // 옛 모양(마지막 마디 제거)으로 행 하나를 되돌린다 — version 이 0이 아니므로 비교 없이 거짓이어야 한다.
+        IaRow current = iaRows.selectRows(touched.id()).stream()
+                .filter(row -> "bo-appr-detail".equals(row.screenId()))
+                .findFirst().orElseThrow();
+        java.util.List<String> oldDepths = current.depths().subList(0, current.depths().size() - 1);
+        IaRow legacy = new IaRow(current.id(), current.structureId(), current.rowOrder(),
+                current.pathKey().substring(0, current.pathKey().lastIndexOf('/')),
+                depth(oldDepths, 0), depth(oldDepths, 1), depth(oldDepths, 2), depth(oldDepths, 3),
+                depth(oldDepths, 4), depth(oldDepths, 5), depth(oldDepths, 6),
+                current.userType(), current.menuType(), current.screenType(), current.screenId(),
+                current.updatedAt(), current.updatedBy());
+        iaRows.updateRow(legacy);
+
+        IaService.Workbench reopened = iaService.findOrImport(project.getId(), "backoffice", accountId);
+
+        assertThat(reopened.structure().id()).isEqualTo(touched.id());
+        IaRow untouchedDetail = reopened.rows().stream()
+                .filter(row -> "bo-appr-detail".equals(row.screenId()))
+                .findFirst().orElseThrow();
+        assertThat(untouchedDetail.pathKey()).isEqualTo(legacy.pathKey())
+                .doesNotEndWith("/bo-appr-detail");
     }
 
     @Test
@@ -325,6 +381,123 @@ class IaScreenTest extends AbstractDbTest {
         assertThat(iaRows.selectStructure(project.getId(), "backoffice")).isPresent();
         assertThat(iaRows.selectRows(structure.id())).isNotEmpty();
         assertThat(iaRows.selectScreenProfiles(structure.id())).isNotEmpty();
+    }
+
+    @Test
+    void 상위_메뉴를_옮길_때_이름이_달라도_경로키가_같아지면_거절한다() throws Exception {
+        // ⑤ 경로키 중복 그물(브리프 §3-1) — 라벨은 다르지만 새 pathKey 마지막 마디가 같아지는
+        // 경우를 짠다. 형제 이름 중복 검사(IaService:287-289)가 먼저 걸리면 이 시험은 실패해야
+        // 정상이다 — 라벨을 일부러 다르게 둬서 그 검사를 통과시킨 뒤 경로키 검사만 재는지 본다.
+        Project project = readyProject("IA 경로키 충돌 시험");
+        seedPlanningRepo(project.getId());
+        String accountId = accounts.selectByLoginId("admin").orElseThrow().getId();
+        IaService.Workbench imported = iaService.findOrImport(project.getId(), "backoffice", accountId);
+        String structureId = imported.structure().id();
+
+        // approval/target/dup — 옮길 자리에 이미 앉아 있는 행. 라벨은 "기존메뉴".
+        IaRow occupied = new IaRow(ids.next(IdSequence.Kind.IA_ROW), structureId, 100,
+                "approval/target/dup", "전자결재", "타겟", "기존메뉴", null, null, null, null,
+                null, null, null, null, null, accountId);
+        iaRows.insertRow(occupied);
+
+        // approval/dup — 옮길 행. 마지막 마디("dup")가 occupied 와 같지만 라벨("이동할메뉴")은 다르다.
+        String movingId = ids.next(IdSequence.Kind.IA_ROW);
+        IaRow moving = new IaRow(movingId, structureId, 110,
+                "approval/dup", "전자결재", "이동할메뉴", null, null, null, null, null,
+                null, null, null, null, null, accountId);
+        iaRows.insertRow(moving);
+
+        int version = iaRows.selectStructure(project.getId(), "backoffice").orElseThrow().version();
+        assertThatThrownBy(() -> iaService.updateMenuLocation(project.getId(), "backoffice", movingId, version,
+                new IaService.MenuLocationInput("approval/target"), accountId))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("이동할 위치")
+                .hasMessageContaining("기존메뉴")
+                .hasMessageNotContaining("동일한 메뉴명");
+    }
+
+    @Test
+    void 상위_메뉴를_옮길_때_옮길_자리_마디가_이미_차_있으면_거절한다() throws Exception {
+        // 🟡 ⑤의 자손 경로 충돌 — 지금까지 시험은 옮기는 행 자신(newPrefix)만 쟀다
+        // (코드리뷰 지적, 2026-09-04). 여기는 옮기는 행 자신은 안 부딪히고, 딸려 옮겨지는
+        // 자손의 새 경로키만 기존 행과 부딪히는 경우를 짠다(IaService:326-327).
+        Project project = readyProject("IA 자손 경로 충돌 시험");
+        seedPlanningRepo(project.getId());
+        String accountId = accounts.selectByLoginId("admin").orElseThrow().getId();
+        IaService.Workbench imported = iaService.findOrImport(project.getId(), "backoffice", accountId);
+        String structureId = imported.structure().id();
+
+        // approval/movegroup — 옮길 그룹. 라벨은 "이동할그룹".
+        String movingGroupId = ids.next(IdSequence.Kind.IA_ROW);
+        IaRow movingGroup = new IaRow(movingGroupId, structureId, 500,
+                "approval/movegroup", "전자결재", "이동할그룹", null, null, null, null, null,
+                null, null, null, null, null, accountId);
+        iaRows.insertRow(movingGroup);
+
+        // approval/movegroup/mv-child — 그 아래 딸린 자손. 그룹을 옮기면 함께 옮겨진다.
+        IaRow movingChild = new IaRow(ids.next(IdSequence.Kind.IA_ROW), structureId, 510,
+                "approval/movegroup/mv-child", "전자결재", "이동할그룹", "자식메뉴", null, null, null, null,
+                null, null, null, null, null, accountId);
+        iaRows.insertRow(movingChild);
+
+        // approval/target — 옮길 자리. 라벨 "타겟그룹"이라 이동할그룹과 이름이 안 겹친다.
+        IaRow targetGroup = new IaRow(ids.next(IdSequence.Kind.IA_ROW), structureId, 520,
+                "approval/target", "전자결재", "타겟그룹", null, null, null, null, null,
+                null, null, null, null, null, accountId);
+        iaRows.insertRow(targetGroup);
+
+        // approval/target/movegroup/mv-child — 옮기는 그룹 자신(approval/target/movegroup)이
+        // 아니라 그 자손이 새로 얻을 경로키에 이미 앉아 있는 행. 라벨은 "기존자식".
+        IaRow occupiedDescendant = new IaRow(ids.next(IdSequence.Kind.IA_ROW), structureId, 530,
+                "approval/target/movegroup/mv-child", "전자결재", "타겟그룹", "예전그룹", "기존자식", null, null, null,
+                null, null, null, null, null, accountId);
+        iaRows.insertRow(occupiedDescendant);
+
+        int version = iaRows.selectStructure(project.getId(), "backoffice").orElseThrow().version();
+        // ⚠ 2차 코드리뷰(2026-09-04)로 「마디」 검사가 들어오면서 이 자리가 **더 일찍** 걸린다.
+        //    옮기는 그룹의 새 자리 approval/target/movegroup 이 이미 「예전그룹」 마디로 차 있어서,
+        //    자손 mv-child 가 옮겨지기 전에 그 마디에서 거절된다. 그래서 문구에 담기는 이름은
+        //    잎(「기존자식」)이 아니라 **자리를 차지한 마디(「예전그룹」)** 다 — 사람이 어디를
+        //    비워야 하는지 알려면 잎이 아니라 그 마디를 알아야 하므로 이쪽이 맞다.
+        assertThatThrownBy(() -> iaService.updateMenuLocation(project.getId(), "backoffice", movingGroupId, version,
+                new IaService.MenuLocationInput("approval/target"), accountId))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("이동할 위치")
+                .hasMessageContaining("예전그룹");
+    }
+
+    @Test
+    void 상위_메뉴를_옮길_때_옮길_자리에_행_없이_자손만_있어도_거절한다() throws Exception {
+        // 🟡 ⑤가 「행」만 보고 「마디」를 안 본다 (코드리뷰 2차, 2026-09-04) — untouchedByPathKey 는
+        // pathKey 정확 일치 맵이다. 옮길 자리 approval/target/movegroup 에는 행이 없고 그 자손
+        // approval/target/movegroup/other-child 만 있으면 정확 일치로는 못 잡는다 — 옮기면 남의
+        // 자손 밑으로 조용히 접붙는다. 새 경로키가 다른 행의 경로키 앞머리인지도 재는지 잰다.
+        Project project = readyProject("IA 빈 자리 자손 충돌 시험");
+        seedPlanningRepo(project.getId());
+        String accountId = accounts.selectByLoginId("admin").orElseThrow().getId();
+        IaService.Workbench imported = iaService.findOrImport(project.getId(), "backoffice", accountId);
+        String structureId = imported.structure().id();
+
+        // approval/movegroup — 옮길 행. 옮기면 자기 leafKey "movegroup" 을 그대로 쓴다.
+        String movingId = ids.next(IdSequence.Kind.IA_ROW);
+        IaRow moving = new IaRow(movingId, structureId, 500,
+                "approval/movegroup", "전자결재", "이동할그룹", null, null, null, null, null,
+                null, null, null, null, null, accountId);
+        iaRows.insertRow(moving);
+
+        // approval/target/movegroup/other-child — 옮길 자리(approval/target/movegroup) 행은
+        // 없고 그 자손만 있다. 이 행 하나로도 approval/target 마디는 트리에 이미 서 있다.
+        IaRow occupiedDescendant = new IaRow(ids.next(IdSequence.Kind.IA_ROW), structureId, 510,
+                "approval/target/movegroup/other-child", "전자결재", "타겟그룹", "예전그룹", "기존자식", null, null, null,
+                null, null, null, null, null, accountId);
+        iaRows.insertRow(occupiedDescendant);
+
+        int version = iaRows.selectStructure(project.getId(), "backoffice").orElseThrow().version();
+        assertThatThrownBy(() -> iaService.updateMenuLocation(project.getId(), "backoffice", movingId, version,
+                new IaService.MenuLocationInput("approval/target"), accountId))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("이동할 위치")
+                .hasMessageContaining("예전그룹");
     }
 
     @AfterEach
