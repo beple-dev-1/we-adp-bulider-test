@@ -6,16 +6,25 @@
  * 빌더 몫 스타일은 전부 이 파일에 있다 — 그래서 어느 줄이 누구 것인지 파일로 갈린다.
  * 고칠 것이 생기면 퍼블리셔 쪽을 고치고 다시 복사한다.
  *
- * 색이 보이는 자리는 두 곳뿐이다 — 라일락(지금 여기 · 지금 돈다) · 빨강(막혔다).
+ * 색이 보이는 자리는 두 곳뿐이다 — 좌측 패널(지금 여기 · 지금 돈다) · 빨강(막혔다).
  * 상태는 글자가 정본이고 색은 거들기다.
+ *
+ * ⚠ 005(2026-09-06)에 좌측 패널이 라일락 계열에서 남색 계열로 갔다. 종전 주석이
+ *   「라일락」이라 적고 있었는데 그 말이 거짓이 되어 함께 고쳤다.
+ *   ⛔ tokens.css 의 브랜드 강조색은 그때 안 건드렸다 — 아직 라일락 계열이다.
  */
 
 :root {
   --builder-sidebar-width: 232px;
   --builder-topbar-height: 56px;
-  --builder-sidebar: #24263b;
-  --builder-sidebar-hover: #32354d;
-  --builder-sidebar-active: #434663;
+  /* 좌측 패널 색 — 005(2026-09-06)에 남색 계열로 바꿨다.
+     ⛔ 이 셋만 바꾸면 패널이 따라온다. 사이드바 안에 색을 새로 박지 마라.
+     ⚠ 글자 셋(.app-nav__title · .app-nav__project-label · .app-nav a)은 배경에 묶여 있어
+        여기만 바꾸면 겉돈다 — 배경을 손대면 그 셋도 같이 재고 맞춘다.
+     ⛔ tokens.css 의 브랜드 강조색은 이 작업의 범위가 아니다. 함께 갈지 마라. */
+  --builder-sidebar: #00008B;
+  --builder-sidebar-hover: #1a1aa0;
+  --builder-sidebar-active: #3333b5;
 }
 
 /* ── Admin 과 맞춘 업무 화면 글자 위계 ──────────────────────────
@@ -438,7 +447,8 @@ body {
 /* 어느 영역에 있는지를 화면에 보인다. 이게 없으면 사람이 드롭다운을 열어봐야 안다 */
 .app-nav__title {
   margin: 0 10px 7px;
-  color: #7f748d;
+  /* 005 — 남색 패널에 맞춘 값. ⚠ 종전 #7f748d 는 옛 배경에서도 3.38:1 로 기준 미달이었다. 지금 4.74:1 */
+  color: #8a8ac4;
   font-size: 0.6875rem;
   font-weight: 650;
   letter-spacing: 0;
@@ -467,7 +477,8 @@ body {
 .app-nav__project-label {
   display: block;
   margin-bottom: 1px;
-  color: #a9a3b1;
+  /* 005 — 남색 패널 위 7.36:1 */
+  color: #b0b0dd;
   font-size: 0.625rem;
   font-weight: 600;
 }
@@ -604,7 +615,8 @@ body {
   display: flex;
   align-items: center;
   border-radius: 6px;
-  color: #cfc8d8;
+  /* 005 — 남색 패널 위 10.40:1 */
+  color: #d3d3ea;
   font-size: 0.875rem;
   font-weight: 500;
   text-decoration: none;
