@@ -48,8 +48,6 @@ class DevRequestGeneratingStateTest extends AbstractDbTest {
     @Autowired FrdAnalysisNoteMapper notes;
     @Autowired ScreenMockupService mockups;
     @Autowired DevelopmentRequestService service;
-    @Autowired DevRequestDeliveryMapper attempts;
-    @Autowired DevelopmentRequestMapper requests;
     @Autowired ScreenTobeDocumentWorker tobeDocuments;
     @Autowired IdSequence ids;
 
@@ -85,21 +83,6 @@ class DevRequestGeneratingStateTest extends AbstractDbTest {
 
         assertThat(row.generating()).isTrue();
         assertThat(row.stateLabel()).isEqualTo("생성중");
-    }
-
-    @Test
-    void 이미_보낸_것은_만드는_중이어도_생성중으로_읽지_않는다() {
-        Project project = readyProject("생성중-전송완료");
-        String frdId = draftingFrd(project);
-        String rowId = generated(frdId);
-        String requestId = service.createFromCompletedFrd(project.getId(), frdId).id();
-        requests.requestDelivery(requestId, null, null, null, null, null, null, null, null);
-        assertThat(attempts.moveFromSending(requestId, DeliveryOutcome.SENT)).isEqualTo(1);
-        tobeDocuments.markRequested(rowId);
-
-        var view = service.read(project.getId(), requestId);
-        assertThat(view.generating()).isFalse();
-        assertThat(view.stateLabel()).isEqualTo("전송완료");
     }
 
     // ── 재료 ──────────────────────────────────────────────────────────────

@@ -14,21 +14,10 @@
             th:classappend="${request.deliveryState().name() == 'SENT' ? request.developmentStateClass() : view.stateClass()}"
             th:text="${request.deliveryState().name() == 'SENT' ? request.developmentStateLabel() : view.stateLabel()}">대기</span>
       <a class="button rq-head__list-action" th:href="@{/projects/{p}/artifacts/dev-requests(p=${projectId},query=${listQuery},state=${listState},owner=${listOwner},system=${listSystem},page=${listPage},pageSize=${listPageSize})}">목록으로</a>
-      <a class="button rq-head__content-action" th:if="${packageDownloadable}"
-         download th:href="@{/projects/{p}/artifacts/dev-requests/{r}/download(p=${projectId},r=${request.id()})}">개발요청서 다운로드</a>
-      <form class="dev-request-primary-action" th:if="${request.canMergeDevelopment()}" method="post"
-            th:action="@{/projects/{p}/artifacts/dev-requests/{r}/merge(p=${projectId},r=${request.id()})}"
-            onsubmit="return confirm('개발 결과를 기준본에 반영할까요?')">
-        <button class="button button--primary" type="submit">개발 결과 반영</button>
-      </form>
-      <button class="button button--primary dev-request-primary-action" id="open-dev-delivery" type="button"
-              th:if="${request.deliveryState().name() != 'SENT' and !view.generating() and precheck.sendable()}"
-              th:text="${request.deliveryState().name() == 'SENDING' ? '개발요청 다시 보내기' : '개발요청 보내기'}">개발요청 보내기</button>
       <details class="pop rq-head__overflow"
-               th:if="${(request.deliveryState().name() == 'NOT_SENT' and !view.srtSource()) or (request.deliveryState().name() == 'SENT' and (request.developmentState() == null or request.developmentState().name() == 'INTAKE'))}">
+               th:if="${request.deliveryState().name() == 'NOT_SENT' and !view.srtSource()}">
         <summary class="icon-button rq-head__more" aria-label="기타 작업" title="기타 작업"><span aria-hidden="true">⋮</span></summary>
         <div class="pop__body rq-head__overflow-menu">
-          <!-- ⭐ 재개는 「대기」에서만 뜬다. 보낸 것은 아래 「개발요청 취소」의 자리다. -->
           <form th:if="${request.deliveryState().name() == 'NOT_SENT' and !view.srtSource()}" method="post"
                 th:action="@{/projects/{p}/artifacts/dev-requests/{r}/return-to-frd(p=${projectId},r=${request.id()})}"
                 onsubmit="return confirm('이 개발요청서를 지우고 FRD 작업으로 돌아갈까요?
@@ -36,16 +25,6 @@
             <button class="dev-request-resume-action" type="submit"
                     th:disabled="${view.generating()}"
                     th:title="${view.generating() ? '정의서 생성이 끝나면 FRD 작업을 재개할 수 있습니다.' : null}">FRD 작업 재개</button>
-          </form>
-          <!--
-            ⭐ 취소는 「전송완료」이면서 개발 상태가 아직 없거나 「개발 접수」일 때만 뜬다.
-            ⚠ 눌러도 개발이 이미 가져갔으면 창구가 거절한다 — 라벨이 intake 인지 그때 본다.
-               화면이 미리 판정하지 않는다: 라벨은 GitLab 이 쥐고 있고 우리 DB 에 사본을 두면 갈린다.
-          -->
-          <form th:if="${request.deliveryState().name() == 'SENT' and (request.developmentState() == null or request.developmentState().name() == 'INTAKE')}" method="post"
-                th:action="@{/projects/{p}/artifacts/dev-requests/{r}/withdraw(p=${projectId},r=${request.id()})}"
-                onsubmit="return confirm('개발에 보낸 이 요청을 취소할까요?\n개발이 아직 가져가지 않았을 때만 취소할 수 있습니다. 취소 후 내용을 고쳐 다시 보낼 수 있습니다.')">
-            <button class="dev-request-danger-action" type="submit">개발요청 취소</button>
           </form>
         </div>
       </details>
@@ -220,66 +199,6 @@
 
   </main>
 
-  <dialog class="dialog dialog--layer dev-delivery-dialog" id="dev-delivery-dialog"
-          aria-modal="true" aria-labelledby="dev-delivery-title" aria-describedby="dev-delivery-description">
-    <form class="dev-delivery-form" method="post" enctype="multipart/form-data"
-          th:action="@{/projects/{p}/artifacts/dev-requests/{r}/send(p=${projectId},r=${request.id()})}">
-      <header class="dialog__header">
-        <div class="dialog__header-copy">
-          <span class="dialog__kicker num" th:text="${request.label()}">DR-001</span>
-          <h2 class="dialog__title" id="dev-delivery-title">개발요청</h2>
-          <p class="dialog__description" id="dev-delivery-description">개발팀에 함께 전달할 내용과 파일을 확인해 주세요.</p>
-        </div>
-        <button class="dialog__close" id="close-dev-delivery" type="button" aria-label="개발요청 레이어 닫기"></button>
-      </header>
-      <div class="dialog__body dev-delivery-dialog__body">
-        <section class="dev-delivery-summary" aria-label="전송 대상">
-          <span>전송 대상</span><strong th:text="${request.title()}">개발요청서 제목</strong>
-          <small><b th:text="${view.sourceLabel()}">FRD-001</b> 기준으로 확정된 개발 범위를 전송합니다.</small>
-        </section>
-        <div class="dev-delivery-date-grid">
-          <div class="field">
-            <label class="field__label" for="development-completed-on">개발 완료일 <span>선택</span></label>
-            <input class="field__control" id="development-completed-on" name="developmentCompletedOn" type="date">
-            <p class="field__help">개발 완료를 요청하는 날짜입니다.</p>
-          </div>
-          <div class="field">
-            <label class="field__label" for="deployment-on">배포일 <span>선택</span></label>
-            <input class="field__control" id="deployment-on" name="deploymentOn" type="date">
-            <p class="field__help">운영 반영을 요청하는 날짜입니다.</p>
-          </div>
-        </div>
-        <div class="field" th:if="${!#lists.isEmpty(previousCandidates)}">
-          <label class="field__label" for="previous-request-id">앞 개발요청서 <span>선택</span></label>
-          <select class="field__control" id="previous-request-id" name="previousRequestId">
-            <option value="">없음 — 이 업무의 첫 요청입니다</option>
-            <option th:each="candidate : ${previousCandidates}" th:value="${candidate.id()}"
-                    th:text="${candidate.label() + ' · ' + candidate.title()}">DR-001 · 제목</option>
-          </select>
-          <p class="field__help">같은 화면을 건드린 앞선 요청입니다. 이어 읽어야 할 것이 있으면 골라 주세요.</p>
-        </div>
-        <div class="field">
-          <label class="field__label" for="planner-comment">개발팀 전달사항 <span>선택</span></label>
-          <textarea class="field__control" id="planner-comment" name="plannerComment" rows="5" maxlength="4000"
-                    th:text="${request.plannerComment()}" placeholder="일정, 우선순위, 개발 시 주의사항을 입력해 주세요."></textarea>
-          <p class="field__help">개발요청서 본문에 없는 추가 안내만 입력해 주세요.</p>
-        </div>
-        <div class="field">
-          <label class="field__label" for="delivery-attachment">첨부파일 <span>선택</span></label>
-          <label class="dev-delivery-file" for="delivery-attachment">
-            <strong>파일 선택</strong><span id="delivery-file-name">전달할 파일이 있으면 추가해 주세요.</span>
-          </label>
-          <input class="sr-only" id="delivery-attachment" name="attachment" type="file">
-          <p class="field__help">파일 1개, 최대 20MB까지 첨부할 수 있습니다.</p>
-        </div>
-      </div>
-      <div class="dialog__actions">
-        <p class="dialog__action-note">전송 후에는 개발팀의 접수 결과를 기다립니다.</p>
-        <button class="button" id="cancel-dev-delivery" type="button">취소</button>
-        <button class="button button--primary" type="submit">개발요청 보내기</button>
-      </div>
-    </form>
-  </dialog>
   <script>
     (function () {
       var review = document.querySelector('.dev-request-gate[data-pending="true"]');
@@ -297,25 +216,6 @@
       setTimeout(poll, 5000);
     })();
 
-    (() => {
-      const dialog = document.getElementById('dev-delivery-dialog');
-      const opener = document.getElementById('open-dev-delivery');
-      const file = document.getElementById('delivery-attachment');
-      const form = dialog?.querySelector('.dev-delivery-form');
-      if (!dialog || !opener) return;
-      opener.addEventListener('click', () => dialog.showModal());
-      document.getElementById('close-dev-delivery').addEventListener('click', () => dialog.close());
-      document.getElementById('cancel-dev-delivery').addEventListener('click', () => dialog.close());
-      form?.addEventListener('submit', event => {
-        if (!event.defaultPrevented) dialog.close();
-      });
-      dialog.addEventListener('click', event => {
-        if (event.target === dialog) dialog.close();
-      });
-      file.addEventListener('change', () => {
-        document.getElementById('delivery-file-name').textContent = file.files[0]?.name || '전달할 파일이 있으면 추가해 주세요.';
-      });
-    })();
   </script>
 </div>
 </body>

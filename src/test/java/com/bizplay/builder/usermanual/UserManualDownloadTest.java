@@ -45,8 +45,10 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * <p>목록의 내려받기는 <b>현재 시스템 거르개가 걸려 있으면 그 시스템의 마지막 정상본만</b> 담는다.
  *
  * <p>⛔ <b>꾸러미 안에 한글 이름을 쓰지 않는다.</b> {@code java.util.zip} 의 UTF-8 이름은 옛 도구에서
- * 깨질 수 있다 — {@code DevRequestPackageZipper} 가 그 위험을 이름을 영문으로 바꿔 없앴고,
- * 여기도 화면ID·시스템 코드가 영문이라 기대는 자리가 없다.
+ * 깨질 수 있다. 이름을 영문으로 쓰면 그 위험 자체가 없어진다 — 여기도 화면ID·시스템 코드가
+ * 영문이라 인코딩에 기대는 자리가 없다.
+ * ⚠ 이 규칙은 개발요청 꾸러미가 먼저 세운 것이다(2026-08-25). 그 코드는 003(2026-09-06)에서
+ * 없어졌지만 <b>규칙은 남는다</b> — 형식은 기획 폴더의 「003 꾸러미 형식 보존」에 떠 뒀다.
  */
 @AutoConfigureMockMvc
 @Import(FakeClaudeAuthGateway.Wiring.class)

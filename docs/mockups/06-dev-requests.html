@@ -20,7 +20,7 @@
     </div>
   </div>
 
-  <form class="filter-bar filter-bar--five filter-bar--with-action" action="#" role="search">
+  <form class="filter-bar filter-bar--four filter-bar--with-action" action="#" role="search">
     <div class="field">
       <label class="field__label" for="dev-request-system">시스템</label>
       <select class="field__control" id="dev-request-system"><option>시스템 전체</option><option>웹뷰</option><option>백오피스</option></select>
@@ -28,10 +28,6 @@
     <div class="field">
       <label class="field__label" for="dev-request-owner">담당자</label>
       <select class="field__control" id="dev-request-owner"><option>담당자 전체</option><option>김철수</option><option>이영희</option></select>
-    </div>
-    <div class="field">
-      <label class="field__label" for="dev-request-state">전송 상태</label>
-      <select class="field__control" id="dev-request-state"><option>전송 상태 전체</option><option>대기</option><option>전송중</option><option>전송완료</option><option>취소</option></select>
     </div>
     <div class="field">
       <label class="field__label" for="dev-request-search">개발요청서 검색</label>
@@ -42,12 +38,12 @@
 
   <div class="table-wrap table-wrap--tall">
     <table class="data-table data-table--dense dev-request-table">
-      <thead><tr><th scope="col">개발요청서</th><th scope="col">업무</th><th scope="col">시스템</th><th scope="col">적용 대상</th><th scope="col">작업 범위</th><th scope="col">전송 상태</th><th scope="col">개발 상태</th><th scope="col">담당자</th><th scope="col">기준 FRD</th><th scope="col">생성일시</th><th scope="col">요청일시</th></tr></thead>
+      <thead><tr><th scope="col">개발요청서</th><th scope="col">업무</th><th scope="col">시스템</th><th scope="col">적용 대상</th><th scope="col">작업 범위</th><th scope="col">담당자</th><th scope="col">기준 FRD</th><th scope="col">생성일시</th></tr></thead>
       <tbody>
-        <tr><td><a class="num" href="06a-dev-request-detail.html">DR-003</a></td><td>전자결재 임시 저장</td><td><span class="facet-badges"><span class="badge badge--outline">웹뷰</span></span></td><td><span class="facet-badges"><span class="badge badge--outline">익산</span><span class="badge badge--outline">제주</span></span></td><td class="nowrap">화면 2개 · 신규 1개 · 수정 1개 · 백엔드 1건</td><td><span class="status-badge status-badge--review">전송 전 확인 1건</span></td><td>—</td><td class="nowrap">이영희</td><td><a class="num" href="05a-frd-workbench.html">FRD-003</a></td><td class="num nowrap">08-12 16:30</td><td class="num nowrap">—</td></tr>
-        <tr><td><a class="num" href="06a-dev-request-detail.html">DR-004</a></td><td>결재선 일괄 변경</td><td><span class="facet-badges"><span class="badge badge--outline">백오피스</span></span></td><td><span class="facet-badges"><span class="badge badge--outline">제주</span></span></td><td class="nowrap">화면 1개 · 수정 1개 · 백엔드 2건</td><td><span class="status-badge status-badge--complete">전송완료</span></td><td><span class="status-badge status-badge--waiting">개발 접수</span></td><td class="nowrap">이영희</td><td><a class="num" href="05a-frd-workbench.html">FRD-004</a></td><td class="num nowrap">08-12 15:02</td><td class="num nowrap">08-12 15:20</td></tr>
-        <tr><td><a class="num" href="06a-dev-request-detail.html">DR-005</a></td><td>휴가 승인 현황 개선</td><td><span class="facet-badges"><span class="badge badge--outline">백오피스</span></span></td><td><span class="facet-badges"><span class="badge badge--outline">제주</span></span></td><td class="nowrap">화면 3개 · 신규 1개 · 수정 2개 · 백엔드 1건</td><td><span class="status-badge status-badge--complete">전송완료</span></td><td><span class="status-badge status-badge--progress">개발 진행 중</span></td><td class="nowrap">김철수</td><td><a class="num" href="05a-frd-workbench.html">FRD-005</a></td><td class="num nowrap">08-11 18:10</td><td class="num nowrap">08-11 18:24</td></tr>
-        <tr class="dev-request-row--merge-required"><td><a class="num" href="06a-dev-request-detail.html">DR-006</a></td><td>알림 수신 조건 설정</td><td><span class="facet-badges"><span class="badge badge--outline">웹뷰</span></span></td><td><span class="facet-badges"><span class="badge badge--outline">익산</span></span></td><td class="nowrap">프론트 없음 · 백엔드 2건</td><td><span class="status-badge status-badge--complete">전송완료</span></td><td><span class="status-badge status-badge--complete">개발 완료</span></td><td class="nowrap">김철수</td><td><a class="num" href="05a-frd-workbench.html">FRD-006</a></td><td class="num nowrap">08-11 16:42</td><td class="num nowrap">08-11 17:03</td></tr>
+        <tr><td><a class="num" href="06a-dev-request-detail.html">DR-003</a></td><td>전자결재 임시 저장</td><td><span class="facet-badges"><span class="badge badge--outline">웹뷰</span></span></td><td><span class="facet-badges"><span class="badge badge--outline">익산</span><span class="badge badge--outline">제주</span></span></td><td class="nowrap">화면 2개 · 신규 1개 · 수정 1개 · 백엔드 1건</td><td class="nowrap">이영희</td><td><a class="num" href="05a-frd-workbench.html">FRD-003</a></td><td class="num nowrap">08-12 16:30</td></tr>
+        <tr><td><a class="num" href="06a-dev-request-detail.html">DR-004</a></td><td>결재선 일괄 변경</td><td><span class="facet-badges"><span class="badge badge--outline">백오피스</span></span></td><td><span class="facet-badges"><span class="badge badge--outline">제주</span></span></td><td class="nowrap">화면 1개 · 수정 1개 · 백엔드 2건</td><td class="nowrap">이영희</td><td><a class="num" href="05a-frd-workbench.html">FRD-004</a></td><td class="num nowrap">08-12 15:02</td></tr>
+        <tr><td><a class="num" href="06a-dev-request-detail.html">DR-005</a></td><td>휴가 승인 현황 개선</td><td><span class="facet-badges"><span class="badge badge--outline">백오피스</span></span></td><td><span class="facet-badges"><span class="badge badge--outline">제주</span></span></td><td class="nowrap">화면 3개 · 신규 1개 · 수정 2개 · 백엔드 1건</td><td class="nowrap">김철수</td><td><a class="num" href="05a-frd-workbench.html">FRD-005</a></td><td class="num nowrap">08-11 18:10</td></tr>
+        <tr><td><a class="num" href="06a-dev-request-detail.html">DR-006</a></td><td>알림 수신 조건 설정</td><td><span class="facet-badges"><span class="badge badge--outline">웹뷰</span></span></td><td><span class="facet-badges"><span class="badge badge--outline">익산</span></span></td><td class="nowrap">프론트 없음 · 백엔드 2건</td><td class="nowrap">김철수</td><td><a class="num" href="05a-frd-workbench.html">FRD-006</a></td><td class="num nowrap">08-11 16:42</td></tr>
       </tbody>
     </table>
   </div>

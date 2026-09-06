@@ -7,9 +7,6 @@ import com.bizplay.builder.account.BuilderUser;
 import com.bizplay.builder.claude.FakeClaudeAuthGateway;
 import com.bizplay.builder.devrequest.DevelopmentRequest;
 import com.bizplay.builder.devrequest.DevelopmentRequestMapper;
-import com.bizplay.builder.devrequest.DevRequestDeliveryAttempt;
-import com.bizplay.builder.devrequest.DevRequestDeliveryMapper;
-import com.bizplay.builder.devrequest.DeliveryOutcome;
 import com.bizplay.builder.id.IdSequence;
 import com.bizplay.builder.project.Project;
 import com.bizplay.builder.project.ProjectMapper;
@@ -93,7 +90,6 @@ class FrdScreenTest extends AbstractDbTest {
     @Autowired FrdBackendChangeMapper backendChanges;
     @Autowired FrdAnalysisNoteMapper analysisNotes;
     @Autowired DevelopmentRequestMapper developmentRequests;
-    @Autowired DevRequestDeliveryMapper deliveryAttempts;
     @Autowired ScreenStandardIdMapper standardIds;
     @Autowired com.bizplay.builder.intake.ProjectFacetMapper projectFacets;
     @Autowired SolutionScreenReader solutions;
@@ -2628,23 +2624,6 @@ class FrdScreenTest extends AbstractDbTest {
                 .contains("\"canComplete\":true");
     }
 
-    @Test
-    void 개발요청서에서_돌아온_완료_커밋이_남아도_FRD_작업_완료가_활성화된다() throws Exception {
-        Project p = readyProject("전자결재-재작업");
-        String frdId = seedDraftingFrd(p);
-        given(workspaces.hasChanges(p.getId(), frdId)).willReturn(false);
-        given(workspaces.hasCompletionToReopen(anyString(), anyString(), anyString())).willReturn(true);
-
-        String json = mvc.perform(get("/projects/{p}/artifacts/frds/{f}/completion-status",
-                        p.getId(), frdId).with(user(planner)))
-                .andExpect(status().isOk()).andReturn().getResponse()
-                .getContentAsString(StandardCharsets.UTF_8);
-
-        assertThat(json).contains("\"modified\":true")
-                .contains("\"busy\":false")
-                .contains("\"canComplete\":true")
-                .contains("개발요청서에서 돌아온 FRD 작업을 다시 완료합니다.");
-    }
 
     @Test
     void AI가_화면을_수정하는_동안에는_FRD_작업_완료가_비활성화된다() throws Exception {
@@ -2717,10 +2696,9 @@ class FrdScreenTest extends AbstractDbTest {
                 .contains("완료 조건")
                 .contains("담당자")
                 .contains("이영희")
-                .contains("<button class=\"button button--primary\" type=\"submit\">개발요청 보내기</button>")
                 .contains("FRD 작업 재개")
-                .contains("dev-delivery-dialog")
-                .contains("첨부파일")
+                // ⛔ 2026-09-06(003) — 첨부파일은 전송 레이어 안에 있었고 함께 없어졌다.
+                .doesNotContain("첨부파일")
                 .doesNotContain("기준 FRD 보기")
                 .doesNotContain("변경 예정 기능정의서 만들기")
                 .doesNotContain("확인 필요 1건</span>");
@@ -2773,48 +2751,6 @@ class FrdScreenTest extends AbstractDbTest {
                 .contains("완료 커밋을 만들지 못했습니다.");
     }
 
-    @Test
-    void 개발요청_전송은_레이어에서_전달사항과_첨부파일을_받아_전송중으로_옮긴다() throws Exception {
-        Project p = readyProject("전자결재");
-        String frdId = seedDraftingFrd(p);
-        // ⭐ 완료 전에 채운다 — 개발요청서 본문은 완료 시점에 굳는 스냅샷이라
-        //    나중에 넣은 것은 계약서에 안 실리고 게이트가 「개발 범위 0건」으로 막는다.
-        passDeliveryGate(p, frdId);
-        given(workspaces.commitChanges(anyString(), anyString(), anyString()))
-                .willReturn(new FrdWorkspace.Commit(Path.of("test", "frd-" + frdId), "before", "after"));
-        mvc.perform(post("/projects/{p}/artifacts/frds/{f}/complete", p.getId(), frdId)
-                .with(user(planner)).with(csrf())).andExpect(status().is3xxRedirection());
-        DevelopmentRequest request = developmentRequests.selectByFrdId(frdId);
-        var attachment = new MockMultipartFile("attachment", "검토 자료.pdf", "application/pdf",
-                "%PDF-1.4".getBytes(StandardCharsets.ISO_8859_1));
-
-        mvc.perform(multipart("/projects/{p}/artifacts/dev-requests/{r}/send", p.getId(), request.id())
-                        .param("developmentCompletedOn", "2026-09-10")
-                        .param("deploymentOn", "2026-09-09")
-                        .with(user(planner)).with(csrf()))
-                .andExpect(status().is3xxRedirection())
-                .andExpect(flash().attribute("error", "배포일은 개발 완료일과 같거나 이후여야 합니다."));
-        assertThat(developmentRequests.selectById(request.id()).deliveryState())
-                .isEqualTo(DevelopmentRequest.DeliveryState.NOT_SENT);
-
-        mvc.perform(multipart("/projects/{p}/artifacts/dev-requests/{r}/send", p.getId(), request.id())
-                        .file(attachment).param("plannerComment", "월요일 배포 전에 확인해 주세요.")
-                        .param("developmentCompletedOn", "2026-09-08")
-                        .param("deploymentOn", "2026-09-10")
-                        .with(user(planner)).with(csrf()))
-                .andExpect(status().is3xxRedirection())
-                .andExpect(flash().attribute("message", "개발요청을 접수했습니다."));
-
-        DevelopmentRequest sending = developmentRequests.selectById(request.id());
-        assertThat(sending.deliveryState()).isEqualTo(DevelopmentRequest.DeliveryState.SENDING);
-        assertThat(sending.plannerComment()).isEqualTo("월요일 배포 전에 확인해 주세요.");
-        assertThat(sending.attachmentName()).isEqualTo("검토_자료.pdf");
-        assertThat(sending.attachmentSize()).isEqualTo(8L);
-        assertThat(sending.developmentCompletedOn()).isEqualTo(java.time.LocalDate.of(2026, 9, 8));
-        assertThat(sending.deploymentOn()).isEqualTo(java.time.LocalDate.of(2026, 9, 10));
-        assertThat(Files.readString(Path.of(sending.attachmentPath()), StandardCharsets.ISO_8859_1))
-                .isEqualTo("%PDF-1.4");
-    }
 
     // ── 개발요청서 목록 ────────────────────────────────────────────────────
 
@@ -2823,7 +2759,7 @@ class FrdScreenTest extends AbstractDbTest {
      * 누가 밀어야 하는지가 목록에서 안 보이면, 서버 한 대에 여럿이 붙는 이 제품에서 아무도 안 민다.
      */
     @Test
-    void 개발요청서_목록이_범위와_담당과_기준_FRD와_두_시각을_적는다() throws Exception {
+    void 개발요청서_목록이_범위와_담당과_기준_FRD와_생성_시각을_적는다() throws Exception {
         Project p = readyProject("전자결재");
         String frdId = seedDraftingFrd(p, planner.accountId());
         given(workspaces.commitChanges(anyString(), anyString(), anyString()))
@@ -2831,9 +2767,6 @@ class FrdScreenTest extends AbstractDbTest {
         mvc.perform(post("/projects/{p}/artifacts/frds/{f}/complete", p.getId(), frdId)
                 .with(user(planner)).with(csrf())).andExpect(status().is3xxRedirection());
         DevelopmentRequest request = developmentRequests.selectByFrdId(frdId);
-        developmentRequests.updatePrecheck(request.id(), """
-                {"blocking":[{"subject":"전체","message":"확인 필요","fix":null,"detail":null}],
-                 "warnings":[],"checking":false,"notes":[]}""");
 
         String html = devRequestList(p.getId());
 
@@ -2848,36 +2781,13 @@ class FrdScreenTest extends AbstractDbTest {
                 .contains("<th scope=\"col\">기준 FRD</th>")
                 .contains("FRD-001")
                 .contains("<th scope=\"col\">생성일시</th>")
-                .contains("<th scope=\"col\">요청일시</th>")
-                .contains("전송 전 확인 1건")
                 .contains("aria-label=\"개발요청서 페이지 이동\"")
                 .contains("name=\"pageSize\"")
                 .doesNotContain("<th scope=\"col\">번호</th>");
-    }
-
-    @Test
-    void 개발요청서_목록의_요청일시는_실제_전송_시도에서_온다() throws Exception {
-        Project p = readyProject("전자결재");
-        String frdId = seedDraftingFrd(p, planner.accountId());
-        given(workspaces.commitChanges(anyString(), anyString(), anyString()))
-                .willReturn(new FrdWorkspace.Commit(Path.of("test", "frd-" + frdId), "before", "after"));
-        mvc.perform(post("/projects/{p}/artifacts/frds/{f}/complete", p.getId(), frdId)
-                .with(user(planner)).with(csrf())).andExpect(status().is3xxRedirection());
-        DevelopmentRequest request = developmentRequests.selectByFrdId(frdId);
-        String attemptId = ids.next(IdSequence.Kind.DEV_REQUEST_DELIVERY);
-        deliveryAttempts.insert(new DevRequestDeliveryAttempt(attemptId, request.id(), "DRK-목록시험",
-                "a".repeat(64), DeliveryOutcome.SENDING, null, null, null,
-                planner.accountId(), null, null));
-        deliveryAttempts.finish(attemptId, DeliveryOutcome.SENT, 201,
-                "https://gitlab.example.test/team/project/-/issues/18", null);
-        deliveryAttempts.moveFromSending(request.id(), DeliveryOutcome.SENT);
-
-        String html = devRequestList(p.getId());
-
-        assertThat(html)
-                .contains("<th scope=\"col\">요청일시</th>")
-                .doesNotContain("GitLab #18", "개발 이슈 #18");
-        assertThat(html).containsPattern("(?s)요청일시</th>.*?class=\"num nowrap\">\\d{2}-\\d{2} \\d{2}:\\d{2}</td>");
+        // ⛔ 2026-09-06(003) — 「요청일시」는 전송 시도에서 오던 값이라 열째 없앴다. 언제나 비는
+        //    열은 화면이 거짓말하는 것이다. ⚠ 위 체인은 이 시험이 빨강일 때 앞에서 끊기므로
+        //    이 가드는 반드시 별도 블록이어야 한다 — 안 그러면 영영 안 돈다.
+        assertThat(html).doesNotContain("<th scope=\"col\">요청일시</th>");
     }
 
     /**
@@ -3060,6 +2970,24 @@ class FrdScreenTest extends AbstractDbTest {
                 .andExpect(flash().attribute("message", "작업을 초기화했습니다."));
 
         verify(workspaces).reset(p.getId(), frdId);
+    }
+
+    @Test
+    void 개발요청서에서_돌아온_완료_커밋이_남아도_FRD_작업_완료가_활성화된다() throws Exception {
+        Project p = readyProject("전자결재-재작업");
+        String frdId = seedDraftingFrd(p);
+        given(workspaces.hasChanges(p.getId(), frdId)).willReturn(false);
+        given(workspaces.hasCompletionToReopen(anyString(), anyString(), anyString())).willReturn(true);
+
+        String json = mvc.perform(get("/projects/{p}/artifacts/frds/{f}/completion-status",
+                        p.getId(), frdId).with(user(planner)))
+                .andExpect(status().isOk()).andReturn().getResponse()
+                .getContentAsString(StandardCharsets.UTF_8);
+
+        assertThat(json).contains("\"modified\":true")
+                .contains("\"busy\":false")
+                .contains("\"canComplete\":true")
+                .contains("개발요청서에서 돌아온 FRD 작업을 다시 완료합니다.");
     }
 
     private String devRequestList(String projectId) throws Exception {

@@ -47,8 +47,6 @@
 
 /* 개발요청서 목록 — FRD 작업 목록처럼 업무와 시스템을 독립 열로 읽는다. */
 .dev-request-table tbody .status-badge { font-weight: 700; }
-.dev-request-row--merge-required > td { background: #fffaf1; }
-.dev-request-row--merge-required > td:first-child { box-shadow: inset 3px 0 0 #c8873e; }
 
 /* 개발요청서 상세 — 저장된 데이터 묶음을 임의로 연결하지 않고, 없는 묶음은 자리를 만들지 않는다. */
 .dev-request-detail, .dev-request-practical { max-width: 100%; min-width: 0; }
@@ -185,21 +183,6 @@
 .dev-request-boundary-grid li:last-child { border-bottom: 0; }
 .dev-request-boundary-grid strong { font-size: .875rem; }
 .dev-request-boundary-grid p { margin: 6px 0 0; color: var(--color-muted); font-size: .8125rem; line-height: 1.6; }
-.dev-delivery-dialog { width: min(620px, calc(100% - 48px)); }
-.dev-delivery-dialog__body { display: grid; gap: var(--space-5, 20px); }
-.dev-delivery-dialog textarea.field__control { height: auto; min-height: 116px; padding-block: 10px; resize: vertical; line-height: 1.6; }
-.dev-delivery-dialog .field__label { display: flex; align-items: center; gap: 7px; font-size: .8125rem; }
-.dev-delivery-dialog .field__label span { color: var(--color-muted); font-size: .68rem; font-weight: 500; }
-.dev-delivery-date-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-3); }
-.dev-delivery-summary { padding: var(--space-4); display: grid; gap: 5px; border: 1px solid #ddd4ec; border-radius: var(--radius-control); background: #fbf9fd; }
-.dev-delivery-summary > span { color: var(--color-action-primary); font-size: .68rem; font-weight: 800; }
-.dev-delivery-summary strong { font-size: .9375rem; line-height: 1.45; }
-.dev-delivery-summary small { color: var(--color-muted); font-size: .75rem; line-height: 1.55; }
-.dev-delivery-summary small b { color: var(--color-ink); }
-.dev-delivery-file { min-height: 76px; padding: var(--space-3) var(--space-4); display: flex; align-items: center; gap: var(--space-3); border: 1px dashed #a9b4be; border-radius: var(--radius-control); background: #fafbfc; cursor: pointer; }
-.dev-delivery-file:hover { border-color: var(--color-action-primary); background: var(--color-action-primary-soft); }
-.dev-delivery-file strong { flex: none; padding: 8px 11px; border: 1px solid var(--color-line); border-radius: var(--radius-control); background: var(--color-canvas); font-size: .75rem; }
-.dev-delivery-file span { min-width: 0; overflow-wrap: anywhere; color: var(--color-muted); font-size: .75rem; line-height: 1.5; }
 .rq-lead { margin: 0; font-size: 1rem; font-weight: 700; line-height: 1.7; }
 .rq-copy { margin: var(--space-3) 0 0; color: #4f4d48; font-size: 0.875rem; line-height: 1.75; }
 
@@ -297,25 +280,6 @@
 .repository-update-status__time { padding-left: var(--space-4); display: grid; gap: 3px; border-left: 1px solid var(--update-line); text-align: right; white-space: nowrap; }
 .repository-update-status__time span { font-size: 0.68rem; }
 .repository-update-status__time time { color: var(--color-ink); font-size: 0.75rem; font-weight: 650; }
-.dev-issue-target-card { margin-top: var(--space-4); }
-.dev-issue-target-card .rq-card__head > .status-badge { flex: none; }
-.dev-issue-target-summary { display: flex; align-items: center; justify-content: space-between; gap: var(--space-6); }
-.dev-issue-target-summary__copy { min-width: 0; }
-.dev-issue-target-summary__copy > p:first-child { margin: 0; color: var(--color-muted); font-size: .78rem; line-height: 1.6; }
-.dev-issue-target-summary dl { margin: var(--space-3) 0 0; display: flex; flex-wrap: wrap; gap: var(--space-3) var(--space-8); }
-.dev-issue-target-summary dl > div { display: grid; gap: 3px; }
-.dev-issue-target-summary dt { color: var(--color-muted); font-size: .7rem; }
-.dev-issue-target-summary dd { margin: 0; display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); overflow-wrap: anywhere; font-size: .82rem; font-weight: 650; }
-.dev-issue-target-summary dd span { min-width: 0; overflow-wrap: anywhere; }
-.dev-issue-target-summary dd strong { color: var(--color-action-primary); font-size: .75rem; }
-.dev-issue-target-summary__empty { margin: var(--space-2) 0 0; color: #7a5a25; font-size: .75rem; line-height: 1.55; }
-.dev-issue-target-summary > .button { flex: none; }
-.dev-issue-target-dialog { width: min(760px, calc(100% - 48px)); }
-.dev-issue-target-dialog__body { display: grid; gap: var(--space-4); }
-.dev-issue-target-dialog__body .error-line { margin: 0; }
-.dev-issue-target-field-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-6); }
-.dev-issue-target-field-grid .field { min-width: 0; }
-.dev-issue-target-field-grid__wide { grid-column: 1 / -1; }
 
 @media (max-width: 720px) {
   .project-facet-option__head { min-height: 0; padding: var(--space-4); align-items: flex-start; }
@@ -335,12 +299,6 @@
   .facet-setting-row .field__control { width: 100%; min-width: 0; }
   .repository-update-status { grid-template-columns: auto minmax(0, 1fr); align-items: start; }
   .repository-update-status__time { padding: var(--space-3) 0 0; grid-column: 2; border-top: 1px solid var(--update-line); border-left: 0; text-align: left; }
-  .dev-issue-target-summary { align-items: stretch; flex-direction: column; gap: var(--space-4); }
-  .dev-issue-target-summary dl { display: grid; gap: var(--space-3); }
-  .dev-issue-target-summary > .button { width: 100%; }
-  .dev-issue-target-dialog { width: calc(100% - 24px); }
-  .dev-issue-target-field-grid { grid-template-columns: 1fr; gap: var(--space-4); }
-  .dev-issue-target-field-grid__wide { grid-column: auto; }
 }
 .project-info-list { margin: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: var(--space-8); }
 .project-info-list > div { min-height: 62px; padding: var(--space-3) 0; display: grid; grid-template-columns: 140px minmax(0, 1fr); align-items: center; gap: var(--space-4); border-bottom: 1px solid var(--color-line); }
@@ -393,6 +351,9 @@
 .filter-bar--solution > .button { height: 40px; min-height: 40px; align-self: end; }
 .filter-bar--four { grid-template-columns: minmax(220px, 2fr) repeat(3, minmax(140px, 1fr)); }
 .filter-bar--five { grid-template-columns: minmax(220px, 1.7fr) repeat(4, minmax(125px, 1fr)); }
+/* ⚠ 003(2026-09-06)에서 개발요청서 목록의 「전송 상태」 거르개가 빠져 자식이 넷이 됐다.
+ *   --five 를 그대로 두면 검색칸이 125px 자리에 앉고 단추가 넓은 칸을 먹는다. */
+.filter-bar--four.filter-bar--with-action { grid-template-columns: repeat(2, minmax(125px, 1fr)) minmax(220px, 1.7fr) auto; }
 .filter-bar--five.filter-bar--with-action { grid-template-columns: repeat(3, minmax(125px, 1fr)) minmax(220px, 1.7fr) auto; }
 .filter-bar--with-action > .button { height: 40px; min-height: 40px; align-self: end; }
 .ia-filter-bar--tree { grid-template-columns: minmax(360px, 1.7fr) minmax(180px, 0.65fr) minmax(180px, 0.65fr); }
@@ -831,8 +792,6 @@
 }
 
 @media (max-width: 760px) {
-  .dev-delivery-dialog { width: calc(100% - 24px); }
-  .dev-delivery-date-grid { grid-template-columns: 1fr; }
   .filter-bar { grid-template-columns: 1fr; }
   .filter-bar--three,
   .filter-bar--accounts,
@@ -840,6 +799,7 @@
   .filter-bar--solution-compact,
   .filter-bar--four,
   .filter-bar--user-manual,
+  .filter-bar--four.filter-bar--with-action,
   .filter-bar--five.filter-bar--with-action { grid-template-columns: 1fr; }
   .ia-filter-bar--tree { grid-template-columns: 1fr; }
   .admin-form-card { padding: var(--space-4); }

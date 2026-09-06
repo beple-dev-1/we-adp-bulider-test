@@ -142,38 +142,6 @@
         </div>
       </section>
 
-      <section class="rq-card dev-issue-target-card" th:if="${p.state.name() != 'FAILED'}"
-               aria-labelledby="dev-issue-target-title">
-        <div class="rq-card__head">
-          <div><span class="rq-kicker">개발요청 전송</span>
-            <h2 id="dev-issue-target-title">GitLab 이슈 등록</h2></div>
-          <span class="status-badge"
-                th:classappend="${devIssueTarget != null} ? 'status-badge--complete' : 'status-badge--waiting'"
-                th:text="${devIssueTarget != null} ? '설정 완료' : '설정 필요'">설정 필요</span>
-        </div>
-        <div class="rq-card__body dev-issue-target-summary">
-          <div class="dev-issue-target-summary__copy">
-            <p>완료한 개발요청을 개발팀의 GitLab 프로젝트에 이슈로 등록합니다.</p>
-            <dl th:if="${devIssueTarget != null}">
-              <div><dt>대상 프로젝트</dt><dd>
-                <span th:text="${devIssueTarget.baseUrl()}">https://gitlab.example.com</span>
-                <strong class="num" th:text="${devIssueTarget.projectPath()}">dev/card-api</strong>
-              </dd></div>
-              <div><dt>액세스 토큰</dt><dd>토큰 등록됨</dd></div>
-            </dl>
-            <p class="dev-issue-target-summary__empty" th:if="${devIssueTarget == null}">
-              아직 전송 대상을 설정하지 않았습니다. 설정 전에는 개발요청 파일만 생성되고 GitLab으로 전송되지 않습니다.
-            </p>
-          </div>
-          <button class="button" type="button" data-open-dev-issue-target
-                  aria-controls="dev-issue-target-dialog" aria-expanded="false"
-                  th:text="${devIssueTarget != null} ? '설정 변경' : '전송 설정'">전송 설정</button>
-        </div>
-      </section>
-
-    </main>
-  </div>
-
   <script>
     document.addEventListener('click', function (event) {
       const open = event.target.closest('[data-open-project-token]');
@@ -195,57 +163,6 @@
     });
   </script>
 
-  <dialog class="dialog dialog--layer dev-issue-target-dialog" id="dev-issue-target-dialog"
-          aria-labelledby="dev-issue-target-dialog-title" aria-describedby="dev-issue-target-dialog-description"
-          th:attr="data-open-on-load=${editingDevIssueTarget != null}">
-    <form method="post" th:action="@{/admin/projects/{n}/dev-issue-target(n=${p.id})}">
-      <header class="dialog__header">
-        <div class="dialog__header-copy">
-          <h2 class="dialog__title" id="dev-issue-target-dialog-title">개발요청 전송 설정</h2>
-          <p class="dialog__description" id="dev-issue-target-dialog-description">
-            개발 이슈를 등록할 GitLab 프로젝트를 입력해 주세요. 기획 저장소와는 별도입니다.
-          </p>
-        </div>
-        <button class="dialog__close" type="button" data-close-dev-issue-target
-                aria-label="개발요청 전송 설정 닫기"></button>
-      </header>
-      <div class="dialog__body dev-issue-target-dialog__body">
-        <p class="error-line" role="alert" th:if="${error != null and editingDevIssueTarget != null}"
-           th:text="${error}"></p>
-        <div class="dev-issue-target-field-grid">
-          <div class="field">
-            <label class="field__label" for="dev-issue-base-url">GitLab 주소</label>
-            <input class="field__control" id="dev-issue-base-url" name="baseUrl" type="url"
-                   th:value="${devIssueBaseUrl != null} ? ${devIssueBaseUrl} : (${devIssueTarget != null} ? ${devIssueTarget.baseUrl()} : '')"
-                   placeholder="https://gitlab.example.com" aria-describedby="dev-issue-base-url-help" required>
-            <p class="field__help" id="dev-issue-base-url-help">GitLab 기본 주소만 입력하세요. API 경로는 Builder가 자동으로 추가합니다.</p>
-          </div>
-          <div class="field">
-            <label class="field__label" for="dev-issue-project">GitLab 프로젝트</label>
-            <input class="field__control" id="dev-issue-project" name="projectPath" type="text"
-                   th:value="${devIssueProjectPath != null} ? ${devIssueProjectPath} : (${devIssueTarget != null} ? ${devIssueTarget.projectPath()} : '')"
-                   placeholder="dev/card-api 또는 43" aria-describedby="dev-issue-project-help" required>
-            <p class="field__help" id="dev-issue-project-help">그룹 경로를 포함한 프로젝트 경로나 숫자 ID를 입력하세요.</p>
-          </div>
-          <div class="field dev-issue-target-field-grid__wide">
-            <label class="field__label" for="dev-issue-token"
-                   th:text="${devIssueTarget != null} ? '새 GitLab 액세스 토큰' : 'GitLab 액세스 토큰'">GitLab 액세스 토큰</label>
-            <input class="field__control" id="dev-issue-token" name="token" type="password"
-                   autocomplete="new-password" aria-describedby="dev-issue-token-help" required>
-            <p class="field__help" id="dev-issue-token-help"
-               th:text="${devIssueTarget != null} ? '설정을 변경하려면 이슈 생성 권한이 있는 토큰도 다시 입력해 주세요. 저장 후에는 다시 표시되지 않습니다.' : '이슈 생성 권한이 있는 토큰을 입력해 주세요. 저장 후에는 다시 표시되지 않습니다.'">
-              이슈 생성 권한이 있는 토큰을 입력해 주세요. 저장 후에는 다시 표시되지 않습니다.
-            </p>
-          </div>
-        </div>
-      </div>
-      <div class="dialog__actions">
-        <button class="button" type="button" data-close-dev-issue-target>취소</button>
-        <button class="button button--primary" type="submit"
-                data-submit-loading="전송 설정 저장 중">전송 설정 저장</button>
-      </div>
-    </form>
-  </dialog>
 
   <dialog class="dialog dialog--layer" id="facet-dialog" aria-labelledby="facet-dialog-title"
           th:attr="data-open-on-load=${editingFacet != null}">
@@ -287,29 +204,6 @@
     </form>
   </dialog>
 
-  <script>
-    (function () {
-      const dialog = document.getElementById('dev-issue-target-dialog');
-      const trigger = document.querySelector('[data-open-dev-issue-target]');
-      if (!dialog || !trigger) return;
-      function openDialog() {
-        dialog.showModal();
-        trigger.setAttribute('aria-expanded', 'true');
-        dialog.querySelector('input')?.focus();
-      }
-      document.addEventListener('click', function (event) {
-        if (event.target.closest('[data-open-dev-issue-target]')) openDialog();
-        if (event.target.closest('[data-close-dev-issue-target]')) {
-          dialog.close();
-          trigger.focus();
-        }
-      });
-      dialog.addEventListener('close', function () {
-        trigger.setAttribute('aria-expanded', 'false');
-      });
-      if (dialog.dataset.openOnLoad === 'true') openDialog();
-    })();
-  </script>
 
   <!--/*
     시스템 관리 — 표시 이름만 고친다.

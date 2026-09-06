@@ -20,17 +20,14 @@ public class AdminProjectController {
     private final CloneWorker cloneWorker;
     private final RepositoryUpdateWorker repositoryUpdateWorker;
     private final ProjectSystemService projectSystems;
-    private final com.bizplay.builder.devrequest.DevIssueTargetService devIssueTargets;
 
     public AdminProjectController(ProjectService projects, CloneWorker cloneWorker,
                                   RepositoryUpdateWorker repositoryUpdateWorker,
-                                  ProjectSystemService projectSystems,
-                                  com.bizplay.builder.devrequest.DevIssueTargetService devIssueTargets) {
+                                  ProjectSystemService projectSystems) {
         this.projects = projects;
         this.cloneWorker = cloneWorker;
         this.repositoryUpdateWorker = repositoryUpdateWorker;
         this.projectSystems = projectSystems;
-        this.devIssueTargets = devIssueTargets;
     }
 
     @GetMapping
@@ -47,7 +44,6 @@ public class AdminProjectController {
     @GetMapping("/{id}")
     public String detail(@PathVariable String id, Model model) {
         model.addAttribute("view", projects.detail(id));
-        model.addAttribute("devIssueTarget", devIssueTargets.of(id));
         return "admin/project-detail";
     }
 
@@ -63,7 +59,6 @@ public class AdminProjectController {
             model.addAttribute("error", e.getMessage());
             model.addAttribute("editingFacet", true);
             model.addAttribute("view", projects.detail(id));   // ⛔ 목록이 아니라 적용 구분 폼이 있는 상세로 되돌아온다
-            model.addAttribute("devIssueTarget", devIssueTargets.of(id));
             return "admin/project-detail";
         }
         return "redirect:/admin/projects/" + id;
@@ -87,7 +82,6 @@ public class AdminProjectController {
             model.addAttribute("error", e.getMessage());
             model.addAttribute("editingSystem", true);
             model.addAttribute("view", projects.detail(id));   // ⛔ 목록이 아니라 시스템 폼이 있는 상세로
-            model.addAttribute("devIssueTarget", devIssueTargets.of(id));
             return "admin/project-detail";
         }
         return "redirect:/admin/projects/" + id;
@@ -150,31 +144,6 @@ public class AdminProjectController {
             model.addAttribute("error", e.getMessage());
             model.addAttribute("editingToken", true);
             model.addAttribute("view", projects.detail(id));   // ⛔ 목록이 아니라 토큰 폼이 있는 상세로 되돌아온다
-            model.addAttribute("devIssueTarget", devIssueTargets.of(id));
-            return "admin/project-detail";
-        }
-        return "redirect:/admin/projects/" + id;
-    }
-
-    /** 개발요청을 이슈로 여는 자리. ⛔ 기획 저장소가 아니라 개발 조직의 트래커다. */
-    @PostMapping("/{id}/dev-issue-target")
-    public String saveDevIssueTarget(@PathVariable String id,
-                                     @RequestParam String baseUrl,
-                                     @RequestParam String projectPath,
-                                     @RequestParam String token,
-                                     @org.springframework.security.core.annotation.AuthenticationPrincipal
-                                             com.bizplay.builder.account.BuilderUser user,
-                                     Model model) {
-        try {
-            devIssueTargets.save(id, baseUrl, projectPath, token,
-                    user == null ? null : user.accountId());
-        } catch (IllegalArgumentException rejected) {
-            model.addAttribute("error", rejected.getMessage());
-            model.addAttribute("editingDevIssueTarget", true);
-            model.addAttribute("view", projects.detail(id));
-            model.addAttribute("devIssueTarget", devIssueTargets.of(id));
-            model.addAttribute("devIssueBaseUrl", baseUrl);
-            model.addAttribute("devIssueProjectPath", projectPath);
             return "admin/project-detail";
         }
         return "redirect:/admin/projects/" + id;

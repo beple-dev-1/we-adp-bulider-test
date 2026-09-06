@@ -32,7 +32,6 @@ import java.nio.file.Files;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
  * 전송 전 검증이 <b>차단과 경고를 제대로 가르나</b>.
@@ -81,8 +80,6 @@ class DevRequestPrecheckTest extends AbstractDbTest {
         assertThat(gate.blocking()).extracting(DevRequestPrecheck.Item::message)
                 .contains("신규 화면의 연결 안내가 없습니다.")
                 .noneMatch(message -> message.contains("임시 이름") || message.contains("관리번호"));
-        assertThatThrownBy(() -> service.requestDelivery(project.getId(), requestId, null,
-                null, null, null, null)).isInstanceOf(IllegalStateException.class);
     }
 
     // ── 신규 화면 채번 (2026-08-22 설계 · 2026-08-25 구현) ─────────────────────

@@ -2,7 +2,6 @@ package com.bizplay.builder.devrequest;
 
 import com.bizplay.builder.account.AccountMapper;
 import com.bizplay.builder.frd.Frd;
-import com.bizplay.builder.frd.FrdAnalysisNote;
 import com.bizplay.builder.frd.FrdAnalysisNoteMapper;
 import com.bizplay.builder.frd.FrdBackendChangeMapper;
 import com.bizplay.builder.frd.FrdFacetMapper;
@@ -37,15 +36,11 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
-import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.StandardCopyOption;
-import java.time.Instant;
-import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -82,14 +77,9 @@ public class DevelopmentRequestService {
     private final FrdScreenIaPlacementService iaPlacements;
     private final ProjectPaths paths;
     private final ProjectRepositoryLocks repositoryLocks;
-    private final DevRequestPackageBuilder packages;
-    private final DevRequestPackageZipper zipper;
     private final DevRequestPrecheck prechecks;
     private final ScreenTobeDocumentWorker tobeDocuments;
-    private final DevRequestTestScenarioWorker testScenarios;
     private final FrdWorkspace workspaces;
-    private final DevRequestDeliveryMapper attempts;
-    private final DevHandoffGateway gateway;
     private final IdSequence ids;
     private final ObjectMapper json;
 
@@ -105,12 +95,9 @@ public class DevelopmentRequestService {
                                      ScreenStandardIdService standardIdAllocator,
                                      FrdScreenIaPlacementService iaPlacements,
                                      ProjectPaths paths, ProjectRepositoryLocks repositoryLocks,
-                                     DevRequestPackageBuilder packages, DevRequestPackageZipper zipper,
                                      DevRequestPrecheck prechecks,
                                      ScreenTobeDocumentWorker tobeDocuments,
-                                     DevRequestTestScenarioWorker testScenarios,
                                      FrdWorkspace workspaces,
-                                     DevRequestDeliveryMapper attempts, DevHandoffGateway gateway,
                                      IdSequence ids, ObjectMapper json) {
         this.requests = requests;
         this.frds = frds;
@@ -130,14 +117,9 @@ public class DevelopmentRequestService {
         this.iaPlacements = iaPlacements;
         this.paths = paths;
         this.repositoryLocks = repositoryLocks;
-        this.packages = packages;
-        this.zipper = zipper;
         this.prechecks = prechecks;
         this.tobeDocuments = tobeDocuments;
-        this.testScenarios = testScenarios;
         this.workspaces = workspaces;
-        this.attempts = attempts;
-        this.gateway = gateway;
         this.ids = ids;
         this.json = json;
     }
@@ -154,15 +136,13 @@ public class DevelopmentRequestService {
      */
     public record Row(DevelopmentRequest request, String ownerName, boolean generating,
                       int screenCount, int newScreenCount, int backendChangeCount,
-                      int blockingCount, boolean precheckChecking,
-                      DevRequestDeliveryAttempt latestHandoff, Frd source) {
+                      int blockingCount, boolean precheckChecking, Frd source) {
 
         public Row(DevelopmentRequest request, String ownerName, boolean generating,
                    int screenCount, int newScreenCount, int backendChangeCount,
-                   int blockingCount, boolean precheckChecking,
-                   DevRequestDeliveryAttempt latestHandoff) {
+                   int blockingCount, boolean precheckChecking) {
             this(request, ownerName, generating, screenCount, newScreenCount, backendChangeCount,
-                    blockingCount, precheckChecking, latestHandoff, null);
+                    blockingCount, precheckChecking, null);
         }
 
         /** 담당 칸에 뜨는 말. 담당이 없거나 이름을 못 찾으면 대시다. */
@@ -214,10 +194,6 @@ public class DevelopmentRequestService {
                     ? "백엔드 없음"
                     : "백엔드 %d건".formatted(backendChangeCount));
             return String.join(" · ", parts);
-        }
-
-        public Instant requestedAt() {
-            return latestHandoff == null ? null : latestHandoff.startedAt();
         }
 
         public boolean srtSource() {
@@ -356,7 +332,6 @@ public class DevelopmentRequestService {
         List<DevelopmentRequest> all = requests.selectByProjectId(projectId);
         Map<String, String> ownerNames = ownerNames(all);
         Map<String, Frd> sources = sources(all);
-        Map<String, DevRequestDeliveryAttempt> latestHandoffs = latestHandoffs(all);
         return all.stream()
                 .map(request -> {
                     DevelopmentRequestContent content = readContent(request.contentJson());
@@ -367,19 +342,9 @@ public class DevelopmentRequestService {
                     return new Row(request, ownerNames.get(request.frdId()), generating(request, content),
                             content.screens().size(), newScreenCount, content.requiredChanges().size(),
                             gate == null ? 0 : gate.blocking().size(), gate != null && gate.checking(),
-                            latestHandoffs.get(request.id()), sources.get(request.frdId()));
+                            sources.get(request.frdId()));
                 })
                 .toList();
-    }
-
-    private Map<String, DevRequestDeliveryAttempt> latestHandoffs(List<DevelopmentRequest> all) {
-        if (all.isEmpty()) {
-            return Map.of();
-        }
-        Map<String, DevRequestDeliveryAttempt> found = new HashMap<>();
-        attempts.selectLatestHandoffByRequestIds(all.stream().map(DevelopmentRequest::id).toList())
-                .forEach(attempt -> found.put(attempt.devRequestId(), attempt));
-        return found;
     }
 
     private Map<String, Frd> sources(List<DevelopmentRequest> all) {
@@ -557,18 +522,6 @@ public class DevelopmentRequestService {
         };
     }
 
-    @Transactional
-    public void savePlannerComment(String projectId, String requestId, String comment) {
-        read(projectId, requestId);
-        String normalized = comment == null ? null : comment.strip();
-        if (normalized != null && normalized.length() > 4000) {
-            throw new IllegalArgumentException("전달사항은 4,000자 이내로 입력해 주세요.");
-        }
-        if (requests.updatePlannerComment(requestId,
-                normalized == null || normalized.isBlank() ? null : normalized) != 1) {
-            throw new IllegalStateException("개발요청서 전달사항을 저장하지 못했습니다.");
-        }
-    }
 
     /**
      * 같은 화면을 건드린 앞선 개발요청서 후보.
@@ -619,11 +572,14 @@ public class DevelopmentRequestService {
      *
      * <p>⛔ <b>트랜잭션을 걸지 마라</b> — {@link #requestTobeDocuments} 에 적은 사유가 그대로다.
      *
-     * @return 청했으면 참. 이미 있거나·도는 중이거나·앞서 실패했으면 거짓이다
+     * <p>⚠ <b>2026-09-04 003 — 산출물 공유 기능 제거로 만드는 창구({@code DevRequestTestScenarioWorker})가
+     * 사라졌다.</b> {@link com.bizplay.builder.frd.FrdCompletionService} 가 완료 시점에 그대로 부르므로
+     * 자리만 남기고 신호를 끈다 — 항상 거짓이다.
+     *
+     * @return 항상 거짓이다 (테스트 시나리오 자동 생성 창구 제거됨)
      */
     public boolean requestTestScenarios(String projectId, String requestId) {
-        View view = read(projectId, requestId);
-        return testScenarios.requestIfMissing(view.request(), view.content());
+        return false;
     }
 
     /**
@@ -631,7 +587,7 @@ public class DevelopmentRequestService {
      *
      * <p>⭐ <b>왜 있나.</b> 개발요청서가 생기면 FRD 는 {@code REVIEW} 로 가고 거기서 나가는 길이
      * {@code DONE} 만이었다 — 인터뷰가 남긴 「확인 필요」를 정리하거나 화면을 더 고칠 길이 없었다.
-     * 반대쪽 「전송 철회」({@link #withdraw})는 있는데 전송 전 폐기가 없는 것도 비대칭이다.
+     * ⚠ 2026-09-04 003 — 「전송 철회」 자체가 산출물 공유 기능과 함께 제거됐다. 이 문단은 만들어진 배경이다.
      *
      * <p>⛔ <b>{@code NOT_SENT} 만이다.</b> 보낸 것(SENT)은 철회의 자리고, 무른 것(WITHDRAWN)은 개발이
      * 한 번 받은 이력이라 지우면 안 된다 — 그건 「고쳐서 다시 보내기」로 간다.
@@ -666,7 +622,8 @@ public class DevelopmentRequestService {
         Frd.State back = Files.isDirectory(paths.frdWorktree(projectId, frd.id()))
                 ? Frd.State.DRAFTING : Frd.State.SCOPE_REVIEW;
 
-        attempts.deleteByRequestId(requestId);
+        // ⚠ 옛 전송 시도 줄을 먼저 치운다 — FK 에 cascade 가 없어 안 지우면 아래가 죽는다(003).
+        requests.deleteDeliveryAttempts(requestId);
         if (requests.deleteNotSent(requestId) != 1) {
             throw new IllegalStateException("그 사이 전송이 시작됐습니다. 다시 확인해 주세요.");
         }
@@ -714,22 +671,6 @@ public class DevelopmentRequestService {
     }
 
     /**
-     * 「개발요청 전송」을 누른 순간에 <b>검사기까지 돌려</b> 재고, 그 결과를 굳힌다.
-     *
-     * <p>⭐ <b>부르는 자리는 전송 버튼 하나다</b> (2026-08-25 병주 지시 — 「화면 들어갈 때마다 검증하지 마라」).
-     * 상세는 이 기록을 <b>읽기만</b> 한다. 막혀서 못 나가도 기록은 남아, 무엇 때문에 막혔는지가 화면에 그대로 뜬다.
-     *
-     * <p>⚠ <b>{@link #requestDelivery} 보다 먼저, 별도 트랜잭션으로 부른다.</b> 전송이 막히면 그 트랜잭션은
-     * 되돌려지는데 <b>이 기록은 되돌려지면 안 된다</b> — 막힌 까닭을 보여 주려고 적는 것이다.
-     */
-    @Transactional
-    public DevRequestPrecheck.Result measureDeliveryGate(String projectId, String requestId) {
-        DevRequestPrecheck.Result gate = prechecks.checkForDelivery(read(projectId, requestId));
-        requests.updatePrecheck(requestId, write(gate));
-        return gate;
-    }
-
-    /**
      * 「전송 전 확인」 — <b>마지막으로 잰 결과를 읽는다. 여기서 새로 재지 않는다</b> (2026-08-25 병주 지시).
      *
      * <p>⭐ <b>실물에서 발견.</b> 전송완료된 {@code DR-011} 의 「전송 전 확인」이 상세를 열 때마다 달라졌다 —
@@ -759,12 +700,6 @@ public class DevelopmentRequestService {
         } catch (JsonProcessingException failure) {
             throw new IllegalStateException("전송 전 확인 결과를 저장할 수 없습니다.", failure);
         }
-    }
-
-    @Transactional(readOnly = true)
-    public List<DevelopmentRequest> previousCandidates(String projectId, String requestId) {
-        read(projectId, requestId);
-        return requests.selectPreviousCandidates(projectId, requestId);
     }
 
     /**
@@ -923,310 +858,11 @@ public class DevelopmentRequestService {
         return result;
     }
 
-    /** 전달사항과 첨부파일을 고정하고 외부 전송 일꾼이 가져갈 수 있도록 전송중으로 옮긴다. */
-    @Transactional
-    public void requestDelivery(String projectId, String requestId, String comment,
-                                LocalDate developmentCompletedOn, LocalDate deploymentOn,
-                                String previousRequestId, MultipartFile attachment) {
-        repositoryLocks.run(projectId, () -> requestDeliveryLocked(projectId, requestId, comment,
-                developmentCompletedOn, deploymentOn, previousRequestId, attachment));
-    }
 
-    private void requestDeliveryLocked(String projectId, String requestId, String comment,
-                                       LocalDate developmentCompletedOn, LocalDate deploymentOn,
-                                       String previousRequestId, MultipartFile attachment) {
-        View before = read(projectId, requestId);
-        DevelopmentRequest request = before.request();
-        String previous = normalizePrevious(projectId, requestId, previousRequestId);
-        String normalized = comment == null ? null : comment.strip();
-        if (normalized != null && normalized.length() > 4000) {
-            throw new IllegalArgumentException("개발팀 전달사항은 4,000자 이내로 입력해 주세요.");
-        }
-        if (developmentCompletedOn != null && deploymentOn != null
-                && deploymentOn.isBefore(developmentCompletedOn)) {
-            throw new IllegalArgumentException("배포일은 개발 완료일과 같거나 이후여야 합니다.");
-        }
-        boolean hasAttachment = attachment != null && !attachment.isEmpty();
-        if (hasAttachment && attachment.getSize() > 20L * 1024 * 1024) {
-            throw new IllegalArgumentException("첨부파일은 20MB 이하로 추가해 주세요.");
-        }
-        // ⭐ 방금 입력한 것부터 잰다 — 게이트를 먼저 올리면 날짜를 잘못 넣은 사람이
-        //    엉뚱한 말을 듣는다. ⛔ 다만 게이트는 「전송중」으로 옮기기 전이어야 한다 —
-        //    옮긴 뒤에 막으면 그 개발요청서가 다시 못 눌린다.
-        Path stored = null;
-        String originalName = null;
-        FrdWorkspace.Commit materialization = null;
-        try {
-            // AI가 만든 최종 기능정의서와 전달 화면 파일을 먼저 확정한 뒤 실제로 보낼 판을 검사한다.
-            // 검사나 전송 준비가 실패하면 아래 보상 처리로 이 커밋과 파일을 함께 되돌린다.
-            materialization = prepareDeliveryWorkspace(before);
-            View prepared = read(projectId, requestId);
-            DevRequestPrecheck.Result gate = prechecks.checkForDelivery(prepared);
-            // ⭐ 잰 것을 굳힌다 — 상세는 이제 검사기를 안 돌리므로 이 기록이 「무엇 때문에 막혔나」를 보여 줄 유일한 자리다.
-            requests.updatePrecheck(requestId, write(gate));
-            if (!gate.sendable()) {
-                throw new IllegalStateException("전송 전에 확인할 것이 %d건 있습니다: %s"
-                        .formatted(gate.blocking().size(), gate.blocking().get(0).message()));
-            }
-            if (materialization != null
-                    && requests.updateWorkspaceHeadSha(request.id(), materialization.after()) != 1) {
-                throw new IllegalStateException("개발요청서의 작업트리 기준판을 저장하지 못했습니다.");
-            }
 
-            if (hasAttachment) {
-                originalName = safeFileName(attachment.getOriginalFilename());
-                Path room = paths.devRequestAttachmentDir(projectId);
-                Files.createDirectories(room);
-                stored = room.resolve(requestId + "-" + originalName);
-                try (var input = attachment.getInputStream()) {
-                    Files.copy(input, stored, StandardCopyOption.REPLACE_EXISTING);
-                }
-            }
-            if (requests.requestDelivery(requestId,
-                    normalized == null || normalized.isBlank() ? null : normalized,
-                    originalName, stored == null ? null : stored.toString(),
-                    hasAttachment ? attachment.getSize() : null,
-                    developmentCompletedOn, deploymentOn, previous, write(gate)) != 1) {
-                throw new IllegalStateException(
-                        "이미 전송되었거나 앞선 전송이 아직 끝나지 않았습니다. 잠시 후 다시 확인해 주세요.");
-            }
-            // ⚠ 「전송중」을 확정한 뒤에 굽고 보낸다 — 순서가 계약이다(전송 설계).
-            //    묶으면 상대는 받았는데 우리 쪽이 되돌아가 다시 「대기」가 되고 다음 클릭이 또 보낸다.
-            View fixed = read(projectId, requestId);
-            DevelopmentRequest previousRow = previous == null ? null : requests.selectById(previous);
-            String key = deliveryKey(requestId);
-            DevRequestPackage built = packages.build(fixed, key, Instant.now().toString(),
-                    previousRow == null ? null : previousRow.label());
-            built = zipper.store(built, paths.devRequestPackageArchive(
-                    projectId, requestId, fixed.request().number()));
-            handOff(requestId, key, built);
-        } catch (IOException failed) {
-            deleteQuietly(stored);
-            workspaces.rollbackMaterialization(materialization);
-            throw new IllegalStateException("첨부파일을 보관하지 못했습니다. 파일을 다시 선택해 주세요.", failed);
-        } catch (RuntimeException failed) {
-            deleteQuietly(stored);
-            workspaces.rollbackMaterialization(materialization);
-            throw failed;
-        }
-    }
 
-    /** 화면 산출물을 전부 FRD 작업트리에 앉힌 뒤 그 커밋을 개발요청서의 전달 기준판으로 고정한다. */
-    private FrdWorkspace.Commit prepareDeliveryWorkspace(View view) {
-        DevelopmentRequest request = view.request();
-        if (request.workspaceBaseSha() == null || request.workspaceBaseSha().isBlank()) {
-            // 화면 없는 간단 변경과 이 기능 도입 전 개발요청서는 고정된 작업트리 판이 없다.
-            return null;
-        }
-        List<FrdWorkspace.TobeDocument> documents = new ArrayList<>();
-        Map<String, String> deliveryScreenIds = new LinkedHashMap<>();
-        for (var screen : view.content().screens()) {
-            deliveryScreenIds.put(screen.screenId(), screen.deliveryScreenId());
-        }
-        for (var screen : view.content().screens()) {
-            FrdScreenHistory latest = histories.selectLatestByScreenId(screen.frdScreenId());
-            if (latest == null || latest.md() == null || latest.md().isBlank()) {
-                throw new IllegalStateException("변경 예정 기능정의서가 없어 개발요청서를 작업트리에서 확정할 수 없습니다: "
-                        + screen.displayName());
-            }
-            String systemCode = screen.systemCode();
-            if (systemCode == null || systemCode.isBlank()) {
-                systemCode = request.systemCode();
-            }
-            if (systemCode == null || systemCode.isBlank()) {
-                throw new IllegalStateException("화면의 시스템이 없어 기능정의서를 작업트리에 저장할 수 없습니다: "
-                        + screen.displayName());
-            }
-            String document = ScreenDefinitionDocument.forDelivery(latest.md(), deliveryScreenIds);
-            documents.add(new FrdWorkspace.TobeDocument(
-                    systemCode, screen.screenId(), screen.deliveryScreenId(), document));
-        }
-        return workspaces.materializeTobeDocuments(
-                request.projectId(), request.frdId(), request.label(), documents);
-    }
 
-    /**
-     * 고른 앞 개발요청서를 검사한다.
-     *
-     * <p>⛔ <b>같은 프로젝트인지 반드시 잰다.</b> 번호는 프로젝트마다 1번부터라 남의 사업 것을
-     * 가리켜도 글자만으로는 그럴싸하다 — 그것이 계약서에 실리면 개발이 없는 문서를 찾는다.
-     */
-    private String normalizePrevious(String projectId, String requestId, String previousRequestId) {
-        if (previousRequestId == null || previousRequestId.isBlank()) {
-            return null;
-        }
-        String candidate = previousRequestId.strip();
-        if (candidate.equals(requestId)) {
-            throw new IllegalArgumentException("앞 개발요청서로 자기 자신을 고를 수 없습니다.");
-        }
-        DevelopmentRequest previous = requests.selectById(candidate);
-        if (previous == null || !previous.projectId().equals(projectId)) {
-            throw new IllegalArgumentException("앞 개발요청서를 찾을 수 없습니다. 목록에서 다시 골라 주세요.");
-        }
-        return candidate;
-    }
 
-    /**
-     * 창구를 한 번 부르고 <b>시도 한 줄</b>을 남긴다.
-     *
-     * <p>⛔ <b>여는 것과 닫는 것을 갈라 둔다.</b> 부르기 전에 줄을 열어 두지 않으면, 부르는 중에
-     * 서버가 죽었을 때 <b>보냈는지 안 보냈는지 아무 기록이 없다.</b>
-     *
-     * <p>⛔ <b>몰래 재시도하지 않는다.</b> 한 번 부르고 답에 따라 상태를 옮기는 것이 전부다 —
-     * 다시 보내는 것은 사람이 위험을 떠안고 고른다.
-     */
-    private void handOff(String requestId, String deliveryKey, DevRequestPackage built) {
-        String attemptId = ids.next(IdSequence.Kind.DEV_REQUEST_DELIVERY);
-        attempts.insert(new DevRequestDeliveryAttempt(attemptId, requestId, deliveryKey,
-                built.fingerprint(), DeliveryOutcome.SENDING, null, null, null, null, null, null));
-        DevHandoffGateway.Receipt receipt;
-        try {
-            receipt = gateway.send(built, deliveryKey);
-        } catch (RuntimeException failed) {
-            // ⚠ 던졌다는 것은 답을 못 받았다는 뜻이다 — 상대가 이미 받았을 수 있다.
-            //    ⛔ 「대기」로 뭉치지 마라. 그러면 다시 누를 때 두 번 간다.
-            receipt = DevHandoffGateway.Receipt.sending(String.valueOf(failed.getMessage()));
-        }
-        try {
-            attempts.finish(attemptId, receipt.outcome(), receipt.httpStatus(),
-                    receipt.responseId(), receipt.failure());
-            if (receipt.outcome() != DeliveryOutcome.SENDING) {
-                // ⛔ 「전송중」일 때만 옮긴다 — 그 사이 사람이 손으로 갈라 준 것을 되돌리지 않는다.
-                attempts.moveFromSending(requestId, receipt.outcome());
-            }
-        } catch (RuntimeException recordFailure) {
-            // 외부 창구를 이미 불렀다. 여기서 예외를 되던지면 DB와 Git 기준판이 롤백되어
-            // 사용자가 다시 눌렀을 때 같은 개발요청이 중복 전송될 수 있다. 전송중으로 남겨 수동 확인한다.
-            log.error("개발요청 외부 전송 뒤 결과를 기록하지 못했다 requestId={} deliveryKey={}",
-                    requestId, deliveryKey, recordFailure);
-        }
-    }
-
-    /**
-     * 보낸 것을 <b>철회</b>한다 — 병주 지시 2026-08-25.
-     *
-     * <p>⭐ <b>「취소」가 아니다.</b> 이미 나간 것은 없던 일로 못 만든다 — 개발에게 알림이 갔고
-     * 읽음이 남는다. 하는 것은 <b>그쪽 언어로 「무릅니다」를 알리는 것</b>이다:
-     * 라벨을 {@code intake} 에서 빼고 {@code withdrawn} 을 붙이고 이슈를 닫는다.
-     *
-     * <p>⭐ <b>라벨이 {@code intake} 일 때만 된다.</b> 개발이 집어가면 그쪽 워크플로가 라벨을
-     * 바꾸므로, <b>라벨이 그대로인지 보는 것만으로 「아직 아무도 손 안 댔다」가 판정된다</b> —
-     * 개발과 따로 합의할 것이 없다. 이 판정은 <b>창구가</b> 한다.
-     *
-     * <p>⚠ <b>기획자가 누른다.</b> 자기가 보낸 것을 무르는 것이고, 라벨 검사가 안전장치다.
-     *
-     * <p>⛔ <b>창구가 철회를 못 했으면 DB 를 안 옮긴다.</b> 이슈는 열려 있는데 우리만 철회로 알면
-     * 개발이 그것을 집어간다 — 「없으니 무른 셈 치자」가 가장 나쁜 결말이다.
-     */
-    @Transactional
-    public void withdraw(String projectId, String requestId, String reason, String accountId) {
-        repositoryLocks.run(projectId, () -> withdrawLocked(projectId, requestId, reason, accountId));
-    }
-
-    private void withdrawLocked(String projectId, String requestId, String reason, String accountId) {
-        View view = read(projectId, requestId);
-        if (view.request().deliveryState() != DevelopmentRequest.DeliveryState.SENT) {
-            throw new IllegalStateException("전송완료인 개발요청서만 취소할 수 있습니다.");
-        }
-        String key = deliveryKey(requestId);
-        String attemptId = ids.next(IdSequence.Kind.DEV_REQUEST_DELIVERY);
-        attempts.insert(new DevRequestDeliveryAttempt(attemptId, requestId, key, null,
-                DeliveryOutcome.SENDING, null, null, null, accountId, null, null));
-
-        DevHandoffGateway.Receipt receipt;
-        try {
-            receipt = gateway.withdraw(projectId, key, reason);
-        } catch (RuntimeException failed) {
-            receipt = new DevHandoffGateway.Receipt(DeliveryOutcome.SENT, null, null,
-                    "개발요청을 취소하지 못했습니다: " + failed.getMessage());
-        }
-        attempts.finish(attemptId, receipt.outcome(), receipt.httpStatus(),
-                receipt.responseId(), receipt.failure());
-
-        if (receipt.outcome() != DeliveryOutcome.WITHDRAWN) {
-            throw new IllegalStateException(receipt.failure() == null
-                    ? "개발요청을 취소하지 못했습니다." : receipt.failure());
-        }
-        if (requests.withdrawDelivery(requestId) != 1) {
-            throw new IllegalStateException("그 사이 전송 상태가 바뀌었습니다. 다시 확인해 주세요.");
-        }
-    }
-
-    /** 시도 이력. 최신이 맨 위다. */
-    @Transactional(readOnly = true)
-    public List<DevRequestDeliveryAttempt> deliveryAttempts(String projectId, String requestId) {
-        read(projectId, requestId);
-        return attempts.selectByRequestId(requestId);
-    }
-
-    /** 전송 완료 상태이며 당시 저장한 ZIP 원본이 실제로 남아 있을 때만 다운로드를 연다. */
-    @Transactional(readOnly = true)
-    public boolean hasStoredPackage(DevelopmentRequest request) {
-        return request != null
-                && request.deliveryState() == DevelopmentRequest.DeliveryState.SENT
-                && Files.isRegularFile(packageArchive(request));
-    }
-
-    /** 주소의 프로젝트와 개발요청서 소유 관계를 확인한 뒤 저장 ZIP을 돌려준다. */
-    @Transactional(readOnly = true)
-    public StoredPackage storedPackage(String projectId, String requestId) {
-        DevelopmentRequest request = read(projectId, requestId).request();
-        if (request.deliveryState() != DevelopmentRequest.DeliveryState.SENT) {
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "전송 완료된 개발요청서가 아닙니다.");
-        }
-        Path archive = packageArchive(request);
-        if (!Files.isRegularFile(archive) || !Files.isReadable(archive)) {
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "저장된 개발요청서 ZIP이 없습니다.");
-        }
-        try {
-            return new StoredPackage(archive, request.label() + ".zip", Files.size(archive));
-        } catch (IOException failed) {
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND,
-                    "저장된 개발요청서 ZIP을 읽을 수 없습니다.", failed);
-        }
-    }
-
-    private Path packageArchive(DevelopmentRequest request) {
-        return paths.devRequestPackageArchive(
-                request.projectId(), request.id(), request.number()).toAbsolutePath().normalize();
-    }
-
-    public record StoredPackage(Path path, String fileName, long size) {}
-
-    /**
-     * 이 시도를 가리키는 세상에 하나뿐인 값.
-     *
-     * <p>⛔ <b>사람이 보는 번호({@code DR-003})로 거르게 하지 마라</b> — 번호는 프로젝트마다
-     * 1번부터라 서로 다른 사업의 {@code DR-001} 이 여럿이다. 개발이 번호로 거르면 남의 것을
-     * 중복으로 집는다.
-     *
-     * <p>⚠ <b>다시 보내면 같은 키여야 한다.</b> 지금은 개발요청서 하나에 꾸러미 하나라
-     * 개발요청서 ID 에서 결정적으로 낸다 — 시도마다 달라지는 값을 쓰면 재시도가 새 요청이 된다.
-     */
-    static String deliveryKey(String requestId) {
-        return "DRK-" + requestId;
-    }
-
-    static String safeFileName(String originalName) {
-        if (originalName == null || originalName.isBlank()) {
-            return "첨부파일";
-        }
-        String name = originalName.replace('\\', '/');
-        name = name.substring(name.lastIndexOf('/') + 1);
-        name = name.replaceAll("[^\\p{L}\\p{N}._-]", "_").replaceAll("^[._]+", "");
-        return name.isBlank() ? "첨부파일" : name;
-    }
-
-    private void deleteQuietly(Path file) {
-        if (file == null) {
-            return;
-        }
-        try {
-            Files.deleteIfExists(file);
-        } catch (IOException ignored) {
-            // DB 상태는 전송 전으로 남는다. 고아 파일은 같은 요청의 다음 첨부가 덮어쓴다.
-        }
-    }
 
     /**
      * 화면ID → 메뉴 경로. ⭐ 정본은 <b>빌더 DB</b> 다.

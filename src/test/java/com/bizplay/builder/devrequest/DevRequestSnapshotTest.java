@@ -15,7 +15,6 @@ import com.bizplay.builder.frd.FrdInterviewMessageMapper;
 import com.bizplay.builder.frd.FrdMapper;
 import com.bizplay.builder.frd.FrdScreen;
 import com.bizplay.builder.frd.FrdScreenMapper;
-import com.bizplay.builder.frd.FrdScreenHistoryMapper;
 import com.bizplay.builder.frd.FrdScreenIaPlacement;
 import com.bizplay.builder.frd.FrdScreenIaPlacementMapper;
 import com.bizplay.builder.frd.FrdScreenMarker;
@@ -46,7 +45,6 @@ import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
  * 개발요청서 스냅샷이 <b>계약으로 서기에 필요한 것</b>을 다 담나.
@@ -65,7 +63,6 @@ class DevRequestSnapshotTest extends AbstractDbTest {
     @Autowired SecretSealer sealer;
     @Autowired FrdMapper frds;
     @Autowired FrdScreenMapper screens;
-    @Autowired FrdScreenHistoryMapper histories;
     @Autowired FrdScreenIaPlacementMapper iaPlacements;
     @Autowired FrdItemMapper items;
     @Autowired FrdInterviewMessageMapper interviewMessages;
@@ -292,85 +289,8 @@ class DevRequestSnapshotTest extends AbstractDbTest {
 
     // ── 앞 개발요청서 ─────────────────────────────────────────────────────
 
-    @Test
-    void 화면이_겹치는_앞선_개발요청서만_후보로_뜬다() {
-        Project project = readyProject("계약-앞DR");
-        String earlier = draftingFrd(project);
-        screen(earlier, "wv-appr-write", "결재 문서 작성");
-        String earlierRequest = created(project, earlier).request().id();
 
-        String unrelated = draftingFrd(project);
-        screen(unrelated, "wv-card-list", "보유 카드 조회");
-        created(project, unrelated);
 
-        String mine = draftingFrd(project);
-        screen(mine, "wv-appr-write", "결재 문서 작성");
-        String myRequest = created(project, mine).request().id();
-
-        var candidates = service.previousCandidates(project.getId(), myRequest);
-
-        // ⛔ 화면이 겹치는 것과 같은 업무인 것은 다르다 — 그래서 후보만 댄다.
-        assertThat(candidates).extracting(DevelopmentRequest::id).containsExactly(earlierRequest);
-    }
-
-    @Test
-    void 자기_자신과_뒤에_생긴_것은_후보가_아니다() {
-        Project project = readyProject("계약-앞DR순서");
-        String first = draftingFrd(project);
-        screen(first, "wv-appr-write", "결재 문서 작성");
-        String firstRequest = created(project, first).request().id();
-
-        String second = draftingFrd(project);
-        screen(second, "wv-appr-write", "결재 문서 작성");
-        String secondRequest = created(project, second).request().id();
-
-        assertThat(service.previousCandidates(project.getId(), firstRequest)).isEmpty();
-        assertThat(service.previousCandidates(project.getId(), secondRequest))
-                .extracting(DevelopmentRequest::id).containsExactly(firstRequest);
-    }
-
-    @Test
-    void 화면이_없는_개발요청서는_후보가_빈_목록이다() {
-        Project project = readyProject("계약-화면0장");
-        String frdId = draftingFrd(project);
-        String requestId = created(project, frdId).request().id();
-
-        // ⚠ 화면 0장 FRD 가 정상이다 — 오류가 아니라 빈 목록이어야 한다.
-        assertThat(service.previousCandidates(project.getId(), requestId)).isEmpty();
-    }
-
-    @Test
-    void 고른_앞_개발요청서가_전송_정보와_함께_저장된다() {
-        Project project = readyProject("계약-앞DR저장");
-        String earlier = draftingFrd(project);
-        screen(earlier, "wv-appr-write", "결재 문서 작성");
-        String earlierRequest = created(project, earlier).request().id();
-        String mine = draftingFrd(project);
-        String mineScreen = screen(mine, "wv-appr-write", "결재 문서 작성");
-        histories.fillMd(histories.selectLatestByScreenId(mineScreen).id(), "변경 예정 기능정의서");
-        String myRequest = created(project, mine).request().id();
-
-        service.requestDelivery(project.getId(), myRequest, "일정 협의 필요",
-                null, null, earlierRequest, null);
-
-        var saved = requests.selectById(myRequest);
-        assertThat(saved.previousRequestId()).isEqualTo(earlierRequest);
-        assertThat(saved.deliveryState()).isEqualTo(DevelopmentRequest.DeliveryState.SENDING);
-    }
-
-    @Test
-    void 남의_프로젝트_개발요청서는_앞것으로_고를_수_없다() {
-        Project mineProject = readyProject("계약-내프로젝트");
-        Project other = readyProject("계약-남의프로젝트");
-        String otherFrd = draftingFrd(other);
-        String otherRequest = created(other, otherFrd).request().id();
-        String frdId = draftingFrd(mineProject);
-        String requestId = created(mineProject, frdId).request().id();
-
-        assertThatThrownBy(() -> service.requestDelivery(mineProject.getId(), requestId, null,
-                null, null, otherRequest, null))
-                .isInstanceOf(IllegalArgumentException.class);
-    }
 
     // ── 도움 ──────────────────────────────────────────────────────────────
 
