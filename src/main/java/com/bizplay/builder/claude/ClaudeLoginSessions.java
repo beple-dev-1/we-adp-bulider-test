@@ -14,6 +14,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
 import java.util.Comparator;
+import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executors;
@@ -120,6 +121,11 @@ public class ClaudeLoginSessions {
         if (it == null) {
             return;
         }
+        // ⛔ 자손을 먼저 걷는다 — destroy() 는 바로 아래 자식 하나만 죽인다.
+        //    윈도우에서는 우리가 `cmd /c claude …` 로 띄우므로 진짜 CLI 는 손자다.
+        //    cmd 만 죽이면 CLI 가 살아남아 아래 deleteTree 가 그 자리를 못 지우고,
+        //    자격 조각이 디스크에 남는다 — 이 메서드가 막으려는 바로 그것이다.
+        List<ProcessHandle> descendants = it.process().descendants().toList();
         it.process().destroy();
         try {
             if (!it.process().waitFor(5, TimeUnit.SECONDS)) {
@@ -128,6 +134,21 @@ public class ClaudeLoginSessions {
         } catch (InterruptedException e) {
             it.process().destroyForcibly();
             Thread.currentThread().interrupt();
+        }
+        descendants.forEach(ProcessHandle::destroyForcibly);
+        // ⛔ destroyForcibly() 는 <b>요청만 하고 바로 돌아온다.</b> 윈도우는 열린 핸들이 있는 파일을
+        //    못 지우므로, 손자가 .credentials.json 을 쥔 채 남으면 아래 deleteTree 가 실패하고
+        //    경고 한 줄만 남는다 — 이 메서드가 막으려던 「자격 조각이 디스크에 남는다」 그대로다.
+        //    그래서 짧게 기다린다. 상한을 넘기면 그냥 간다(지우기는 어차피 실패해도 경고로 끝난다).
+        for (ProcessHandle child : descendants) {
+            try {
+                child.onExit().get(2, TimeUnit.SECONDS);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                break;
+            } catch (Exception slowOrGone) {
+                // 이미 죽었거나 상한을 넘겼다. 어느 쪽이든 더 기다리지 않는다.
+            }
         }
         deleteTree(it.dir());
     }

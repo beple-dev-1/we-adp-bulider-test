@@ -3,6 +3,7 @@ package com.bizplay.builder.claude;
 import com.bizplay.builder.AbstractDbTest;
 import com.bizplay.builder.account.AccountMapper;
 import com.bizplay.builder.account.BuilderUser;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -28,6 +29,16 @@ class ClaudeConnectTest extends AbstractDbTest {
     @Autowired ClaudeCredentialService service;
     @Autowired ClaudeAuthGateway gateway;   // @Primary 로 끼운 대역이 온다
     @Autowired org.springframework.security.crypto.password.PasswordEncoder encoder;
+
+    /**
+     * ⛔ 여기서도 비운다. {@code FakeClaudeAuthGateway} 는 <b>스프링 컨텍스트 하나를 여러 시험 클래스가
+     * 나눠 쓰는 싱글턴</b>이라, 예외를 던지는 스위치를 켠 채 끝나면 다음 클래스가 죽는다.
+     * 세는 값과 달리 이건 켜져 있으면 남의 시험을 깨뜨린다.
+     */
+    @AfterEach
+    void clearAfter() {
+        ((FakeClaudeAuthGateway) gateway).clear();
+    }
 
     @BeforeEach
     void clearAll() {
@@ -84,6 +95,56 @@ class ClaudeConnectTest extends AbstractDbTest {
         mvc.perform(get("/claude/connect").session(session).with(user(planner())))
                 .andExpect(model().attribute("authorizeUrl",
                         "https://claude.com/cai/oauth/authorize?fake=1"));
+    }
+
+    /**
+     * ⛔ 004-1(2026-09-06) — 윈도우에 {@code claude.exe} 가 없어 CLI 를 못 띄우면
+     * 「승인 화면 열기」가 <b>500</b> 이 됐다. 오류 화면에는 「건너뛰기」가 없어 <b>사람이 아무 데도 못 갔다.</b>
+     * 명령줄을 고쳤어도 CLI 가 안 깔린 자리는 남으므로, <b>떨어지는 자리</b>를 여기서 지킨다.
+     */
+    @Test
+    void CLI를_못_띄우면_오류_화면_대신_안내와_건너뛰기가_남는다() throws Exception {
+        ((FakeClaudeAuthGateway) gateway).failToBegin();
+        var session = new MockHttpSession();
+
+        var redirected = mvc.perform(
+                        post("/claude/connect/start").session(session).with(user(planner())).with(csrf()))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/claude/connect"))
+                .andExpect(flash().attributeExists("startError"))
+                .andReturn();
+
+        // ⛔ flash 를 손으로 넣지 마라 — 그러면 「리다이렉트 뒤에 그 문구가 실제로 뜨나」를
+        //    아무도 안 재게 된다. 앞 걸음이 담아 보낸 것을 그대로 이어야 계약이 된다.
+        String html = mvc.perform(get("/claude/connect").session(session).with(user(planner()))
+                        .flashAttrs(redirected.getFlashMap()))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        assertThat(html).contains("Claude CLI 를 실행하지 못했습니다.")
+                .contains("/claude/connect/skip");
+    }
+
+    /** 화면 스크립트로 눌러도 마찬가지다 — ok 가 아니면 평범한 폼 전송으로 떨어져 위 안내로 간다. */
+    @Test
+    void CLI를_못_띄우면_화면_요청에도_오류를_숨기지_않는다() throws Exception {
+        ((FakeClaudeAuthGateway) gateway).failToBegin();
+
+        mvc.perform(post("/claude/connect/start").with(user(planner())).with(csrf())
+                        .header("X-Requested-With", "fetch"))
+                // ⛔ 본문을 담지 않는다 — 화면 스크립트가 본문을 안 읽고 상태만 본다.
+                //    아무도 안 읽는 진단은 읽히는 척만 한다.
+                .andExpect(status().isServiceUnavailable())
+                .andExpect(content().string(""));
+    }
+
+    /** ⛔ 「건너뛰기」가 막히면 사람이 아무것도 못 본다. CLI 가 죽어 있어도 이 길은 살아 있어야 한다. */
+    @Test
+    void CLI를_못_띄워도_건너뛰기는_그대로_돈다() throws Exception {
+        ((FakeClaudeAuthGateway) gateway).failToBegin();
+
+        mvc.perform(post("/claude/connect/skip").with(user(planner())).with(csrf()))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/projects"));
     }
 
     @Test

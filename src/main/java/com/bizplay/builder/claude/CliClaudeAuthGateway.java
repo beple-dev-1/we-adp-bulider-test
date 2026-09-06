@@ -12,6 +12,9 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Locale;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
@@ -63,13 +66,43 @@ public class CliClaudeAuthGateway implements ClaudeAuthGateway {
         this.identityReader = identityReader;
     }
 
+    /** 어느 자리에서나 같은 CLI 를 부른다. 앞에 무엇을 붙일지만 운영체제로 갈린다. */
+    private static final List<String> LOGIN_ARGS = List.of("claude", "auth", "login", "--claudeai");
+
+    /**
+     * ⛔ <b>윈도우에는 {@code claude.exe} 가 없다.</b> npm 이 까는 것은 {@code claude}(셸 스크립트)·
+     * {@code claude.cmd}·{@code claude.ps1} 셋이고, 자바의 {@code ProcessBuilder} 는 윈도우에서
+     * <b>{@code .exe} 만 찾는다 — {@code PATHEXT} 를 안 본다.</b> 그래서 {@code where claude} 로는
+     * 멀쩡히 잡히는데 {@code CreateProcess error=2} 로 터진다(2026-09-06 실측).
+     *
+     * <p>⚠ <b>PATH 도 자격도 문제가 아니다.</b> 그 둘을 의심하다 시간을 버리지 마라.
+     *
+     * <p>그래서 윈도우에서만 {@code cmd /c} 를 앞에 붙인다 — 확장자 탐색은 원래 그쪽 일이다.
+     * ⛔ <b>{@code claude.cmd} 를 우리가 PATH 에서 찾아 절대경로로 넘기지 마라</b> — {@code PATHEXT}
+     * 탐색을 손으로 흉내 내는 것이고, 사람이 설정을 채워야 도는 길도 마찬가지로 안 만든다.
+     *
+     * <p>⚠ 셸이 한 번 더 끼지만 <b>인자가 전부 고정 낱말이라 밖에서 넣을 구멍이 없다.</b>
+     * 여기에 <b>사람이 준 값을 인자로 더하지 마라</b> — 더하는 순간 이 판단이 무너진다.
+     *
+     * <p>⭐ 자식 환경({@code CLAUDE_CONFIG_DIR} 설정·열쇠 제거·{@code BROWSER})은 {@code cmd} 를
+     * 지나 <b>손자까지 그대로 내려간다</b> — 공백이 든 경로까지 실측으로 확인했다(2026-09-06).
+     */
+    static List<String> loginCommand(String osName) {
+        if (osName == null || !osName.toLowerCase(Locale.ROOT).startsWith("windows")) {
+            return LOGIN_ARGS;
+        }
+        List<String> windows = new ArrayList<>(List.of("cmd", "/c"));
+        windows.addAll(LOGIN_ARGS);
+        return List.copyOf(windows);
+    }
+
     @Override
     public Authorization begin() {
         String handle = UUID.randomUUID().toString();
         try {
             Path dir = sessions.makeDir(handle);
 
-            ProcessBuilder pb = new ProcessBuilder("claude", "auth", "login", "--claudeai");
+            ProcessBuilder pb = new ProcessBuilder(loginCommand(System.getProperty("os.name")));
             // ★ 사람마다 여기로 갈린다. ANTHROPIC_CONFIG_DIR 이 아니다.
             pb.environment().put("CLAUDE_CONFIG_DIR", dir.toString());
             // ⛔ planner-account 의 금지: 서버 전체에 Claude 자격이 걸려 있으면 개인 자격이 통째로

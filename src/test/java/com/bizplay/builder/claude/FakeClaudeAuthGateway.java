@@ -19,8 +19,23 @@ public class FakeClaudeAuthGateway implements ClaudeAuthGateway {
     private final AtomicInteger id = new AtomicInteger();
     final List<String> discarded = new CopyOnWriteArrayList<>();
 
+    /**
+     * CLI 를 못 띄우는 자리를 흉내 낼지. 실물에서는 윈도우에 {@code claude.exe} 가 없어
+     * {@code CreateProcess error=2} 로 터지던 자리다(004-1).
+     */
+    private volatile boolean beginFails;
+
+    /** 다음 {@link #begin()} 부터 실물처럼 실패하게 한다. */
+    void failToBegin() {
+        beginFails = true;
+    }
+
     @Override
     public Authorization begin() {
+        if (beginFails) {
+            throw new IllegalStateException("Claude 인증 주소를 얻지 못했다",
+                    new java.io.IOException("CreateProcess error=2"));
+        }
         return new Authorization("가짜손잡이-" + id.incrementAndGet(),
                 "https://claude.com/cai/oauth/authorize?fake=1");
     }
@@ -75,6 +90,7 @@ public class FakeClaudeAuthGateway implements ClaudeAuthGateway {
     }
 
     void clear() {
+        beginFails = false;
         id.set(0);
         discarded.clear();
         finishedByCallback = false;

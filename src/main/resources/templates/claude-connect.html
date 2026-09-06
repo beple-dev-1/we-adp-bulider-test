@@ -17,6 +17,12 @@
       <span>AI 기능을 사용하려면 본인 Claude Code 계정을 연결하세요. 지금 연결하지 않아도 Builder를 사용할 수 있습니다.</span>
     </div>
 
+    <!--/* 승인 화면을 못 연 까닭. ⛔ 스택트레이스가 아니라 사람이 할 일을 적는다 —
+            여기에 안내가 뜨면 아래 「건너뛰기」가 함께 보여서 사람이 막히지 않는다(004-1). */-->
+    <div class="state-panel state-panel--error" role="alert" th:if="${startError}">
+      <strong th:text="${startError}"></strong>
+    </div>
+
     <ol class="claude-steps">
       <li>
         <span>1</span>

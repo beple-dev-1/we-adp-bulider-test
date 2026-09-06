@@ -6,6 +6,10 @@ import com.bizplay.builder.account.BuilderUser;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.context.SecurityContext;
@@ -18,6 +22,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseBody;
+import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import java.util.Map;
 
@@ -26,7 +31,18 @@ import static com.bizplay.builder.web.FirstLoginFilter.CLAUDE_SKIP_SESSION_KEY;
 @Controller
 public class ClaudeConnectController {
 
+    private static final Logger log = LoggerFactory.getLogger(ClaudeConnectController.class);
+
     private static final String SESSION_KEY = "claude.authorization";
+
+    /**
+     * ⛔ <b>승인 시작이 터진 것을 그대로 올려보내지 마라.</b> 올려보내면 오류 화면이 뜨고,
+     * 그 화면에는 「건너뛰기」가 없어 <b>사람이 아무 데도 못 간다.</b> CLI 가 안 깔린 자리에서
+     * 실제로 그렇게 막혔다(004-1). 화면으로 돌려보내면 안내와 「건너뛰기」가 함께 남는다.
+     */
+    private static final String START_FAILED =
+            "Claude CLI 를 실행하지 못했습니다. 서버에 claude 명령이 설치돼 있는지 확인해 주세요. "
+                    + "지금 바로 쓰려면 아래 「건너뛰기」로 넘어갈 수 있습니다.";
 
     private final ClaudeAuthGateway gateway;
     private final ClaudeCredentialService credentials;
@@ -51,14 +67,28 @@ public class ClaudeConnectController {
     }
 
     @PostMapping("/claude/connect/start")
-    public String start(HttpSession session) {
+    public String start(HttpSession session, RedirectAttributes flash) {
+        try {
+            beginLogin(session);
+        } catch (RuntimeException failed) {
+            log.warn("Claude 승인 주소를 얻지 못했다", failed);
+            flash.addFlashAttribute("startError", START_FAILED);
+        }
+        return "redirect:/claude/connect";
+    }
+
+    private ClaudeAuthGateway.Authorization beginLogin(HttpSession session) {
         // 사용자가 명시로 다시 시작하면 앞의 PKCE 로그인은 더는 쓸 수 없으므로 정리한다.
         discardPreviousLogin(session);
-        session.removeAttribute(CLAUDE_SKIP_SESSION_KEY);
 
         ClaudeAuthGateway.Authorization authorization = gateway.begin();
+        // ⚠ 여기서부터가 성공 갈래다 — 실패하면 「건너뛰기」 표시를 안 지운다.
+        //    지우고 실패하면 이미 넘어와 있던 사람이 그 표시를 잃는다.
+        session.removeAttribute(CLAUDE_SKIP_SESSION_KEY);
         session.setAttribute(SESSION_KEY, authorization);
-        return "redirect:/claude/connect";
+        // ⛔ 부르는 쪽이 세션에서 다시 읽지 않게 그대로 돌려준다 — 다른 탭이 그 틈에
+        //    skip·start 를 치면 세션에서 사라져 NPE(=500)가 난다.
+        return authorization;
     }
 
     /**
@@ -71,10 +101,18 @@ public class ClaudeConnectController {
      */
     @PostMapping(value = "/claude/connect/start", headers = "X-Requested-With=fetch")
     @ResponseBody
-    public Map<String, String> startForScript(HttpSession session) {
-        start(session);
-        var authorization = (ClaudeAuthGateway.Authorization) session.getAttribute(SESSION_KEY);
-        return Map.of("authorizeUrl", authorization.url());
+    public ResponseEntity<Map<String, String>> startForScript(HttpSession session) {
+        ClaudeAuthGateway.Authorization authorization;
+        try {
+            authorization = beginLogin(session);
+        } catch (RuntimeException failed) {
+            log.warn("Claude 승인 주소를 얻지 못했다 (화면 요청)", failed);
+            // ⚠ 화면 스크립트는 ok 가 아니면 본문을 안 읽고 빈 창을 닫은 뒤 평범한 폼 전송으로
+            //    떨어진다. 그 길이 위의 start() 로 가서 안내를 띄운다.
+            // ⛔ 그래서 여기에 본문을 담지 않는다 — 아무도 안 읽는 진단은 읽히는 척만 한다.
+            return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).build();
+        }
+        return ResponseEntity.ok(Map.of("authorizeUrl", authorization.url()));
     }
 
     @PostMapping("/claude/connect/skip")
