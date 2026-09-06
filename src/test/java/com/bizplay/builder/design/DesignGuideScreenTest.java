@@ -30,6 +30,7 @@ import static org.springframework.security.test.web.servlet.request.SecurityMock
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /** 디자인 시스템의 네이티브 랜딩과 산출물 경계 계약을 확인한다. */
@@ -75,7 +76,52 @@ class DesignGuideScreenTest extends AbstractDbTest {
         mvc.perform(get("/projects/{id}/artifacts/design-guide/files/{ticket}/export/guide/styles/backoffice.css",
                         project.getId(), ticket.group(1)))
                 .andExpect(status().isOk())
+                // ⛔ 이 경로만 X-Frame-Options 를 아예 안 보낸다 — SecurityConfig 의 frameAllowed 가 그 자리다.
+                //    SAMEORIGIN 이 붙으면 opaque sandbox 안쪽이 자기 부모에 막혀 미리보기 칸이 말없이 빈다.
+                .andExpect(header().doesNotExist("X-Frame-Options"))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("dg-render-scope")));
+    }
+
+    /**
+     * ⚠ 위 시험의 씨앗은 다섯 갈래가 모두 찬 계약이라 <b>우리가 실제로 받는 모양이 아니다.</b>
+     * 004(2026-09-06) 시점의 EXW 계약은 foundations 만 있고 나머지 넷이 <b>빈 배열</b>이다.
+     * 그 모양에서 화면이 뜨는지, 빈 갈래가 각자의 안내를 그리는지 아무도 안 지키고 있었다.
+     */
+    @Test
+    void foundations만_있고_나머지가_빈_계약도_네_갈래를_다_그린다() throws Exception {
+        Project project = readyProject();
+        seedFoundationsOnlyGuide(project.getId());
+
+        String page = mvc.perform(get("/projects/{id}/artifacts/design-guide", project.getId())
+                        .with(user(superUser())))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+
+        assertThat(page).doesNotContain("최신 디자인 시스템 산출물이 없습니다.", "dg-artifact-frame");
+        assertThat(page).contains("data-guide-tab=\"foundations\"", "data-guide-tab=\"components\"",
+                "data-guide-tab=\"layouts\"", "data-guide-tab=\"templates\"");
+        // foundations 는 실물이 있다 — 색 역할·글꼴이 그려져야 한다.
+        assertThat(page).contains("주색 토큰", "Pretendard", "#1F1F1F");
+        // 나머지 셋은 「없다」가 아니라 각자의 안내를 그린다.
+        assertThat(page).contains("확인된 컴포넌트가 없습니다.",
+                "공통 레이아웃이 등록되지 않았습니다.", "등록된 화면 템플릿이 없습니다.");
+        // ⛔ 안내 위에 빈 색인 막대를 남기지 마라 — 같은 말을 못 하면서 자리만 차지한다.
+        assertThat(page).doesNotContain("dg-component-index");
+    }
+
+    /**
+     * 004(2026-09-06)에서 검수용 프레임 갈래를 걷었다 — 부르는 화면·js 가 0곳이었다.
+     *
+     * <p>⛔ <b>이 자리를 되살리지 마라.</b> 되살아나면 화면이 「소스를 보여준다」면서 소스에 없는
+     * 모양을 내는 길이 다시 열린다. 클래스를 지운 것만으로는 아무도 못 지키므로 경로로 못 박는다.
+     */
+    @Test
+    void 없앤_검수용_프레임_경로는_열리지_않는다() throws Exception {
+        Project project = readyProject();
+
+        mvc.perform(get("/projects/{id}/artifacts/design-guide/frame", project.getId())
+                        .with(user(superUser())))
+                .andExpect(status().isNotFound());
     }
 
     @Test
@@ -189,6 +235,37 @@ class DesignGuideScreenTest extends AbstractDbTest {
         write(clone.resolve(guidePath).resolve("fragments/backoffice--t-search-list.html"),
                 "<div class=\"dg-body\"><div data-dg-component=\"search-filter\">조회 필터</div><table><tr><td>목록</td></tr></table></div>");
         write(clone.resolve("core/backoffice/pages/sample.html"), "<html><body>source</body></html>");
+    }
+
+    /**
+     * 추출기가 2026-09-06 에 실제로 보낸 EXW 계약과 같은 모양 — foundations 만 차 있고
+     * {@code components}·{@code compositions}·{@code layouts}·{@code templates} 가 빈 배열이다.
+     */
+    private void seedFoundationsOnlyGuide(String projectId) {
+        Path clone = paths.cloneDir(projectId);
+        write(clone.resolve("manifest.json"), """
+                {"schema":"we-adk-planning-repo/1","systems":[{"id":"EXW"}]}
+                """);
+        write(clone.resolve("design-guide/design-guide.json"), """
+                {
+                  "schema":"we-adk-design-guide/7",
+                  "systems":{"EXW":{
+                    "styles":[{"id":"EXW","css":"styles/EXW.css"}],
+                    "foundations":{
+                      "colorRoles":{"roles":[{"label":"주색 토큰","entries":[{"value":"#1F1F1F"}]}]},
+                      "typography":{"fonts":[{"family":"Pretendard","sampleWeights":["400","700"]}]},
+                      "spacing":[{"value":"1.2rem"}],
+                      "radius":[{"value":"0.8rem"}]
+                    },
+                    "components":[],
+                    "compositions":[],
+                    "layouts":[],
+                    "templates":[]
+                  }}
+                }
+                """);
+        write(clone.resolve("design-guide/styles/EXW.css"),
+                ".dg-render-scope[data-system=\"EXW\"] .btn { color: #1F1F1F; }");
     }
 
     private BuilderUser superUser() {

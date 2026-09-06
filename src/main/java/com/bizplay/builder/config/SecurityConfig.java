@@ -5,7 +5,6 @@ import com.bizplay.builder.frd.FrdCanvasController;
 import com.bizplay.builder.solution.SolutionPreviewController;
 import com.bizplay.builder.usermanual.UserManualController;
 import com.bizplay.builder.web.FirstLoginFilter;
-import com.bizplay.builder.design.DesignFrameController;
 import com.bizplay.builder.design.DesignGuideArtifactController;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -46,15 +45,13 @@ public class SecurityConfig {
         // 디자인가이드 산출물은 opaque sandbox 안에서 다시 iframe을 연다.
         // SAMEORIGIN 헤더를 주면 그 안쪽 프리뷰가 자신의 부모(opaque origin)에 막힌다.
         // 그래서 이 경로는 X-Frame-Options를 아예 보내지 않고, 일회성 열쇠와 CSP sandbox로 가둔다.
-        RequestMatcher designFrame = PathPatternRequestMatcher.withDefaults()
-                .matcher(DesignFrameController.URL_PATTERN);
         RequestMatcher designGuideArtifact = PathPatternRequestMatcher.withDefaults()
                 .matcher(DesignGuideArtifactController.URL_PATTERN);
         // 사용자 매뉴얼 보기도 우리 화면에 우리 글을 iframe 으로 끼운다 — 그린존 A2.
         RequestMatcher userManualPreview = PathPatternRequestMatcher.withDefaults()
                 .matcher(UserManualController.URL_PATTERN);
         RequestMatcher sameOriginPreview = new OrRequestMatcher(solutionPreview, frdPreview,
-                frdHistoryPreview, frdCanvasCompare, designFrame, userManualPreview);
+                frdHistoryPreview, frdCanvasCompare, userManualPreview);
         RequestMatcher frameAllowed = new OrRequestMatcher(sameOriginPreview, designGuideArtifact);
 
         http

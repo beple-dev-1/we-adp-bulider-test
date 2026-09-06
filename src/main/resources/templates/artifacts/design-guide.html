@@ -91,7 +91,21 @@
         <section class="dg-native-panel" data-guide-panel="components" hidden>
           <div class="dg-native-section-head"><div><p>COMPONENTS</p><h2>UI 컴포넌트</h2><span>여러 화면에서 독립적으로 다시 쓰는 기본 UI와 역할별 변형입니다.</span></div></div>
           <div class="dg-component-workspace">
-            <nav class="dg-component-index" aria-label="컴포넌트 선택">
+            <!--/* ⛔ 그릴 것이 없으면 아예 안 그린다 — css 로 감추지 마라.
+                    계약이 빈 채로 오는 것이 지금의 기본 모양이고(2026-09-06 EXW),
+                    아래 dg-empty 가 이미 그 사실을 말한다. 빈 막대는 같은 말을 못 하면서
+                    자리만 차지해 「덜 만든 화면」으로 읽힌다.
+
+                    ⚠ 아래 button·dg-empty 와 갈림 기준이 다르다. 셋을 아무거나 하나로 맞추지 마라 —
+                    button 은 `curationEditing || (!hidden && hasVisibleVariants)` 로 거른다. 그래서
+                    컴포넌트가 있는데 전부 hidden 이면 이 막대가 빈 채로 되돌아온다. 지금 계약에서는
+                    도달 0건이고, 제대로 고치려면 「보이는 수」를 세는 자리를 새로 만들어야 한다(004 범위 밖).
+
+                    ⛔ 그때 DesignGuideCatalogReader.componentCount() 를 갖다 쓰지 마라 — variant 가 빈
+                    컴포넌트에서 둘의 답이 갈린다. hasVisibleVariants() 는 true, componentCount() 는 0 이라
+                    카드는 그려지는데 개수는 0 이 되고, 화면 안에서 앞뒤가 맞아 어떤 검사도 못 잡는다. */-->
+            <nav class="dg-component-index" aria-label="컴포넌트 선택"
+                 th:if="${!system.components.isEmpty()}">
               <button type="button" th:each="item : ${system.components}" th:if="${curationEditing || (!item.hidden && item.hasVisibleVariants)}"
                       th:data-component-select="${item.id}">
                 <span th:text="${item.categoryLabel}">버튼</span><strong th:text="${item.label}">버튼</strong>
