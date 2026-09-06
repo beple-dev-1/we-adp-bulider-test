@@ -13,7 +13,6 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Optional;
 
 /**
@@ -68,24 +67,6 @@ public class PlanningManifestReader {
     }
 
     /**
-     * 디자인가이드 색인이 사는 자리 — {@code design-index} 칸이 정본이다.
-     *
-     * <p>⛔ <b>경로를 코드에 박지 마라</b>(추출기 회신 2절 ⑴). 기관 스킨에서 {@code iks}·{@code tnj}
-     * 를 빌더가 알아서는 안 되는 것과 같은 규율이다 — 파일 이름은 그 사업의 짐이고 정본은 레포다.
-     *
-     * <p>⚠ <b>칸이 없는 옛 레포가 실재한다.</b> 그때는 {@code design-index.json} 을 기본값으로 본다 —
-     * 추출기가 회신에서 그렇게 해도 된다고 밝힌 자리다.
-     */
-    public Path designIndexFile(String projectId) {
-        String declared = root(projectId)
-                .map(root -> root.path("design-index").asText(null))
-                .filter(value -> !value.isBlank())
-                .orElse(null);
-        return paths.cloneDir(projectId)
-                .resolve(declared == null ? "design-index.json" : declared.strip());
-    }
-
-    /**
      * 추출기가 만든 HTML 디자인 가이드의 폴더다.
      *
      * <p>이름은 Builder가 정하지 않는다. manifest에 없던 이전 산출물만 기본 이름을 쓴다.
@@ -96,36 +77,6 @@ public class PlanningManifestReader {
                 .filter(value -> !value.isBlank())
                 .orElse("design-guide");
         return paths.cloneDir(projectId).resolve(declared.strip()).normalize();
-    }
-
-    /**
-     * 그 시스템의 스타일가이드가 사는 자리. 선언이 없으면 <b>빈 값</b>이다 — 지어내지 않는다.
-     *
-     * <p>⚠ 이 파일이 {@code class} 어휘의 정본이다. 검사기 {@code A-5} 가 같은 울타리를 읽는다.
-     */
-    public Optional<Path> styleguideFile(String projectId, String system) {
-        return declaredFile(projectId, system, ManifestSystem::styleguide);
-    }
-
-    /**
-     * 그 시스템의 셸·공용 조각 계약서가 사는 자리 ({@code systems[].shell}).
-     *
-     * <p>⚠ 선언이 없으면 <b>빈 값</b>이다 — 추출기가 2026-08-24 판에서 처음 보낸 칸이라
-     * 그 전에 나간 레포에는 없다. 없는 것과 빈 것을 구별하는 일은 부르는 쪽이 한다.
-     */
-    public Optional<Path> shellFile(String projectId, String system) {
-        return declaredFile(projectId, system, ManifestSystem::shell);
-    }
-
-    /** {@code systems[]} 의 어느 칸이 가리키는 파일. 선언이 없으면 빈 값이다. */
-    private Optional<Path> declaredFile(String projectId, String system,
-                                        java.util.function.Function<ManifestSystem, String> field) {
-        return systems(projectId).stream()
-                .filter(candidate -> candidate.id().equals(system))
-                .map(field)
-                .filter(Objects::nonNull)
-                .findFirst()
-                .map(declared -> paths.cloneDir(projectId).resolve(declared));
     }
 
     /**
@@ -181,7 +132,12 @@ public class PlanningManifestReader {
     }
 
     /**
-     * {@code manifest.json} 의 {@code systems[]} 한 줄. 우리가 쓰는 세 칸만 담는다.
+     * {@code manifest.json} 의 {@code systems[]} 한 줄.
+     *
+     * <p>⛔ <b>칸은 계약을 비추고, 접근자는 소비를 비춘다.</b> 그래서 읽는 코드가 없어진 칸도
+     * 여기서는 지우지 않는다 — 레포가 그 칸을 안 내는 것과 계약에 그 칸이 없는 것은 다른 말이다.
+     * 004(2026-09-06)에서 {@code shell}·{@code styleguide} 를 읽던 갈래를 걷었고
+     * {@code …File()} 접근자만 함께 지웠다. <b>칸을 지우려 되돌아오지 마라.</b>
      *
      * @param skins      기관 → 스킨 폴더. 선언이 없으면 <b>빈 지도</b>이지 {@code null} 이 아니다
      * @param styleguide 그 시스템의 스타일가이드 경로(저장소 뿌리 기준). 선언이 없으면 {@code null}

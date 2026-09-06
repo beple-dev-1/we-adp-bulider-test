@@ -44,6 +44,7 @@ PRODUCT_PAGES = [
     "09-error-not-found.html",
     "09a-error-failed.html",
     "10-other.html",
+    "12-design-guide.html",
 ]
 FORBIDDEN_COPY = (
     "올린다",
@@ -920,6 +921,35 @@ def validate_design_guide() -> list[str]:
     return errors
 
 
+def validate_design_guide_screen() -> list[str]:
+    """제품의 디자인가이드 화면 목업이 지금 제품과 같은 사실을 말하는지 본다.
+
+    004(2026-09-06) 전에는 이 목업이 「제품은 design-guide/index.html 을 iframe 으로 연다」고
+    적어 두었고, 제품은 그 반대였다. DesignGuideScreenTest 가 iframe 으로 안 돌아가는 것을
+    못 박는데 목업만 반대를 말하면 다음 사람이 목업을 믿는다.
+    """
+    path = ROOT / "12-design-guide.html"
+    if not path.exists():
+        return ["디자인가이드 화면 목업이 없습니다"]
+
+    source = path.read_text(encoding="utf-8")
+    errors: list[str] = []
+    # ⚠ 낱말을 좁게 잡는다 — 전문(주석 포함)을 훑으므로 넓은 낱말은 「그렇게 안 한다」고
+    #    설명하는 글에까지 문다. 실제로 이 검사를 넣은 날 저자의 설명 주석이 물렸다.
+    #    잡으려는 것은 마크업(`<iframe`)과 그 경로(`design-guide/index.html`)이지 낱말이 아니다.
+    for gone in ("<iframe", "design-guide/index.html",
+                 "dg-artifact-frame", "dg-artifact-demo", "지역화폐"):
+        if gone in source:
+            errors.append(f"제품이 안 하는 것을 목업이 말합니다: {gone}")
+    for tab in ("기본 스타일", "UI 컴포넌트", "화면 레이아웃", "화면 템플릿"):
+        if tab not in source:
+            errors.append(f"디자인가이드 화면 목업에 갈래가 없습니다: {tab}")
+    for tab_key in ("foundations", "components", "layouts", "templates"):
+        if f'data-guide-tab="{tab_key}"' not in source:
+            errors.append(f"디자인가이드 화면 목업에 갈래 열쇠가 없습니다: {tab_key}")
+    return errors
+
+
 def main() -> int:
     failures: list[str] = []
     for filename in PRODUCT_PAGES:
@@ -956,7 +986,8 @@ def main() -> int:
     failures.extend(f"상세 화면 머리: {message}" for message in validate_detail_headers())
     failures.extend(validate_common_shell())
     failures.extend(validate_mock_css_tokens())
-    failures.extend(f"디자인가이드: {message}" for message in validate_design_guide())
+    failures.extend(f"빌더 스타일가이드: {message}" for message in validate_design_guide())
+    failures.extend(f"디자인가이드 화면: {message}" for message in validate_design_guide_screen())
 
     if failures:
         print("목업 계약 검사 실패")
