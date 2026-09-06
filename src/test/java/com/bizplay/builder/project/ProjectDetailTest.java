@@ -42,7 +42,6 @@ class ProjectDetailTest extends AbstractDbTest {
     @Autowired AccountMapper accounts;
     @Autowired PasswordEncoder encoder;
     @Autowired SecretSealer sealer;
-    @Autowired com.bizplay.builder.devrequest.DevIssueTargetService devIssueTargets;
     @MockitoBean RepoProbe probe;
     @MockitoBean CloneWorker cloneWorker;
     @MockitoBean RepositoryUpdateWorker repositoryUpdateWorker;
@@ -66,49 +65,6 @@ class ProjectDetailTest extends AbstractDbTest {
                 .andExpect(content().string(containsString("익산")))
                 .andExpect(content().string(containsString("제주")))
                 .andExpect(content().string(containsString("저장소 및 적용 구분")));
-    }
-
-    @Test
-    void 개발요청_전송_설정은_프로젝트_정보와_분리해_상태와_설정_행동을_보여준다() throws Exception {
-        Project p = readyProject();
-
-        String before = mvc.perform(get("/admin/projects/" + p.getId()).with(user(superUser())))
-                .andExpect(status().isOk())
-                .andReturn().getResponse().getContentAsString();
-
-        assertThat(before)
-                .contains("개발요청 전송", "설정 필요", "전송 설정")
-                .contains("id=\"dev-issue-target-dialog\"")
-                .doesNotContain("개발요청 이슈 자리", "⛔");
-
-        devIssueTargets.save(p.getId(), "https://gitlab.example.com", "dev/card-api", "glpat-example",
-                accounts.selectByLoginId("admin").orElseThrow().getId());
-
-        String after = mvc.perform(get("/admin/projects/" + p.getId()).with(user(superUser())))
-                .andExpect(status().isOk())
-                .andReturn().getResponse().getContentAsString();
-
-        assertThat(after)
-                .contains("설정 완료", "https://gitlab.example.com", "dev/card-api", "토큰 등록됨", "설정 변경");
-    }
-
-    @Test
-    void 개발요청_전송_설정이_거절되면_레이어에서_오류와_입력값을_그대로_보여준다() throws Exception {
-        Project p = readyProject();
-
-        String html = mvc.perform(post("/admin/projects/" + p.getId() + "/dev-issue-target")
-                        .param("baseUrl", "https://gitlab.example.com")
-                        .param("projectPath", "dev/card-api")
-                        .param("token", "공백 토큰")
-                        .with(user(superUser())).with(csrf()))
-                .andExpect(status().isOk())
-                .andReturn().getResponse().getContentAsString();
-
-        assertThat(html)
-                .contains("data-open-on-load=\"true\"")
-                .contains("토큰에 공백이나 한글이 섞여 있습니다")
-                .contains("value=\"https://gitlab.example.com\"")
-                .contains("value=\"dev/card-api\"");
     }
 
     /** ⚠ 등록 시점에 고정되는 값이라 상세에서도 보여야 한다 — 못 보면 고쳐야 할 값인지도 모른다. */
@@ -149,8 +105,8 @@ class ProjectDetailTest extends AbstractDbTest {
                 .contains("적용 구분 관리", "시스템 관리", "저장소 업데이트")
                 .doesNotContain("기획 저장소 토큰 변경");
         int repositoryCardAt = html.indexOf("id=\"project-information-title\"");
-        int devIssueCardAt = html.indexOf("class=\"rq-card dev-issue-target-card\"");
-        assertThat(html.substring(repositoryCardAt, devIssueCardAt))
+        int repositoryCardEndAt = html.indexOf("</section>", repositoryCardAt);
+        assertThat(html.substring(repositoryCardAt, repositoryCardEndAt))
                 .contains("기획 저장소 토큰 변경", "새 기획 저장소 토큰");
     }
 

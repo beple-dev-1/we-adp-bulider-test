@@ -74,21 +74,6 @@ class DevRequestPrecheckTimingTest extends AbstractDbTest {
                 .noneMatch(subject -> subject.startsWith("기획 문서 자동 점검"));
     }
 
-    @Test
-    void 전송을_누를_때는_검사기가_돈다() {
-        Mockito.when(checker.run(any(), any())).thenReturn(CheckReport.unknown());
-        String requestId = deliverable("검사시점-전송");
-        String projectId = project(requestId);
-        worktreeOf(projectId, requestId);
-
-        // 창구 설정이 없어 「전송중」에 머물지만, 게이트는 그 앞에서 이미 돌았다.
-        service.requestDelivery(projectId, requestId, null, null, null, null, null);
-
-        Mockito.verify(checker, Mockito.atLeastOnce()).run(any(), any());
-        assertThat(requests.selectById(requestId).deliveryState())
-                .isEqualTo(DevelopmentRequest.DeliveryState.SENDING);
-    }
-
     // ── 도움 ──────────────────────────────────────────────────────────────
 
     /** 검사 대상이 되려면 워크트리 폴더가 있어야 한다 — 없으면 검사기를 아예 안 부른다(정상). */

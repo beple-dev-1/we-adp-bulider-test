@@ -5,11 +5,7 @@ import com.bizplay.builder.project.ProjectSystemService;
 import com.bizplay.builder.project.SystemLabels;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
-import org.springframework.core.io.Resource;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.ResponseEntity;
 import org.springframework.ui.ConcurrentModel;
-import org.springframework.web.servlet.mvc.support.RedirectAttributesModelMap;
 
 import java.util.Collections;
 import java.util.List;
@@ -20,18 +16,16 @@ import java.nio.file.Path;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.verify;
 
 class DevelopmentRequestControllerTest {
 
     @TempDir Path temp;
 
     private final DevelopmentRequestService requests = mock(DevelopmentRequestService.class);
-    private final DevelopmentRequestMergeService merges = mock(DevelopmentRequestMergeService.class);
     private final ProjectFacetMapper projectFacets = mock(ProjectFacetMapper.class);
     private final ProjectSystemService projectSystems = mock(ProjectSystemService.class);
     private final DevelopmentRequestController controller =
-            new DevelopmentRequestController(requests, merges, projectFacets, projectSystems);
+            new DevelopmentRequestController(requests, projectFacets, projectSystems);
 
     @Test
     void 개발요청서_목록은_요청한_페이지와_목록_크기만_내린다() {
@@ -85,36 +79,6 @@ class DevelopmentRequestControllerTest {
         assertThat(row.rangeLabel()).isEqualTo("프론트 없음 · 백엔드 없음");
     }
 
-    @Test
-    void 상세에서_병합하면_같은_개발요청서_상세로_돌아온다() {
-        RedirectAttributesModelMap flash = new RedirectAttributesModelMap();
-
-        String redirect = controller.merge("project-1", "request-1", flash);
-
-        verify(merges).merge("project-1", "request-1");
-        assertThat(redirect).isEqualTo(
-                "redirect:/projects/project-1/artifacts/dev-requests/request-1");
-        assertThat(flash.getFlashAttributes().get("message"))
-                .isEqualTo("개발 결과를 기준본에 반영했습니다.");
-    }
-
-    @Test
-    void 상세에서_전송한_ZIP_원본을_다운로드한다() throws Exception {
-        Path archive = temp.resolve("DR-023.zip");
-        Files.write(archive, new byte[] {1, 2, 3});
-        given(requests.storedPackage("project-1", "request-23"))
-                .willReturn(new DevelopmentRequestService.StoredPackage(
-                        archive, "DR-023.zip", Files.size(archive)));
-
-        ResponseEntity<Resource> response = controller.download("project-1", "request-23");
-
-        assertThat(response.getHeaders().getFirst(HttpHeaders.CONTENT_DISPOSITION))
-                .isEqualTo("attachment; filename=\"DR-023.zip\"");
-        assertThat(response.getHeaders().getContentType().toString()).isEqualTo("application/zip");
-        assertThat(response.getHeaders().getContentLength()).isEqualTo(3);
-        assertThat(response.getBody()).isNotNull();
-        assertThat(response.getBody().getFile()).isEqualTo(archive.toFile());
-    }
 
     @Test
     void 개발요청서_번호_업무명과_기준_FRD_번호로_검색한다() {
@@ -139,7 +103,7 @@ class DevelopmentRequestControllerTest {
     }
 
     @Test
-    void 시스템_담당자와_전송_상태를_함께_골라_개발요청서를_거른다() {
+    void 시스템과_담당자를_함께_골라_개발요청서를_거른다() {
         var matched = row(1, 7, "전자결재 개선", "bo",
                 DevelopmentRequest.DeliveryState.SENT, "김기획");
         var other = row(2, 8, "급여 조회 개선", "wv",
@@ -158,23 +122,27 @@ class DevelopmentRequestControllerTest {
         assertThat(model.getAttribute("stateFilter")).isEqualTo("SENT");
         assertThat(model.getAttribute("ownerFilter")).isEqualTo("김기획");
         assertThat(model.getAttribute("systemFilter")).isEqualTo("bo");
-        assertThat((List<?>) model.getAttribute("stateOptions")).hasSize(2);
+        // ⛔ 2026-09-06(003) — 전송 상태 거르개가 없어져 그 선택지를 화면에 안 담는다.
+        //    stateFilter 자체는 링크 왕복에 쓰이므로 남는다.
+        assertThat(model.getAttribute("stateOptions")).isNull();
         assertThat((List<?>) model.getAttribute("ownerOptions")).hasSize(2);
         assertThat((List<?>) model.getAttribute("systemOptions")).hasSize(2);
     }
 
     @Test
-    void 개발요청서_목록은_FRD_작업과_같은_검색영역을_쓰고_전송_상태로_표시한다() throws Exception {
+    void 개발요청서_목록은_FRD_작업과_같은_검색영역을_쓴다() throws Exception {
         String template = Files.readString(
                 Path.of("src/main/resources/templates/artifacts/dev-requests.html"));
 
         assertThat(template)
                 .contains("role=\"search\"")
                 .containsSubsequence("for=\"dev-request-system\"", "for=\"dev-request-owner\"",
-                        "for=\"dev-request-state\"", "for=\"dev-request-search\"")
-                .contains("for=\"dev-request-state\">전송 상태</label>")
-                .contains("<th scope=\"col\">전송 상태</th>")
+                        "for=\"dev-request-search\"")
                 .doesNotContain("전달 상태");
+        // ⛔ 2026-09-04(003) — 산출물 공유 기능을 빼면서 전송·개발 상태 열과 거르개가 없어졌다.
+        //    그 두 값은 밖으로 보내고 되받는 장치가 쥐던 것이라 되살릴 자리가 없다.
+        assertThat(template)
+                .doesNotContain("for=\"dev-request-state\"", "전송 상태", "개발 상태");
     }
 
     @Test

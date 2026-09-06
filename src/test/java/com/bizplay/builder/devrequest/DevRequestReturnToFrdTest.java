@@ -15,6 +15,7 @@ import com.bizplay.builder.project.ProjectState;
 import com.bizplay.builder.secret.SecretSealer;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
 import java.io.IOException;
@@ -23,7 +24,6 @@ import java.nio.file.Path;
 import java.time.Duration;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
  * 「FRD 로 되돌리기」 — 전송 전 개발요청서를 지우고 FRD 작업을 다시 연다 (병주 지시 2026-08-25).
@@ -43,12 +43,12 @@ class DevRequestReturnToFrdTest extends AbstractDbTest {
     @Autowired SecretSealer sealer;
     @Autowired FrdMapper frds;
     @Autowired DevelopmentRequestMapper requests;
-    @Autowired DevRequestDeliveryMapper attempts;
     @Autowired DevelopmentRequestService service;
     @Autowired ProjectPaths paths;
     @Autowired FrdWorkspace workspaces;
     @Autowired GitCommand git;
     @Autowired IdSequence ids;
+    @Autowired JdbcTemplate jdbc;
 
     @Test
     void 작업대_없이_만든_것은_개발_범위_확인으로_돌아간다() {
@@ -105,50 +105,32 @@ class DevRequestReturnToFrdTest extends AbstractDbTest {
         }
     }
 
+    /**
+     * ⛔ <b>003 이전에 쓰인 전송 시도 줄이 남아 있어도 되돌아가야 한다.</b>
+     *
+     * <p>003(2026-09-06)에서 전송을 없앴지만 표 {@code adk_builder_dev_request_delivery} 는
+     * 죽은 채 남겼고, 그 FK 에 {@code on delete cascade} 가 <b>없다</b>({@code V48}).
+     * 옛 줄을 먼저 안 치우면 {@code deleteNotSent} 가 FK 위반으로 죽어 화면이 500 이 된다 —
+     * 그러면 기획자가 빠져나갈 길이 없다. 새로 쓰는 코드는 없지만 <b>옛 자료가 있는 DB</b> 가 있다.
+     */
     @Test
-    void 이미_보낸_것은_되돌리지_못한다() {
-        Project project = readyProject("되돌리기-보냄");
+    void 옛_전송_시도_줄이_남아_있어도_FRD로_되돌아간다() {
+        Project project = readyProject("되돌리기-옛시도");
         String frdId = frd(project, Frd.State.SCOPE_REVIEW);
         String requestId = service.createFromConfirmedScope(project.getId(), frdId).id();
-        requests.requestDelivery(requestId, null, null, null, null, null, null, null, null);
-        assertThat(attempts.moveFromSending(requestId, DeliveryOutcome.SENT)).isEqualTo(1);
-
-        assertThatThrownBy(() -> service.returnToFrd(project.getId(), requestId))
-                .isInstanceOf(IllegalStateException.class)
-                .hasMessageContaining("전송 전");
-        assertThat(requests.selectById(requestId)).isNotNull();
-        assertThat(frds.selectById(frdId).state()).isEqualTo(Frd.State.REVIEW);
-    }
-
-    @Test
-    void 다른_개발요청서가_앞_것으로_가리키면_되돌리지_못한다() {
-        Project project = readyProject("되돌리기-참조");
-        String earlier = service.createFromConfirmedScope(project.getId(),
-                frd(project, Frd.State.SCOPE_REVIEW)).id();
-        String later = service.createFromConfirmedScope(project.getId(),
-                frd(project, Frd.State.SCOPE_REVIEW)).id();
-        requests.requestDelivery(later, null, null, null, null, null, null, earlier, null);
-
-        assertThatThrownBy(() -> service.returnToFrd(project.getId(), earlier))
-                .isInstanceOf(IllegalStateException.class)
-                .hasMessageContaining("앞 개발요청서");
-        assertThat(requests.selectById(earlier)).isNotNull();
-    }
-
-    @Test
-    void 실패한_전송_시도_이력이_있어도_지워진다() {
-        Project project = readyProject("되돌리기-시도");
-        String frdId = frd(project, Frd.State.SCOPE_REVIEW);
-        String requestId = service.createFromConfirmedScope(project.getId(), frdId).id();
-        String attemptId = ids.next(IdSequence.Kind.DEV_REQUEST_DELIVERY);
-        attempts.insert(new DevRequestDeliveryAttempt(attemptId, requestId, "DRK-시험", null,
-                DeliveryOutcome.SENDING, null, null, null, null, null, null));
-        attempts.finish(attemptId, DeliveryOutcome.NOT_SENT, 502, null, "창구가 응답하지 않았다");
+        jdbc.update("""
+                insert into builder.adk_builder_dev_request_delivery
+                       (dev_request_id, delivery_key, body_fingerprint, outcome, failure)
+                values (?, ?, ?, 'NOT_SENT', '창구가 응답하지 않았다')
+                """, requestId, "DRK-옛시도", "a".repeat(64));
 
         service.returnToFrd(project.getId(), requestId);
 
         assertThat(requests.selectById(requestId)).isNull();
-        assertThat(attempts.selectByRequestId(requestId)).isEmpty();
+        Integer left = jdbc.queryForObject(
+                "select count(*) from builder.adk_builder_dev_request_delivery where dev_request_id = ?",
+                Integer.class, requestId);
+        assertThat(left).isZero();
     }
 
     // ── 재료 ──────────────────────────────────────────────────────────────

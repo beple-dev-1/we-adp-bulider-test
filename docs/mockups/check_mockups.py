@@ -465,10 +465,11 @@ def validate_dev_requests() -> list[str]:
     list_source = (ROOT / "06-dev-requests.html").read_text(encoding="utf-8")
     detail_parser, detail_source = parse(ROOT / "06a-dev-request-detail.html")
     errors: list[str] = []
-    # 전달 상태 셋에 사람이 취소한 상태가 별도 축으로 붙는다 (2026-08-25 확정).
-    for state in ("대기", "전송중", "전송완료", "취소"):
-        if state not in list_source:
-            errors.append(f"개발요청서 전달 상태가 목록에 없습니다: {state}")
+    # ⛔ 2026-09-04(003) — 산출물 공유 기능을 뺐다. 전달 상태·개발 상태는 밖으로 보내고 되받는
+    #   장치가 쥐던 값이라 목록에서 사라졌다. 「있어야 한다」 검사를 되살리지 마라.
+    for gone in ("전송 상태", "개발 상태", "전송중", "전송완료"):
+        if gone in list_source:
+            errors.append(f"없앤 산출물 공유 표시가 목록에 되살아났습니다: {gone}")
     for old_state in ("안 보냄", "보내는 중", "보냄", "전달 전", "전달 중", "전달 완료", "전달 실패"):
         if old_state in list_source:
             errors.append(f"설계 정본과 다른 개발 전달 상태가 목록에 남았습니다: {old_state}")
@@ -477,7 +478,7 @@ def validate_dev_requests() -> list[str]:
     if "다음 작업" in list_source:
         errors.append("개발요청서 목록에 다음 작업 열이 남았습니다")
     # 작업 단위는 FRD 다 (2026-08-20 개정). ⛔ BRD 기준으로 되돌리지 마라 — 구현은 이미 FRD 를 가리킨다.
-    for column in ("작업 범위", "기준 FRD", "담당자", "생성일시", "요청일시"):
+    for column in ("작업 범위", "기준 FRD", "담당자", "생성일시"):
         if column not in list_source:
             errors.append(f"개발요청서 목록 필수 열이 없습니다: {column}")
     for stale in ("기준 BRD", "BRD-", "04a-brd-detail.html", "최종 변경"):
@@ -485,17 +486,15 @@ def validate_dev_requests() -> list[str]:
             errors.append(f"개발요청서 목록에 BRD 시절 자취가 남았습니다: {stale}")
     if "기준 BRD" in detail_source:
         errors.append("개발요청서 상세가 아직 BRD 를 기준으로 가리킵니다: 기준 BRD")
-    for label in ("요청 원문", "요청 내용", "개발 범위", "완료 조건", "확인 필요", "운영 반영", "범위 밖", "화면별 변경 내용", "화면 외 구현", "개발팀 전달사항"):
+    for label in ("요청 원문", "요청 내용", "개발 범위", "완료 조건", "확인 필요", "운영 반영", "범위 밖", "화면별 변경 내용", "화면 외 구현"):
         if label not in detail_source:
             errors.append(f"개발요청서 상세 필수 영역이 없습니다: {label}")
     for layout_class in ("dev-request-source", "dev-request-primary", "dev-request-implementation", "dev-request-review"):
         if layout_class not in detail_source:
             errors.append(f"개발요청서 상세의 반응형 정보 구조가 없습니다: {layout_class}")
-    for development_contract in ("status-badge--progress", "개발 진행 중"):
-        if development_contract not in detail_source:
-            errors.append(f"전송 완료 후 개발 상태 표시가 없습니다: {development_contract}")
-    if "개발요청서 다운로드" not in detail_source:
-        errors.append("전송한 개발요청서 ZIP 다운로드 행동이 없습니다")
+    # ⛔ 2026-09-06(003) — 꾸러미를 굽던 진입점(전송)이 없어져 ZIP 다운로드도 함께 뺐다.
+    #    형식은 06_개발산출물/과업/003_.../003_꾸러미-형식-보존.md 에 떠 뒀다.
+    #    되살릴 수 있는 기능이므로 금지 검사는 두지 않는다 — 「있어야 한다」만 뺀다.
     # 현재 저장 데이터에는 개발 범위와 화면·백엔드·완료 조건 사이의 직접 연결 정보가 없다.
     for inferred_label in ("관련 화면", "관련 범위", "확인할 내용", "영향", "FRD 전체 조건", "FRD 공통 확인", "분석 메모"):
         if inferred_label in detail_source:
@@ -506,17 +505,15 @@ def validate_dev_requests() -> list[str]:
     for ambiguous_label in ("업무 규칙과 완료 기준", "관련 자료"):
         if ambiguous_label in detail_source:
             errors.append(f"출처가 불명확하거나 중복된 영역이 남았습니다: {ambiguous_label}")
-    if not any(tag == "textarea" and attrs.get("id") == "dev-comment" for tag, attrs in detail_parser.elements):
-        errors.append("사람 코멘트 입력 영역이 없습니다")
-    for label in ("개발요청", "개발 완료일", "배포일", "첨부파일"):
-        if label not in detail_source:
-            errors.append(f"개발요청 레이어 필수 요소가 없습니다: {label}")
-    if not any(tag == "dialog" and attrs.get("aria-modal") == "true" for tag, attrs in detail_parser.elements):
-        errors.append("개발요청 입력이 레이어로 제공되지 않습니다")
-    if not any(tag == "input" and attrs.get("type") == "file" for tag, attrs in detail_parser.elements):
-        errors.append("개발요청 첨부파일 입력이 없습니다")
-    if "dev-request-delivery" in detail_source:
-        errors.append("개발팀 전달사항이 상세 본문에 상시 노출되고 있습니다")
+    # ⛔ 2026-09-04(003) — 개발요청 전송 레이어(전달사항·개발 완료일·배포일·첨부파일)와 개발 상태
+    #   배지가 없어졌다. 보낼 곳이 없으니 되살리지 마라.
+    for gone in ("dev-delivery", "dev-request-delivery", "status-badge--progress",
+                 "개발 진행 중", "개발팀 전달사항"):
+        if gone in detail_source:
+            errors.append(f"없앤 산출물 공유 요소가 상세에 되살아났습니다: {gone}")
+    if any(tag == "dialog" and attrs.get("id") == "dev-delivery-dialog"
+           for tag, attrs in detail_parser.elements):
+        errors.append("전송 레이어가 되살아났습니다: dev-delivery-dialog")
     return errors
 
 

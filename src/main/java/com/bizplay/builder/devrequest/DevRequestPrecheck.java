@@ -44,14 +44,11 @@ public class DevRequestPrecheck {
     private final PlanningRepoCheckCache checks;
     private final ProjectPaths paths;
     private final ScreenTobeDocumentWorker tobeDocuments;
-    private final DevRequestTestScenarioWorker testScenarios;
 
     public DevRequestPrecheck(FrdScreenMapper screens, FrdScreenHistoryMapper histories,
                               FrdWorkspace workspaces, PlanningRepoCheckCache checks,
-                              ProjectPaths paths, ScreenTobeDocumentWorker tobeDocuments,
-                              DevRequestTestScenarioWorker testScenarios) {
+                              ProjectPaths paths, ScreenTobeDocumentWorker tobeDocuments) {
         this.tobeDocuments = tobeDocuments;
-        this.testScenarios = testScenarios;
         this.screens = screens;
         this.histories = histories;
         this.workspaces = workspaces;
@@ -134,25 +131,6 @@ public class DevRequestPrecheck {
         List<Item> blocking = new ArrayList<>();
         List<Item> warnings = new ArrayList<>();
         List<Item> notes = new ArrayList<>();
-
-        /*
-         * ── 테스트 시나리오 — 읽기만 한다. ⚠ 차단이 아니다 — 빈 양식으로도 계약은 성립한다.
-         *
-         * ⛔ 여기서 만들기를 청하지 마라 (병주 지시 2026-08-27). 이 메서드는 상세 화면 렌더가 부르고
-         *   그 자리는 DevelopmentRequestService#precheck 의 readOnly = true 트랜잭션 안이다 —
-         *   만들기가 스냅샷을 저장하는 순간 PostgreSQL 이 그 트랜잭션을 통째로 중단시켜
-         *   FRD 완료의 도착 화면이 500 으로 죽는다. 청하는 자리는 FrdCompletionService 하나다.
-         */
-        if (!content.hasTestScenarios()
-                && request.deliveryState() == DevelopmentRequest.DeliveryState.NOT_SENT) {
-            if (testScenarios.isGenerating(request.id())) {
-                warnings.add(new Item("전체", "테스트 시나리오를 만들고 있습니다.",
-                        "AI 가 쓰는 데 몇 분 걸립니다. 지금 보내면 회신 양식이 빈 칸으로 나갑니다."));
-            } else if (testScenarios.hasFailed(request.id())) {
-                warnings.add(new Item("전체", "테스트 시나리오를 만들지 못했습니다.",
-                        "회신 양식은 빈 칸으로 나가고 개발이 채웁니다."));
-            }
-        }
 
         // ── 보낼 것이 있나 ──
         if (content.developmentRequirements().isEmpty()) {

@@ -279,7 +279,7 @@ class DevRequestPrecheckBaselineTest {
     void 빨강이_없으면_기저를_재지_않는다() {
         var counted = new int[1];
         var precheck = new DevRequestPrecheck(null, null, null,
-                cache((home, root) -> { counted[0]++; return CheckReport.unknown(); }), null, null, null);
+                cache((home, root) -> { counted[0]++; return CheckReport.unknown(); }), null, null);
 
         precheck.blockOnlyNewRed(Path.of("clone"),
                 new CheckReport(CheckReport.Verdict.CHECKED, List.of()),
@@ -292,7 +292,7 @@ class DevRequestPrecheckBaselineTest {
 
     private DevRequestPrecheck precheckWith(CheckReport baseline) {
         CheckerCommand stub = (home, root) -> baseline;
-        return new DevRequestPrecheck(null, null, null, cache(stub), null, null, null);
+        return new DevRequestPrecheck(null, null, null, cache(stub), null, null);
     }
 
     private CheckReport report(Finding... findings) {

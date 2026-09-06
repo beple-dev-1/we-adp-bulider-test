@@ -21,11 +21,14 @@
   <!--/*
     목업 docs/mockups/06-dev-requests.html 이 정본이다.
     ⛔ 「적용 대상」 열은 적용 대상을 쓰는 프로젝트에서만 그린다(showFacets) — 언제나 비는 열은 거짓말이다.
-    ⛔ 「다음 작업」 열을 만들지 마라 — 전송 상태가 곧 다음 행동이다(목업 검사기가 막는다).
-    검색 영역은 FRD 작업 목록과 같은 순서를 쓴다. 상태는 전송 상태만 거른다.
+    ⛔ 「다음 작업」 열을 만들지 마라 (목업 검사기가 막는다).
+    ⚠ 2026-09-06(003) 에 산출물 공유 기능을 빼면서 그 두 상태 열과 거르개가 없어졌다 —
+      밖으로 보내고 되받는 장치가 쥐던 값이라 되살릴 자리가 없다.
+    ⛔ 여기 주석에 그 열 이름을 글자로 적지 마라 — 시험이 템플릿 전문을 훑어 금지어로 막는다.
+    검색 영역은 FRD 작업 목록과 같은 순서를 쓴다.
   */-->
 
-  <form class="filter-bar filter-bar--five filter-bar--with-action" th:if="${totalCount > 0}"
+  <form class="filter-bar filter-bar--four filter-bar--with-action" th:if="${totalCount > 0}"
         method="get" role="search" data-list-loading-trigger
         th:action="@{/projects/{p}/artifacts/dev-requests(p=${projectId})}">
     <div class="field">
@@ -42,14 +45,6 @@
         <option value="">담당자 전체</option>
         <option th:each="item : ${ownerOptions}" th:value="${item.value}" th:text="${item.label}"
                 th:selected="${item.value == ownerFilter}"></option>
-      </select>
-    </div>
-    <div class="field">
-      <label class="field__label" for="dev-request-state">전송 상태</label>
-      <select class="field__control" id="dev-request-state" name="state">
-        <option value="">전송 상태 전체</option>
-        <option th:each="item : ${stateOptions}" th:value="${item.value}" th:text="${item.label}"
-                th:selected="${item.value == stateFilter}"></option>
       </select>
     </div>
     <div class="field">
@@ -72,13 +67,12 @@
       <thead><tr>
         <th scope="col">개발요청서</th><th scope="col">업무</th><th scope="col">시스템</th>
         <th scope="col" th:if="${showFacets}">적용 대상</th>
-        <th scope="col">작업 범위</th><th scope="col">전송 상태</th><th scope="col">개발 상태</th>
+        <th scope="col">작업 범위</th>
         <th scope="col">담당자</th><th scope="col">원본 작업</th>
-        <th scope="col">생성일시</th><th scope="col">요청일시</th>
+        <th scope="col">생성일시</th>
       </tr></thead>
       <tbody>
-      <tr th:each="row : ${rows}"
-          th:classappend="${row.request().canMergeDevelopment()} ? 'dev-request-row--merge-required' : ''">
+      <tr th:each="row : ${rows}">
         <td><a class="artifact-list-link num"
                th:href="@{/projects/{p}/artifacts/dev-requests/{r}(p=${projectId},r=${row.request().id()},query=${query},state=${stateFilter},owner=${ownerFilter},system=${systemFilter},page=${page},pageSize=${pageSize})}"
                th:text="${row.request().label()}">DR-001</a></td>
@@ -99,10 +93,6 @@
           <span th:if="${#lists.isEmpty(row.request().facetList())}">—</span>
         </td>
         <td class="nowrap" th:text="${row.rangeLabel()}">화면 2개 · 신규 1개 · 수정 1개 · 백엔드 1건</td>
-        <td><span class="status-badge" th:classappend="${row.stateClass()}"
-                  th:text="${row.stateLabel()}">대기</span></td>
-        <td><span class="status-badge" th:classappend="${row.request().developmentStateClass()}"
-                  th:text="${row.request().developmentStateLabel()}">대기</span></td>
         <td class="nowrap" th:text="${row.ownerLabel()}">이영희</td>
         <td>
           <a class="artifact-list-link num" th:if="${!row.srtSource()}"
@@ -114,8 +104,6 @@
         </td>
         <td class="num nowrap"
             th:text="${#temporals.format(row.request().createdAt(), 'MM-dd HH:mm')}">08-21 13:00</td>
-        <td class="num nowrap"
-            th:text="${row.requestedAt() == null ? '—' : #temporals.format(row.requestedAt(), 'MM-dd HH:mm')}">—</td>
       </tr>
       </tbody>
     </table>
