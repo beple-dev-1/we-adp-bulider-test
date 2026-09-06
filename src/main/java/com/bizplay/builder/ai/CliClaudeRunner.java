@@ -1,5 +1,7 @@
 package com.bizplay.builder.ai;
 
+import com.bizplay.builder.claude.ClaudeCli;
+
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
@@ -86,8 +88,21 @@ public class CliClaudeRunner implements ClaudeRunner {
      */
     static List<String> command(List<String> extraArgs, String instruction, boolean onWindows,
                                 boolean streaming) {
+        return command(ClaudeCli.NAME, extraArgs, instruction, onWindows, streaming);
+    }
+
+    /**
+     * ⛔ <b>이 자리는 {@code cmd /c} 로 갈 수 없다.</b> {@code -p} 뒤에 오는 지시문은 <b>여러 줄</b>이고,
+     * 배치({@code claude.cmd})를 지나면 <b>첫 줄에서 잘린다</b> — 오류가 안 나고 지시문만 짧아지므로
+     * <b>모델이 엉뚱한 답을 내는 것으로만 드러난다</b>(2026-09-06 실측 · 65자 → 53자).
+     * 그래서 윈도우에서는 {@link ClaudeCli#launcher} 가 <b>진짜 실행파일</b>을 찾아 준다.
+     *
+     * @param launcher 실제로 띄울 것. 시험이 자리를 고정할 수 있게 갈라 두었다
+     */
+    static List<String> command(String launcher, List<String> extraArgs, String instruction,
+                                boolean onWindows, boolean streaming) {
         List<String> command = new java.util.ArrayList<>(List.of(
-                "claude", "-p", forArgv(instruction == null ? "" : instruction, onWindows),
+                launcher, "-p", forArgv(instruction == null ? "" : instruction, onWindows),
                 "--output-format", streaming ? "stream-json" : "json"));
         if (streaming) {
             // ⚠ 없으면 claude 가 stream-json 을 거절한다 (2026-08-18 실측).
@@ -125,7 +140,11 @@ public class CliClaudeRunner implements ClaudeRunner {
                             List<String> extraArgs, String instruction,
                             Consumer<Process> onStarted, Consumer<Progress> onProgress) {
         boolean streaming = onProgress != null;
-        List<String> command = command(extraArgs, instruction, File.separatorChar != '/', streaming);
+        // ⚠ 윈도우 판정 근거를 하나로 둔다 — 종전에 File.separatorChar 와 os.name 이 나란히 있었고,
+        //    한쪽만 바뀌면 「실물 실행파일로 띄우면서 이스케이프는 안 하는」 어긋남이 난다.
+        String osName = System.getProperty("os.name");
+        List<String> command = command(ClaudeCli.launcher(osName),
+                extraArgs, instruction, ClaudeCli.isWindows(osName), streaming);
 
         Process process = null;
         try {

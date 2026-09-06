@@ -12,9 +12,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
-import java.util.ArrayList;
 import java.util.List;
-import java.util.Locale;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
@@ -66,34 +64,16 @@ public class CliClaudeAuthGateway implements ClaudeAuthGateway {
         this.identityReader = identityReader;
     }
 
-    /** 어느 자리에서나 같은 CLI 를 부른다. 앞에 무엇을 붙일지만 운영체제로 갈린다. */
-    private static final List<String> LOGIN_ARGS = List.of("claude", "auth", "login", "--claudeai");
+    /** ⚠ 이름({@code claude})은 {@link ClaudeCli} 가 붙인다. 여기는 그 뒤 인자만 담는다. */
+    private static final List<String> LOGIN_ARGS = List.of("auth", "login", "--claudeai");
 
     /**
-     * ⛔ <b>윈도우에는 {@code claude.exe} 가 없다.</b> npm 이 까는 것은 {@code claude}(셸 스크립트)·
-     * {@code claude.cmd}·{@code claude.ps1} 셋이고, 자바의 {@code ProcessBuilder} 는 윈도우에서
-     * <b>{@code .exe} 만 찾는다 — {@code PATHEXT} 를 안 본다.</b> 그래서 {@code where claude} 로는
-     * 멀쩡히 잡히는데 {@code CreateProcess error=2} 로 터진다(2026-09-06 실측).
-     *
-     * <p>⚠ <b>PATH 도 자격도 문제가 아니다.</b> 그 둘을 의심하다 시간을 버리지 마라.
-     *
-     * <p>그래서 윈도우에서만 {@code cmd /c} 를 앞에 붙인다 — 확장자 탐색은 원래 그쪽 일이다.
-     * ⛔ <b>{@code claude.cmd} 를 우리가 PATH 에서 찾아 절대경로로 넘기지 마라</b> — {@code PATHEXT}
-     * 탐색을 손으로 흉내 내는 것이고, 사람이 설정을 채워야 도는 길도 마찬가지로 안 만든다.
-     *
-     * <p>⚠ 셸이 한 번 더 끼지만 <b>인자가 전부 고정 낱말이라 밖에서 넣을 구멍이 없다.</b>
-     * 여기에 <b>사람이 준 값을 인자로 더하지 마라</b> — 더하는 순간 이 판단이 무너진다.
-     *
-     * <p>⭐ 자식 환경({@code CLAUDE_CONFIG_DIR} 설정·열쇠 제거·{@code BROWSER})은 {@code cmd} 를
-     * 지나 <b>손자까지 그대로 내려간다</b> — 공백이 든 경로까지 실측으로 확인했다(2026-09-06).
+     * ⛔ <b>여기에 사람이 준 값을 더하지 마라.</b> {@link ClaudeCli#fixedCommand} 는 윈도우에서
+     * 셸을 한 겹 끼우므로, 고정 낱말만 간다는 전제가 깨지면 그 안전 근거가 무너진다.
+     * 줄바꿈이 든 값도 마찬가지다 — 배치가 첫 줄에서 자른다. 까닭은 {@link ClaudeCli} 에 있다.
      */
     static List<String> loginCommand(String osName) {
-        if (osName == null || !osName.toLowerCase(Locale.ROOT).startsWith("windows")) {
-            return LOGIN_ARGS;
-        }
-        List<String> windows = new ArrayList<>(List.of("cmd", "/c"));
-        windows.addAll(LOGIN_ARGS);
-        return List.copyOf(windows);
+        return ClaudeCli.fixedCommand(osName, LOGIN_ARGS);
     }
 
     @Override
