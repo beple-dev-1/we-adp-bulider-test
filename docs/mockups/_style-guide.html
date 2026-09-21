@@ -136,7 +136,7 @@
             <button class="token-swatch" type="button" data-token="--color-line" data-token-label="경계선" data-preview="var(--color-line)"><strong>Line</strong><span>--color-line</span></button>
             <button class="token-swatch" type="button" data-token="--color-soft" data-token-label="약한 배경" data-preview="var(--color-soft)"><strong>Soft</strong><span>--color-soft</span></button>
             <button class="token-swatch" type="button" data-token="--color-muted" data-token-label="보조 글자" data-preview="var(--color-muted)" data-preview-text="#ffffff"><strong>Muted</strong><span>--color-muted</span></button>
-            <button class="token-swatch" type="button" data-token="--builder-sidebar-active" data-token-label="셸 활성 항목" data-preview="var(--builder-sidebar-active)" data-preview-text="#ffffff"><strong>Shell active</strong><span>--builder-sidebar-active</span></button>
+            <button class="token-swatch" type="button" data-token="--builder-key" data-token-label="셸 활성 항목" data-preview="var(--builder-key)" data-preview-text="#ffffff"><strong>Shell active</strong><span>--builder-key</span></button>
           </div></section>
           <section class="token-group"><h3>업무 상태</h3><p>상태는 반드시 텍스트와 함께 사용합니다.</p><div class="swatch-grid">
             <button class="token-swatch" type="button" data-token="--color-lilac" data-token-label="진행·활성" data-preview="var(--color-lilac)"><strong>Active</strong><span>--color-lilac</span></button>
@@ -154,10 +154,11 @@
             <aside class="shell-preview__side"><div class="shell-preview__brand">WE-ADP Builder</div><div class="shell-preview__project">G2C 프로젝트</div><nav class="shell-preview__nav" aria-label="셸 미리보기 메뉴"><span>FRD 작업</span><span>SRT</span><span>개발요청서</span><span>IA</span><span class="is-active">디자인가이드</span><span>솔루션 템플릿</span></nav></aside>
             <div class="shell-preview__body"><header class="shell-preview__top"><span class="badge badge--outline">G2C</span><button class="icon-button" type="button" aria-label="알림">●</button></header><section class="shell-preview__content"><h3>디자인가이드</h3><p>시스템별 디자인 구성 요소와 스타일을 확인합니다.</p><div class="shell-preview__blocks"><div></div><div></div><div></div><div></div></div></section></div>
           </div></article>
-          <article class="guide-card"><header class="guide-card__head"><div><h3>셸 토큰</h3><p>메뉴의 기본·호버·활성 상태입니다.</p></div></header><div class="shell-token-list">
+          <article class="guide-card"><header class="guide-card__head"><div><h3>셸 토큰</h3><p>메뉴의 기본·호버·활성 상태와, 같은 키컬러의 흰 바탕용 판입니다.</p></div></header><div class="shell-token-list">
             <button class="shell-token" type="button" data-token="--builder-sidebar" data-token-label="왼쪽 메뉴 배경" data-token-preview="var(--builder-sidebar)" data-token-text="#ffffff"><strong>Sidebar</strong><code>--builder-sidebar</code></button>
             <button class="shell-token" type="button" data-token="--builder-sidebar-hover" data-token-label="메뉴 호버" data-token-preview="var(--builder-sidebar-hover)" data-token-text="#ffffff"><strong>Hover</strong><code>--builder-sidebar-hover</code></button>
-            <button class="shell-token" type="button" data-token="--builder-sidebar-active" data-token-label="메뉴 활성" data-token-preview="var(--builder-sidebar-active)" data-token-text="#ffffff"><strong>Active</strong><code>--builder-sidebar-active</code></button>
+            <button class="shell-token" type="button" data-token="--builder-key" data-token-label="메뉴 활성" data-token-preview="var(--builder-key)" data-token-text="#ffffff"><strong>Active</strong><code>--builder-key</code></button>
+            <button class="shell-token" type="button" data-token="--builder-key-ink" data-token-label="흰 바탕 강조" data-token-preview="var(--builder-key-ink)" data-token-text="#ffffff"><strong>Key on light</strong><code>--builder-key-ink</code></button>
             <span class="shell-token"><strong>메뉴 너비</strong><code>232px</code></span>
           </div></article>
           <article class="guide-card"><header class="guide-card__head"><div><h3>셸 계약</h3><p>메뉴 변경 시 함께 맞춰야 하는 정본입니다.</p></div></header><ul class="guide-checklist"><li>ShellContract.java의 열쇠·순서·표시 이름</li><li>fragments/parts.html의 실제 메뉴</li><li>_shell.js의 정적 목업 사본</li><li>업무 콘텐츠는 고해상도에서도 가용 너비를 사용</li><li>읽기 문장은 별도 prose 너비로 제한</li><li>데스크톱·375px의 메뉴와 콘텐츠 넘침</li></ul></article>

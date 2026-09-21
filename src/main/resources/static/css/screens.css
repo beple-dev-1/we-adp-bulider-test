@@ -546,7 +546,7 @@
 .facet-checks input { width: 18px; height: 18px; accent-color: var(--color-action-primary); }
 .source-error { margin: calc(var(--space-3) * -1) 0 0; color: var(--color-error); font-size: 0.75rem; font-weight: 650; }
 .source-error[hidden] { display: none; }
-.ai-label { color: var(--builder-sidebar-active); font-size: 0.7rem; font-weight: 750; letter-spacing: 0.03em; }
+.ai-label { color: var(--builder-key-ink); font-size: 0.7rem; font-weight: 750; letter-spacing: 0.03em; }
 .edit-hint { color: var(--color-muted); font-size: 0.7rem; }
 .file-picker__name { color: var(--color-muted); font-size: 0.8125rem; }
 .document-content-input { min-height: 148px; padding-block: 12px; resize: vertical; line-height: 1.6; }
@@ -1726,7 +1726,7 @@ body:has(.setup-screen) > .app-header {
 .wm-frd-overview__toc ol { margin: 0; padding: 0; display: grid; gap: 3px; list-style: none; }
 .wm-frd-overview__toc button { width: 100%; min-height: 34px; padding: 7px 9px; border: 0; border-radius: 4px; color: var(--color-muted); background: transparent; font: inherit; font-size: .75rem; line-height: 1.4; text-align: left; cursor: pointer; }
 .wm-frd-overview__toc button:hover { color: var(--color-text); background: var(--color-canvas); }
-.wm-frd-overview__toc button[aria-current="true"] { color: var(--builder-sidebar-active); background: transparent; font-weight: 750; box-shadow: inset 2px 0 0 var(--builder-sidebar-active); }
+.wm-frd-overview__toc button[aria-current="true"] { color: var(--builder-key-ink); background: transparent; font-weight: 750; box-shadow: inset 2px 0 0 var(--builder-key-ink); }
 .wm-frd-overview__content { width: min(100%, 920px); min-width: 0; height: 100%; padding: 28px 36px 64px; overflow-y: auto; color: var(--color-text); font-size: .84rem; line-height: 1.72; }
 .wm-frd-overview__section { min-width: 0; display: grid; gap: var(--space-3); }
 .wm-frd-overview__section + .wm-frd-overview__section { margin-top: 38px; }
@@ -1778,7 +1778,7 @@ body:has(.setup-screen) > .app-header {
 .wm-screen-document__toc ol { margin: 0; padding: 0; display: grid; gap: 3px; list-style: none; }
 .wm-screen-document__toc button { width: 100%; min-height: 34px; padding: 7px 9px; border: 0; border-radius: 4px; color: var(--color-muted); background: transparent; font: inherit; font-size: .75rem; line-height: 1.4; text-align: left; cursor: pointer; }
 .wm-screen-document__toc button:hover { color: var(--color-text); background: var(--color-canvas); }
-.wm-screen-document__toc button[aria-current="true"] { color: var(--builder-sidebar-active); background: transparent; font-weight: 750; box-shadow: inset 2px 0 0 var(--builder-sidebar-active); }
+.wm-screen-document__toc button[aria-current="true"] { color: var(--builder-key-ink); background: transparent; font-weight: 750; box-shadow: inset 2px 0 0 var(--builder-key-ink); }
 .wm-screen-document__content { width: min(100%, 920px); min-width: 0; height: 100%; padding: 28px 36px 64px; overflow-y: auto; color: var(--color-text); font-size: .84rem; line-height: 1.72; }
 .wm-screen-document__section + .wm-screen-document__section { margin-top: 38px; }
 .wm-screen-document__content h3 { margin: 0 0 18px; padding: 0 0 10px; scroll-margin-top: 28px; border-bottom: 1px solid var(--color-line); font-size: 1.08rem; line-height: 1.45; }
@@ -2144,7 +2144,7 @@ body.is-frd-focus .wm-focus-toggle__restore { display: block; }
   .wm-frd-overview__toc ol { display: flex; gap: var(--space-2); overflow-x: auto; scrollbar-width: thin; }
   .wm-frd-overview__toc li { flex: 0 0 auto; }
   .wm-frd-overview__toc button { width: auto; min-height: 32px; padding-inline: var(--space-3); border: 1px solid var(--color-line); background: var(--color-canvas); white-space: nowrap; }
-  .wm-frd-overview__toc button[aria-current="true"] { box-shadow: inset 0 -3px 0 var(--builder-sidebar-active); }
+  .wm-frd-overview__toc button[aria-current="true"] { box-shadow: inset 0 -3px 0 var(--builder-key-ink); }
   .wm-frd-overview__head { min-height: 76px; padding: 15px 56px 13px 18px; }
   .wm-frd-overview__head .dialog__close { top: 13px; right: 12px; }
   .wm-frd-overview__content { width: 100%; padding: 22px 18px 48px; }
@@ -2161,7 +2161,7 @@ body.is-frd-focus .wm-focus-toggle__restore { display: block; }
   .wm-screen-document__toc ol { display: flex; gap: var(--space-2); overflow-x: auto; scrollbar-width: thin; }
   .wm-screen-document__toc li { flex: 0 0 auto; }
   .wm-screen-document__toc button { width: auto; min-height: 32px; padding-inline: var(--space-3); border: 1px solid var(--color-line); background: var(--color-canvas); white-space: nowrap; }
-  .wm-screen-document__toc button[aria-current="true"] { box-shadow: inset 0 -3px 0 var(--builder-sidebar-active); }
+  .wm-screen-document__toc button[aria-current="true"] { box-shadow: inset 0 -3px 0 var(--builder-key-ink); }
   .wm-screen-document__head { min-height: 76px; padding: 15px 56px 13px 18px; }
   .wm-screen-document__head .dialog__close { top: 13px; right: 12px; }
   .wm-screen-document__content { width: 100%; padding: 22px 18px 48px; }

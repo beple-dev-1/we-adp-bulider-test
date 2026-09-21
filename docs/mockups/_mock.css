@@ -95,8 +95,8 @@
 /* file-picker__name 은 screens.css 로 옮겼다 (2026-08-15) */
 .file-picker--document { min-height: 190px; padding: var(--space-6); justify-content: center; flex-direction: column; gap: var(--space-2); border-style: dashed; background: var(--color-canvas); text-align: center; transition: border-color 160ms ease, background-color 160ms ease; }
 .file-picker--document:hover { border-color: #8d72c7; background: var(--color-lilac-soft); }
-.file-picker__icon { width: 32px; height: 32px; margin-bottom: var(--space-1); fill: none; stroke: var(--builder-sidebar-active); stroke-linecap: round; stroke-linejoin: round; stroke-width: 1.6; }
-.file-picker__action { color: var(--builder-sidebar-active); font-size: 0.875rem; }
+.file-picker__icon { width: 32px; height: 32px; margin-bottom: var(--space-1); fill: none; stroke: var(--builder-key-ink); stroke-linecap: round; stroke-linejoin: round; stroke-width: 1.6; }
+.file-picker__action { color: var(--builder-key-ink); font-size: 0.875rem; }
 .file-picker--document small { color: var(--color-muted); font-size: 0.7rem; }
 
 /* document-page-head .page-intro 는 screens.css 로 옮겼다 (2026-08-15) */
@@ -113,12 +113,12 @@
 .document-meta-card h2 { margin: 0; font-size: 1rem; }
 .document-form-section__head p,
 .document-guide-steps p { margin: 3px 0 0; color: var(--color-muted); font-size: 0.75rem; line-height: 1.5; }
-.section-number { width: 26px; height: 26px; flex: 0 0 auto; display: inline-grid; place-items: center; border-radius: 50%; color: #fff; background: var(--builder-sidebar-active); font-size: 0.75rem; font-weight: 750; }
+.section-number { width: 26px; height: 26px; flex: 0 0 auto; display: inline-grid; place-items: center; border-radius: 50%; color: #fff; background: var(--builder-key-ink); font-size: 0.75rem; font-weight: 750; }
 .document-form-grid { display: grid; grid-template-columns: minmax(0, 2fr) minmax(190px, 1fr); gap: var(--space-4); }
 .meeting-fields--page { margin-top: var(--space-4); }
 .source-choice-grid { display: grid; grid-template-columns: minmax(240px, 0.85fr) minmax(0, 1.15fr); gap: var(--space-4); }
 .source-choice-card { min-width: 0; padding: var(--space-4); display: flex; flex-direction: column; border: 1px solid var(--color-line); border-radius: var(--radius-control); background: var(--color-soft); }
-.source-choice-card:focus-within { border-color: var(--builder-sidebar-active); box-shadow: 0 0 0 2px rgb(91 64 134 / 10%); }
+.source-choice-card:focus-within { border-color: var(--builder-key-ink); box-shadow: 0 0 0 2px rgb(91 64 134 / 10%); }
 .source-choice-card__title { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); }
 .source-choice-card__title strong { font-size: 0.875rem; }
 .source-choice-card__title span { color: var(--color-muted); font-size: 0.7rem; }
@@ -150,9 +150,9 @@
 .document-progress li div { display: grid; gap: 2px; background: var(--color-canvas); }
 .document-progress strong { font-size: 0.8125rem; }
 .document-progress small { color: var(--color-muted); font-size: 0.68rem; }
-.document-progress .is-complete > span { border-color: var(--builder-sidebar-active); color: #fff; background: var(--builder-sidebar-active); }
-.document-progress .is-current > span { border: 2px solid var(--builder-sidebar-active); color: var(--builder-sidebar-active); }
-.document-progress .is-current strong { color: var(--builder-sidebar-active); }
+.document-progress .is-complete > span { border-color: var(--builder-key-ink); color: #fff; background: var(--builder-key-ink); }
+.document-progress .is-current > span { border: 2px solid var(--builder-key-ink); color: var(--builder-key-ink); }
+.document-progress .is-current strong { color: var(--builder-key-ink); }
 .document-edit-layout { display: grid; grid-template-columns: minmax(0, 1fr) 290px; align-items: start; gap: var(--space-6); }
 .document-edit-main { min-width: 0; display: grid; gap: var(--space-4); }
 .document-edit-main > .document-edit-card:first-child { border-color: #cec2e5; box-shadow: 0 0 0 3px rgb(91 64 134 / 4%); }
@@ -172,7 +172,7 @@
 .meeting-suggestion__fields { display: grid; grid-template-columns: minmax(220px, 0.8fr) minmax(0, 1.2fr); gap: var(--space-4); }
 .edit-content { min-height: 360px; padding: var(--space-4); resize: vertical; line-height: 1.8; background: var(--color-soft); }
 .edit-content:not([readonly]):focus { background: var(--color-canvas); }
-.text-button { padding: 0; border: 0; color: var(--builder-sidebar-active); background: transparent; font-size: 0.75rem; font-weight: 650; }
+.text-button { padding: 0; border: 0; color: var(--builder-key-ink); background: transparent; font-size: 0.75rem; font-weight: 650; }
 /* extracted-content · source-file-row · document-compare-* · document-register-* 는
    screens.css 로 옮겼다 (2026-08-15) */
 .document-meta-card dl { margin: 0; display: grid; }
@@ -209,7 +209,7 @@
 .requirement-fold[open] { border-color: #cec2e5; box-shadow: 0 0 0 3px rgb(91 64 134 / 4%); }
 .requirement-fold > summary { min-height: 68px; padding: var(--space-3) var(--space-6); display: grid; grid-template-columns: minmax(0, 1fr) auto auto; align-items: center; gap: var(--space-4); cursor: pointer; }
 .requirement-fold > summary::-webkit-details-marker { display: none; }
-.requirement-fold > summary::after { content: "보기"; color: var(--builder-sidebar-active); font-size: 0.72rem; font-weight: 650; }
+.requirement-fold > summary::after { content: "보기"; color: var(--builder-key-ink); font-size: 0.72rem; font-weight: 650; }
 .requirement-fold[open] > summary::after { content: "접기"; }
 .requirement-fold > summary > span:first-child { min-width: 0; display: grid; gap: 3px; }
 .requirement-fold > summary strong { font-size: 1rem; }
@@ -251,10 +251,10 @@
 .requirement-flow-actions { flex: 0 0 auto; display: flex; gap: var(--space-2); }
 .requirement-copy-grid { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-6); }
 .requirement-exclusion { padding: var(--space-4); border-radius: var(--radius-control); background: var(--color-soft); }
-.requirement-source-quote { margin: 0; padding: var(--space-4); border-left: 3px solid var(--builder-sidebar-active); color: #4f4d48; background: var(--color-soft); font-size: 0.875rem; line-height: 1.75; }
+.requirement-source-quote { margin: 0; padding: var(--space-4); border-left: 3px solid var(--builder-key-ink); color: #4f4d48; background: var(--color-soft); font-size: 0.875rem; line-height: 1.75; }
 .requirement-card > .field__help { margin: var(--space-3) 0 0; }
 .requirement-source-details { margin-top: var(--space-6); border-top: 1px solid var(--color-line); }
-.requirement-source-details summary { min-height: 44px; display: flex; align-items: center; color: var(--builder-sidebar-active); font-size: 0.8125rem; font-weight: 650; cursor: pointer; }
+.requirement-source-details summary { min-height: 44px; display: flex; align-items: center; color: var(--builder-key-ink); font-size: 0.8125rem; font-weight: 650; cursor: pointer; }
 .requirement-source-details > p { margin: var(--space-3) 0 0; color: var(--color-muted); font-size: 0.75rem; }
 .requirement-related-section { margin-top: var(--space-6); padding-top: var(--space-6); border-top: 1px solid var(--color-line); }
 .requirement-card__head--compact { margin-bottom: var(--space-3); }
@@ -290,7 +290,7 @@
 .brd-screen-card[open] { border-color: #cec2e5; }
 .brd-screen-card > summary { min-height: 64px; padding: var(--space-3) var(--space-4); display: grid; grid-template-columns: minmax(0, 1fr) auto auto; align-items: center; gap: var(--space-3); cursor: pointer; }
 .brd-screen-card > summary::-webkit-details-marker { display: none; }
-.brd-screen-card > summary::after { content: "보기"; color: var(--builder-sidebar-active); font-size: 0.72rem; font-weight: 650; }
+.brd-screen-card > summary::after { content: "보기"; color: var(--builder-key-ink); font-size: 0.72rem; font-weight: 650; }
 .brd-screen-card[open] > summary::after { content: "접기"; }
 .brd-screen-card > summary > span:first-child { min-width: 0; display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; column-gap: var(--space-2); }
 .brd-screen-card > summary strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -327,7 +327,7 @@
 .mockup-screen-tab strong { grid-column: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 0.8125rem; }
 .mockup-screen-tab .badge { grid-column: 2; grid-row: 1 / span 2; }
 .mockup-other-work { border-top: 1px solid var(--color-line); }
-.mockup-other-work summary { min-height: 42px; padding: var(--space-2) var(--space-4); display: flex; align-items: center; color: var(--builder-sidebar-active); font-size: 0.75rem; font-weight: 650; cursor: pointer; }
+.mockup-other-work summary { min-height: 42px; padding: var(--space-2) var(--space-4); display: flex; align-items: center; color: var(--builder-key-ink); font-size: 0.75rem; font-weight: 650; cursor: pointer; }
 .mockup-other-work > div { padding: 0 var(--space-4) var(--space-3); display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-2); }
 .mockup-other-work p { margin: 0; padding: var(--space-3); display: grid; gap: var(--space-1); border-radius: var(--radius-control); background: var(--color-soft); font-size: 0.75rem; }
 .mockup-other-work p span { color: var(--color-muted); }
@@ -336,9 +336,9 @@
 .mockup-preview-head h2 { margin: 3px 0 0; font-size: 1rem; }
 .mockup-preview-tools,
 .mockup-annotation-tools { display: flex; align-items: center; gap: var(--space-2); }
-.mockup-preview-tools > #select-mockup-area[aria-pressed="true"] { border-color: var(--builder-sidebar-active); background: var(--color-lilac-soft); }
+.mockup-preview-tools > #select-mockup-area[aria-pressed="true"] { border-color: var(--builder-key-ink); background: var(--color-lilac-soft); }
 .mockup-viewport-switch { display: flex; gap: var(--space-1); }
-.mockup-viewport-switch [aria-pressed="true"] { border-color: var(--builder-sidebar-active); background: var(--color-lilac-soft); }
+.mockup-viewport-switch [aria-pressed="true"] { border-color: var(--builder-key-ink); background: var(--color-lilac-soft); }
 .mockup-preview-canvas { min-height: 620px; padding: var(--space-8); position: relative; display: grid; place-items: center; overflow: auto; background: var(--color-workspace); }
 .mock-product-screen { width: min(100%, 820px); min-height: 540px; padding: var(--space-8); position: relative; display: grid; grid-template-rows: auto auto 1fr auto; gap: var(--space-4); border: 1px solid #c8c6c0; background: var(--color-canvas); box-shadow: var(--shadow-float); }
 .mock-product-screen > header,
@@ -368,7 +368,7 @@
 .mockup-marker-panel[hidden] { display: none; }
 .mockup-marker-panel > header { display: flex; justify-content: space-between; align-items: center; gap: var(--space-2); }
 .mockup-marker-panel h3 { margin: 0; font-size: 0.8125rem; }
-.mockup-marker-panel > header button { border: 0; background: transparent; color: var(--builder-sidebar-active); font: inherit; font-size: 0.72rem; cursor: pointer; }
+.mockup-marker-panel > header button { border: 0; background: transparent; color: var(--builder-key-ink); font: inherit; font-size: 0.72rem; cursor: pointer; }
 .mockup-marker-panel ol { margin: var(--space-3) 0 0; padding: 0; list-style: none; display: grid; gap: var(--space-2); }
 .mockup-marker-panel li button { width: 100%; padding: var(--space-2); display: grid; grid-template-columns: 24px minmax(0, 1fr); align-items: start; gap: var(--space-2); border: 1px solid var(--color-line); border-radius: var(--radius-control); background: var(--color-canvas); text-align: left; cursor: pointer; }
 .mockup-marker-panel li button span { width: 24px; height: 24px; display: grid; place-items: center; border-radius: 50%; background: #6f48c4; color: var(--color-canvas); font-size: 0.68rem; }
@@ -384,7 +384,7 @@
 .mockup-selection-context > span { min-width: 0; display: grid; gap: 2px; }
 .mockup-selection-context small { color: var(--color-muted); font-size: 0.68rem; }
 .mockup-selection-context strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 0.75rem; }
-.mockup-selection-context button { flex: 0 0 auto; padding: var(--space-1) var(--space-2); border: 0; background: transparent; color: var(--builder-sidebar-active); font: inherit; font-size: 0.72rem; font-weight: 650; cursor: pointer; }
+.mockup-selection-context button { flex: 0 0 auto; padding: var(--space-1) var(--space-2); border: 0; background: transparent; color: var(--builder-key-ink); font: inherit; font-size: 0.72rem; font-weight: 650; cursor: pointer; }
 .mockup-marker-dialog .dialog__body { display: grid; gap: var(--space-4); }
 .mockup-marker-dialog .dialog__body h2,
 .mockup-marker-dialog .dialog__body p { margin: 0; }
