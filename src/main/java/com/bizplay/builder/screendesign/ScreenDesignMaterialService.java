@@ -31,7 +31,24 @@ public class ScreenDesignMaterialService {
     private static final long MAX_HTML_BYTES = 5_000_000L;
     private static final long MAX_ASSET_BYTES = 15_000_000L;
     private static final long MAX_ASSET_TOTAL_BYTES = 60_000_000L;
-    private static final int MAX_ASSETS = 200;
+    /**
+     * 지문에 넣을 참조 자산의 개수 상한.
+     *
+     * <p>⭐ <b>200 → 1000 으로 올렸다 (2026-09-21 실측).</b> 종전 값이면 비플페이 EXW 화면 55장 중
+     * <b>27장이 통째로 못 만들어졌다</b> — {@code FINGERPRINT_FAILED}. 까닭은 화면이 무거워서가
+     * 아니라 <b>CSS 가 아이콘 PNG 를 수백 장 줄줄이 참조</b>하기 때문이다. `BRWV` 계열 한 장이
+     * 814개(PNG 721 · SVG 50 · 글꼴 22 · CSS 8 …)를 끌어온다.
+     *
+     * <p>⭐ <b>막던 것은 개수뿐이고 용량은 한참 남았다.</b> 814개를 다 세도 15.4MB 로
+     * {@link #MAX_ASSET_TOTAL_BYTES}(60MB) 의 26% 다. 그래서 개수만 올리고 용량 상한은 그대로 둔다 —
+     * 진짜 울타리는 바이트 쪽이고, 이 값은 그 앞에서 먼저 걸리던 <b>잘못 잡힌 문턱</b>이었다.
+     *
+     * <p>⚠ <b>공짜가 아니다.</b> 지문은 상세 화면에 들어올 때마다 계산되고, 한 번 만드는 동안
+     * <b>두 번</b> 잰다(캡처 전·후로 {@code SOURCE_CHANGED} 를 가리려고). 올린 만큼 그 자리에서
+     * 읽는 바이트가 늘어난다. 더 올릴 일이 생기면 개수가 아니라
+     * <b>{@link #MAX_ASSET_TOTAL_BYTES} 가 실제로 걸리는지</b>부터 재라.
+     */
+    private static final int MAX_ASSETS = 1_000;
     private static final long MAX_MANIFEST_BYTES = 2_000_000L;
 
     private final SolutionMockupService solutions;
