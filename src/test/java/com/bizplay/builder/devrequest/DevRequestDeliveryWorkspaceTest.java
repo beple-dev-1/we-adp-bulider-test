@@ -129,6 +129,58 @@ class DevRequestDeliveryWorkspaceTest {
                 .hasMessageNotContaining("비밀토큰1234");
     }
 
+    /**
+     * ⭐ <b>목록은 기본 브랜치에 올린다.</b> 개발이 보는 자리가 고정이어야 하기 때문이다.
+     * ⚠ 꾸러미와 달리 <b>강제 갱신이 아니다</b> — 기본 브랜치는 남들도 쓰는 자리라 밀어 덮으면 안 된다.
+     */
+    @Test
+    void 목록을_기본_브랜치에_올린다() throws IOException {
+        deliveries.updateOnDefaultBranch(PROJECT, REQUEST, "main", remote.toUri().toString(),
+                DeliveryIndex.PATH, existing -> "{\"deliveries\": [{\"dr\": \"DR-009\"}]}\n",
+                "docs: DR-009 전달 목록");
+
+        String head = run(remote, "rev-parse", "refs/heads/main").stdout().strip();
+        assertThat(run(remote, "ls-tree", "-r", "--name-only", head).stdout())
+                .contains(DeliveryIndex.PATH);
+        assertThat(run(remote, "show", head + ":" + DeliveryIndex.PATH).stdout())
+                .contains("DR-009");
+    }
+
+    /** ⭐ 앞서 적힌 줄을 <b>읽어서</b> 합친다 — 덮어쓰지 않는다. */
+    @Test
+    void 앞서_올린_목록을_읽어_합친다() throws IOException {
+        deliveries.updateOnDefaultBranch(PROJECT, REQUEST, "main", remote.toUri().toString(),
+                DeliveryIndex.PATH,
+                existing -> DeliveryIndex.merge(existing, indexEntry("DR-009")), "docs: DR-009");
+
+        deliveries.updateOnDefaultBranch(PROJECT, "0000010", "main", remote.toUri().toString(),
+                DeliveryIndex.PATH,
+                existing -> DeliveryIndex.merge(existing, indexEntry("DR-010")), "docs: DR-010");
+
+        String head = run(remote, "rev-parse", "refs/heads/main").stdout().strip();
+        String listed = run(remote, "show", head + ":" + DeliveryIndex.PATH).stdout();
+        assertThat(listed).contains("DR-009").contains("DR-010");
+    }
+
+    /** ⚠ 바뀐 것이 없으면 빈 커밋을 만들지 않는다. */
+    @Test
+    void 바뀐_것이_없으면_커밋하지_않는다() throws IOException {
+        deliveries.updateOnDefaultBranch(PROJECT, REQUEST, "main", remote.toUri().toString(),
+                DeliveryIndex.PATH, existing -> "같은 내용\n", "docs: 처음");
+        String before = run(remote, "rev-parse", "refs/heads/main").stdout().strip();
+
+        deliveries.updateOnDefaultBranch(PROJECT, REQUEST, "main", remote.toUri().toString(),
+                DeliveryIndex.PATH, existing -> "같은 내용\n", "docs: 두 번째");
+
+        assertThat(run(remote, "rev-parse", "refs/heads/main").stdout().strip()).isEqualTo(before);
+    }
+
+    private DeliveryIndex.Entry indexEntry(String dr) {
+        return new DeliveryIndex.Entry(dr, "dr/" + dr, "commit-" + dr, "base", "EXW",
+                java.util.List.of("EXW-UWV-70-30-10-C"), java.time.Instant.parse("2026-09-22T08:24:58Z"),
+                "key");
+    }
+
     private void writePackage(Path worktree) {
         write(worktree, "DR-009/dev-request.md", "# DR-009 · 에이블리 회원가입 프리필\n");
         write(worktree, "DR-009/manifest.json", "{\"specVersion\": 2}\n");

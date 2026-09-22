@@ -118,6 +118,86 @@ public class DevRequestDeliveryWorkspace {
     }
 
     /**
+     * 기본 브랜치의 파일 하나를 고쳐 올린다 — 전달 <b>목록</b>이 사는 자리다.
+     *
+     * <p>⭐ <b>꾸러미와 달리 강제 갱신이 아니다.</b> 기본 브랜치는 남들도 쓰는 자리라 밀어 덮으면
+     * 남의 커밋이 사라진다. 그래서 <b>원격을 받아 그 위에서</b> 고치고 보통 push 로 올린다.
+     *
+     * <p>⚠ <b>클론의 작업폴더를 쓰지 않는다.</b> 클론은 낡아 있을 수 있고(사용자가 일부러
+     * 안 맞춰 두기도 한다), 거기서 고치면 사람이 보던 자리가 흔들린다. 받아 온 판 위에
+     * <b>임시 워크트리</b>를 띄워 거기서만 고친다.
+     *
+     * @param update 기존 내용(없으면 {@code null})을 받아 새 내용을 내는 일
+     * @return 올린 커밋. 바뀐 것이 없으면 {@code null}
+     */
+    public synchronized String updateOnDefaultBranch(String projectId, String requestId,
+                                                     String defaultBranch, String authenticatedUrl,
+                                                     String relativePath,
+                                                     java.util.function.UnaryOperator<String> update,
+                                                     String message) {
+        Path clone = paths.cloneDir(projectId);
+        Path worktree = paths.devRequestDeliveryWorktree(projectId, requestId);
+        try {
+            discard(clone, worktree);
+            // ⭐ 원격의 지금 판을 받아 그 위에서 고친다 — 로컬 클론이 낡아도 상관없다.
+            require(clone, "기획 저장소의 기본 브랜치를 받지 못했습니다.",
+                    "fetch", authenticatedUrl, defaultBranch);
+            require(clone, "목록을 고칠 자리를 만들지 못했습니다.",
+                    "worktree", "add", "--detach", worktree.toString(), "FETCH_HEAD");
+
+            Path target = worktree.resolve(relativePath);
+            String existing = Files.exists(target) ? readString(target) : null;
+            writeString(target, update.apply(existing));
+
+            require(worktree, "목록을 커밋 대상으로 올리지 못했습니다.", "add", "--", relativePath);
+            GitResult changed = git.run(worktree, timeout, "diff", "--cached", "--quiet");
+            if (changed.exitCode() == 0) {
+                // ⚠ 바뀐 것이 없으면 빈 커밋을 만들지 않는다 — 이력이 뜻 없이 길어진다.
+                return null;
+            }
+            require(worktree, "목록 커밋을 만들지 못했습니다.", "commit", "-m", message);
+            String commit = require(worktree, "목록 커밋을 확인하지 못했습니다.",
+                    "rev-parse", "HEAD").stdout().strip();
+
+            GitResult pushed = git.run(worktree, PUSH_TIMEOUT, "push", authenticatedUrl,
+                    "HEAD:refs/heads/" + defaultBranch);
+            if (!pushed.succeeded()) {
+                /*
+                 * ⛔ 여기서 강제로 밀지 마라. 거절은 대개 그 사이 남이 올렸다는 뜻이고,
+                 *   밀어 덮으면 그 커밋이 사라진다. 다시 부르면 새로 받아 그 위에서 고친다.
+                 */
+                String reason = redactCredentials(detail(pushed));
+                log.warn("전달 목록을 올리지 못했다 projectId={} 개발요청서={} 사유={}",
+                        projectId, requestId, reason);
+                throw new IllegalStateException(authenticationRejected(reason)
+                        ? "기획 저장소가 자격을 거절했습니다. 프로젝트 설정의 저장소 토큰을 확인해 주십시오."
+                        : "전달 목록을 기획 저장소에 올리지 못했습니다. 다시 눌러 주십시오. " + reason);
+            }
+            log.info("전달 목록을 올렸다 projectId={} 개발요청서={} 커밋={}", projectId, requestId, commit);
+            return commit;
+        } finally {
+            discard(clone, worktree);
+        }
+    }
+
+    private static String readString(Path path) {
+        try {
+            return Files.readString(path, java.nio.charset.StandardCharsets.UTF_8);
+        } catch (IOException failed) {
+            throw new UncheckedIOException("전달 목록을 읽지 못했습니다.", failed);
+        }
+    }
+
+    private static void writeString(Path path, String content) {
+        try {
+            Files.createDirectories(path.getParent());
+            Files.writeString(path, content, java.nio.charset.StandardCharsets.UTF_8);
+        } catch (IOException failed) {
+            throw new UncheckedIOException("전달 목록을 쓰지 못했습니다.", failed);
+        }
+    }
+
+    /**
      * 전달 워크트리를 치운다.
      *
      * <p>⚠ <b>브랜치는 지우지 않는다</b> — 무엇을 보냈나의 근거다. 지우는 것은 작업 자리뿐이다.

@@ -23,6 +23,7 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 import java.util.List;
+import java.time.Instant;
 import java.util.UUID;
 
 /**
@@ -125,6 +126,13 @@ public class DevRequestDeliveryService {
                     projects.cloneMaterials(projectId).authenticatedUrl(),
                     worktree -> fingerprint[0] = writePackage(projectId, sent, view, worktree));
 
+            /*
+             * ⭐ 목록을 올린 **뒤에** 전송완료로 표시한다 — 그래야 「SENT」가
+             *   「개발이 찾을 수 있다」와 같은 뜻이 된다. 목록이 안 올라갔는데 SENT 로 두면
+             *   개발은 브랜치 이름을 알 길이 없어 영영 못 찾는다.
+             * ⚠ 다시 눌러도 안전하다 — 꾸러미는 갈아 끼우고 목록은 같은 dr 줄을 갈아 낀다.
+             */
+            publishDeliveryIndex(projectId, requestId, sent, view, published, deliveryKey);
             requests.finishDeliveryAttempt(attemptId, DevelopmentRequest.DeliveryState.SENT.name(),
                     published.commit(), fingerprint[0], null);
             requests.updateDeliveryState(requestId, DevelopmentRequest.DeliveryState.SENT.name());
@@ -141,6 +149,30 @@ public class DevRequestDeliveryService {
             requests.updateDeliveryState(requestId, DevelopmentRequest.DeliveryState.NOT_SENT.name());
             throw failed;
         }
+    }
+
+    /**
+     * 개발이 <b>이름을 미리 모르고도</b> 찾도록 기본 브랜치의 목록에 한 줄을 남긴다.
+     *
+     * <p>정본 경로는 {@link DeliveryIndex#PATH} 하나다 — 전달 브랜치 이름은 DR 마다 바뀌지만
+     * 이 자리는 고정이다. {@code base} 를 함께 적어 <b>역류가 어느 커밋 위에서 갈라 와야 하는지</b>
+     * 까지 알린다.
+     */
+    private void publishDeliveryIndex(String projectId, String requestId, DevelopmentRequest sent,
+                                      DevelopmentRequestService.View view,
+                                      DevRequestDeliveryWorkspace.Published published,
+                                      String deliveryKey) {
+        DeliveryIndex.Entry entry = new DeliveryIndex.Entry(sent.label(), published.branch(),
+                published.commit(), sent.workspaceBaseSha(), sent.systemCode(),
+                view.content().screens().stream()
+                        .map(DevelopmentRequestContent.Screen::deliveryScreenId).toList(),
+                Instant.now(), deliveryKey);
+        deliveries.updateOnDefaultBranch(projectId, requestId,
+                projects.cloneMaterials(projectId).defaultBranch(),
+                projects.cloneMaterials(projectId).authenticatedUrl(),
+                DeliveryIndex.PATH,
+                existing -> DeliveryIndex.merge(existing, entry),
+                "docs: " + sent.label() + " 전달 목록");
     }
 
     /**
