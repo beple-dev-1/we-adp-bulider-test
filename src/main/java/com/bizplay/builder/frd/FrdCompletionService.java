@@ -3,7 +3,6 @@ package com.bizplay.builder.frd;
 import com.bizplay.builder.devrequest.DevelopmentRequest;
 import com.bizplay.builder.devrequest.DevelopmentRequestService;
 import com.bizplay.builder.project.PlanningRepositoryUpdater;
-import com.bizplay.builder.project.ProjectService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -24,15 +23,13 @@ public class FrdCompletionService {
     private final FrdWorkspace workspaces;
     private final DevelopmentRequestService developmentRequests;
     private final PlanningRepositoryUpdater repositoryUpdater;
-    private final ProjectService projects;
 
     public FrdCompletionService(FrdService frds, FrdScreenMapper screens,
                                 FrdScreenChatService screenChats, FrdAnalysisNoteMapper notes,
                                 FrdScreenIaMaterializer iaMaterializer,
                                 FrdWorkspace workspaces,
                                 DevelopmentRequestService developmentRequests,
-                                PlanningRepositoryUpdater repositoryUpdater,
-                                ProjectService projects) {
+                                PlanningRepositoryUpdater repositoryUpdater) {
         this.frds = frds;
         this.screens = screens;
         this.screenChats = screenChats;
@@ -41,22 +38,6 @@ public class FrdCompletionService {
         this.workspaces = workspaces;
         this.developmentRequests = developmentRequests;
         this.repositoryUpdater = repositoryUpdater;
-        this.projects = projects;
-    }
-
-    /**
-     * 확정한 FRD 가지를 기획 저장소에 올린다.
-     *
-     * <p>⛔ <b>작업 완료가 이것을 부르지 않는다 (2026-09-22 확정).</b> 완료 시점에 올리면
-     * <b>설계서(to-be md)도 꾸러미도 없는 반쪽 가지</b>가 기획 저장소에 먼저 올라간다 —
-     * 실제로 그렇게 한 판이 올라갔고 그 가지의 {@code pages/*.md} 가 as-is 그대로였다.
-     * 올리기는 <b>전송</b>이 설계서 커밋·꾸러미 만들기와 함께 마지막에 부른다.
-     * 그 자리가 서기 전까지는 작업대의 「기획 저장소에 올리기」로 사람이 부른다.
-     *
-     * <p>⭐ <b>여러 번 불러도 된다</b> — {@link FrdWorkspace#publishBranch} 가 그렇게 돌게 되어 있다.
-     */
-    public void publish(String projectId, String frdId) {
-        workspaces.publishBranch(projectId, frdId, projects.cloneMaterials(projectId).authenticatedUrl());
     }
 
 
