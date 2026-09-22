@@ -38,9 +38,39 @@ public interface DevelopmentRequestMapper {
      * {@code adk_builder_dev_request_delivery} 는 죽은 채 남겼고, 그 FK 에는
      * {@code on delete cascade} 가 <b>없다</b>({@code V48}). 003 이전에 쓰인 줄이 남아 있으면
      * {@code deleteNotSent} 가 FK 위반으로 죽어 「FRD 작업 재개」가 500 이 된다.
-     * ⛔ 이 표에 새로 쓰는 코드는 없다 — 옛 자료를 치우는 길이다.
+     * ⚠ <b>2026-09-22 에 이 표가 다시 살았다</b> — 전송을 git 통로로 되살리면서 시도마다 한 줄을
+     * 여기 남긴다(아래 {@code insertDeliveryAttempt}). 「이 표에 새로 쓰는 코드는 없다」는
+     * 003 시절의 말이라 더는 참이 아니다. 이 메서드는 그대로 <b>옛 자료를 치우는 길</b>이다.
      */
     int deleteDeliveryAttempts(@Param("devRequestId") String devRequestId);
 
     int deleteNotSent(@Param("id") String id);
+
+    /** 전송 상태를 옮긴다 — 대기 · 전송중 · 전송완료 · 철회. */
+    int updateDeliveryState(@Param("id") String id, @Param("deliveryState") String deliveryState);
+
+    /**
+     * 이 개발요청서의 <b>전송 키</b>. 없으면 {@code null}.
+     *
+     * <p>⭐ <b>다시 보내면 같은 키다</b>(설계). 번호는 프로젝트마다 1번부터라 개발 쪽에서 보면
+     * 서로 다른 사업의 {@code DR-001} 이 여럿이 된다 — 키가 그것을 가른다.
+     */
+    String selectDeliveryKey(@Param("devRequestId") String devRequestId);
+
+    /** 보내기 <b>전</b>에 한 줄 남긴다 — 「먼저 남겨 확정하고 보낸다」(설계). */
+    int insertDeliveryAttempt(@Param("id") String id,
+                              @Param("devRequestId") String devRequestId,
+                              @Param("deliveryKey") String deliveryKey,
+                              @Param("requestedBy") String requestedBy);
+
+    /**
+     * 시도 한 줄을 끝낸다.
+     *
+     * @param responseId      git 통로에서는 <b>꾸러미 커밋 SHA</b> 다 — 「보냈다」의 증거
+     * @param bodyFingerprint 보낸 몸의 지문(sha256). 「받았다」가 어느 판인지 묶는 값
+     */
+    int finishDeliveryAttempt(@Param("id") String id, @Param("outcome") String outcome,
+                              @Param("responseId") String responseId,
+                              @Param("bodyFingerprint") String bodyFingerprint,
+                              @Param("failure") String failure);
 }

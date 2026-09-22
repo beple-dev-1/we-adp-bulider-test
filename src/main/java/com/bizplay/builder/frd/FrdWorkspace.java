@@ -381,10 +381,9 @@ public class FrdWorkspace {
         }
     }
 
+    /** ⛔ 규격은 {@link ScreenIdFormat} 하나다 — 여기에 정규식을 다시 적지 마라. */
     private static void requireScreenId(String screenId) {
-        if (screenId == null || !screenId.matches("^[a-z0-9][a-z0-9-]*$")) {
-            throw new IllegalArgumentException("화면 ID 형식이 올바르지 않습니다: " + screenId);
-        }
+        ScreenIdFormat.require(screenId);
     }
 
     /** 색인 갱신 실패는 완료를 막지 않는다. 전송 전 검사가 낡은 색인을 다시 잡는다. */

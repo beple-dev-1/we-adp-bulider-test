@@ -203,6 +203,29 @@ class DevRequestPrecheckTest extends AbstractDbTest {
         assertThat(gate.sendable()).isFalse();
     }
 
+    /**
+     * ⭐ 실물 (2026-09-22 · 프로젝트 「비플페이」) — 이 사업의 기획 레포 클론은 화면ID 가
+     * {@code EXW-UWV-70-30-10-C} 꼴 <b>대문자</b>다. {@code core/EXW/pages} 110장이 전부 그렇다.
+     * 종전 검사는 소문자만 받아서 <b>기존 화면 수정이 개발요청서로 아예 못 나갔다</b> —
+     * 화면ID 는 클론이 정하는 값이라 사람이 고칠 수 있는 자리가 없는데, 안내는 「작업 완료를
+     * 다시 실행하라」고 해서 눌러도 안 되는 것을 누르게 만들었다.
+     * ⚠ 어느 표기가 규격인지는 추출기 회신 대기다 — {@code docs/requests-to-extractor.md} 끝.
+     */
+    @Test
+    void 대문자_화면ID_인_기존_화면도_전송을_막지_않는다() {
+        Project project = readyProject("검증-대문자 화면ID");
+        String frdId = draftingFrd(project);
+        String rowId = generated(frdId, "EXW-UWV-70-30-10-C", "에이블리 회원가입");
+        histories.fillMd(histories.selectLatestByScreenId(rowId).id(), "변경 예정 기능정의서");
+        String requestId = created(project, frdId);
+
+        var gate = service.precheck(project.getId(), requestId);
+
+        assertThat(gate.blocking()).extracting(DevRequestPrecheck.Item::message)
+                .doesNotContain("개발에서 사용할 화면 ID가 없습니다.");
+        assertThat(gate.sendable()).isTrue();
+    }
+
     @Test
     void 기존_화면의_화면_관리번호가_없어도_경고만_표시한다() {
         Project project = readyProject("검증-표준ID없음");

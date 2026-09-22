@@ -76,30 +76,29 @@ public class ProjectPaths {
     }
 
     /**
-     * 개발에 나갈 <b>꾸러미 한 채</b>가 구워지는 자리 — 디벨롭과의 계약서다.
+     * 개발에 나갈 <b>꾸러미 한 채</b>를 굽고 올리는 <b>전달 전용 워크트리</b>.
      *
-     * <p>⛔ <b>클론 안이 아니다.</b> 꾸러미는 기획 레포로 밀 물건이 아니라 밖으로 나갈 사본이고,
-     * 클론 폴더에 두면 git 이 그것을 보게 된다({@link #receivedDir} 와 같은 까닭이다).
+     * <p>⚠ <b>2026-09-22 에 방향이 바뀌었다.</b> 종전에는 「꾸러미는 기획 레포로 밀 물건이 아니라
+     * 밖으로 나갈 사본이고 zip 으로 보낸다」였고, 그래서 이 자리가 빌더 자료 폴더였다.
+     * 지금은 <b>전달 전용 브랜치({@code dr/DR-nnn})에 커밋해 올린다</b> — 통로가 git 뿐이고,
+     * 그렇게 해야 개발이 볼 자리가 한 군데로 모인다(사용자 확정).
+     * ⛔ 옛 까닭(「클론 폴더에 두면 git 이 본다」)은 여기 걸리지 않는다 — 클론 작업폴더에 섞이는
+     * 것을 막는 말이었고, 이 워크트리는 <b>git 이 보는 것이 목적</b>이다.
      *
      * <p>⚠ <b>다시 구우면 통째로 갈아 낀다.</b> 개발요청서 하나에 꾸러미 하나다 —
      * 판이 남으면 어느 것을 보냈는지 알 수 없다. 무엇을 보냈나는 {@code manifest.json} 의
      * 지문과 전송 이력이 답한다.
+     *
+     * <p>⛔ <b>FRD 워크트리와 다른 자리다.</b> 이것은 <b>기본 브랜치에서 갈라</b> 만들고 전송이
+     * 끝나면 지운다. FRD 워크트리는 남긴다 — 재전송과 역류 대조의 재료다.
      */
-    public Path devRequestPackageDir(String projectId, String requestId) {
+    public Path devRequestDeliveryWorktree(String projectId, String requestId) {
         if (!IdSequence.isValidId(requestId)) {
             throw new IllegalArgumentException("개발요청서 번호의 꼴이 아니다: '%s'".formatted(requestId));
         }
-        return projectDir(projectId).resolve("dev-request-packages").resolve(requestId);
+        return worktreeRoot(projectId).resolve("dr-" + requestId);
     }
 
-    /** 개발팀에 실제로 보낸 ZIP 원본. 기획 저장소가 아니라 Builder 데이터 영역에 둔다. */
-    public Path devRequestPackageArchive(String projectId, String requestId, int requestNumber) {
-        if (requestNumber < 1) {
-            throw new IllegalArgumentException("개발요청서 번호는 1 이상이어야 합니다.");
-        }
-        return devRequestPackageDir(projectId, requestId)
-                .resolve("DR-%03d.zip".formatted(requestNumber));
-    }
 
     /**
      * AI 실행 하나가 쓰는 {@code CLAUDE_CONFIG_DIR}.

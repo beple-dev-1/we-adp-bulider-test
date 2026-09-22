@@ -40,6 +40,7 @@ public class FrdCompletionService {
         this.repositoryUpdater = repositoryUpdater;
     }
 
+
     public synchronized String complete(String projectId, String frdId) {
         return complete(projectId, frdId, null);
     }
@@ -116,6 +117,7 @@ public class FrdCompletionService {
             throw transitionFailure;
         }
     }
+
 
     private FrdScreen visuallyAffectedScreen(List<FrdScreen> screens, List<String> changedPaths) {
         for (FrdScreen screen : screens) {
