@@ -3,6 +3,7 @@ package com.bizplay.builder.frd;
 import com.bizplay.builder.devrequest.DevelopmentRequest;
 import com.bizplay.builder.devrequest.DevelopmentRequestService;
 import com.bizplay.builder.project.PlanningRepositoryUpdater;
+import com.bizplay.builder.project.ProjectService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.InOrder;
@@ -44,6 +45,7 @@ class FrdCompletionTobeDocumentTest {
     private FrdScreenIaMaterializer iaMaterializer;
     private DevelopmentRequestService developmentRequests;
     private PlanningRepositoryUpdater repositoryUpdater;
+    private ProjectService projects;
     private FrdCompletionService completion;
 
     @BeforeEach
@@ -56,9 +58,13 @@ class FrdCompletionTobeDocumentTest {
         developmentRequests = mock(DevelopmentRequestService.class);
         repositoryUpdater = mock(PlanningRepositoryUpdater.class);
         notes = mock(FrdAnalysisNoteMapper.class);
+        projects = mock(ProjectService.class);
         completion = new FrdCompletionService(frds, screens, screenChats,
                 notes, iaMaterializer, workspaces, developmentRequests,
-                repositoryUpdater);
+                repositoryUpdater, projects);
+        // 올리기는 이 시험의 관심이 아니다 — 자격만 내주고 push 는 mock 워크트리가 삼킨다.
+        when(projects.cloneMaterials(PROJECT)).thenReturn(
+                new ProjectService.CloneMaterials("main", "https://example.invalid/planning.git"));
 
         when(frds.of(PROJECT, FRD)).thenReturn(frd(Frd.State.DRAFTING));
         when(screens.selectByFrdId(FRD)).thenReturn(List.of());

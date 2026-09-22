@@ -247,6 +247,74 @@ class FrdWorkspaceTest {
         assertThat(Modifier.isSynchronized(modifiers)).isTrue();
     }
 
+    /**
+     * ⭐ <b>가지만 올린다 — 기본 브랜치는 건드리지 않는다.</b>
+     * 정본: {@code docs/frd-worktree-lifecycle-design.md} 「종료 계약」.
+     * {@code core/<시스템>/pages/} 는 as-is(사실)를 담는 자리라, 기획이 그린 to-be 가 기본 브랜치로
+     * 넘어가면 <b>다음 FRD 가 그것을 as-is 로 읽는다.</b> 기본 브랜치 병합은 개발이 끝난 뒤
+     * 사용자가 「개발 결과 반영」을 고를 때만 한다.
+     */
+    @Test
+    void 작업_완료한_FRD_가지를_기획_저장소에_올리고_기본_브랜치는_그대로_둔다() throws IOException {
+        Path remote = dataRoot.resolve("remote.git");
+        run(dataRoot, "init", "--bare", "-q", remote.toString());
+        run(clone, "push", remote.toUri().toString(), "HEAD:refs/heads/main");
+        String remoteMainBefore = run(remote, "rev-parse", "refs/heads/main").stdout().strip();
+        FrdWorkspace.Prepared prepared = workspaces.ensure(PROJECT_ID, FRD_ID);
+        Files.writeString(prepared.path().resolve("새 화면.html"), "<main>수정</main>");
+        workspaces.commitChanges(PROJECT_ID, FRD_ID, "docs: FRD-025 작업 완료");
+
+        workspaces.publishBranch(PROJECT_ID, FRD_ID, remote.toUri().toString());
+
+        assertThat(run(remote, "rev-parse", "refs/heads/frd/" + FRD_ID).stdout().strip())
+                .isEqualTo(run(prepared.path(), "rev-parse", "HEAD").stdout().strip());
+        assertThat(run(remote, "rev-parse", "refs/heads/main").stdout().strip())
+                .isEqualTo(remoteMainBefore);
+    }
+
+    /**
+     * ⛔ <b>실패 메시지가 토큰을 실어 나가지 않는다.</b> git 은 push 가 실패하면 원격 주소를
+     * 그대로 되뱉고, 그 주소에는 자격이 박혀 있다 — 화면·로그 양쪽으로 새는 길이다.
+     * ⚠ 그렇다고 사유를 버리면 안 된다(2026-09-22 실측: 버려 놓으니 정작 실패했을 때
+     * 원인을 못 봤다). <b>가리고 남긴다</b>를 여기서 못 박는다.
+     */
+    @Test
+    void 올리기가_실패해도_자격이_메시지에_새지_않는다() throws IOException {
+        FrdWorkspace.Prepared prepared = workspaces.ensure(PROJECT_ID, FRD_ID);
+        Files.writeString(prepared.path().resolve("새 화면.html"), "<main>수정</main>");
+        workspaces.commitChanges(PROJECT_ID, FRD_ID, "docs: FRD-025 작업 완료");
+
+        assertThatThrownBy(() -> workspaces.publishBranch(PROJECT_ID, FRD_ID,
+                "https://oauth2:비밀토큰1234@localhost:1/planning.git"))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageNotContaining("비밀토큰1234");
+    }
+
+    @Test
+    void 가리기는_주소의_자격만_지우고_사유는_남긴다() {
+        String redacted = FrdWorkspace.redactCredentials(
+                "fatal: Authentication failed for 'https://oauth2:비밀토큰1234@github.com/x/y.git/'");
+
+        assertThat(redacted).doesNotContain("비밀토큰1234")
+                .contains("Authentication failed")
+                .contains("github.com/x/y.git");
+    }
+
+    @Test
+    void 올릴_것이_없으면_다시_올려도_그대로_성공한다() throws IOException {
+        Path remote = dataRoot.resolve("remote.git");
+        run(dataRoot, "init", "--bare", "-q", remote.toString());
+        FrdWorkspace.Prepared prepared = workspaces.ensure(PROJECT_ID, FRD_ID);
+        Files.writeString(prepared.path().resolve("새 화면.html"), "<main>수정</main>");
+        workspaces.commitChanges(PROJECT_ID, FRD_ID, "docs: FRD-025 작업 완료");
+        workspaces.publishBranch(PROJECT_ID, FRD_ID, remote.toUri().toString());
+
+        workspaces.publishBranch(PROJECT_ID, FRD_ID, remote.toUri().toString());
+
+        assertThat(run(remote, "rev-parse", "refs/heads/frd/" + FRD_ID).stdout().strip())
+                .isEqualTo(run(prepared.path(), "rev-parse", "HEAD").stdout().strip());
+    }
+
     @Test
     void FRD_작업을_커밋하고_되돌려도_파일_변경은_보존한다() throws IOException {
         FrdWorkspace.Prepared prepared = workspaces.ensure(PROJECT_ID, FRD_ID);

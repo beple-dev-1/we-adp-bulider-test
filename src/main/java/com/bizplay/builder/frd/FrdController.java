@@ -522,6 +522,27 @@ public class FrdController {
         }
     }
 
+    /**
+     * 확정한 FRD 가지를 기획 저장소에 올린다 — 사람이 눌러 부르는 자리다.
+     *
+     * <p>⛔ <b>작업 완료가 이것을 자동으로 부르지 않는다 (2026-09-22 확정)</b> — 설계서와 꾸러미가
+     * 갖춰지기 전에 올리면 반쪽 가지가 먼저 나간다. 자동 올리기는 <b>전송</b>이 맡는다.
+     *
+     * <p>⭐ 여러 번 눌러도 된다. 올릴 것이 없으면 그대로 성공한다.
+     */
+    @PostMapping("/{frdId}/publish")
+    public String publishBranch(@PathVariable String projectId, @PathVariable String frdId,
+                                RedirectAttributes flash) {
+        requireAssignedUser(frds.of(projectId, frdId));
+        try {
+            completion.publish(projectId, frdId);
+            flash.addFlashAttribute("message", "작업 가지를 기획 저장소에 올렸습니다.");
+        } catch (IllegalStateException rejected) {
+            flash.addFlashAttribute("error", rejected.getMessage());
+        }
+        return "redirect:/projects/%s/artifacts/frds/%s".formatted(projectId, frdId);
+    }
+
     /** 선택한 수정 이력의 HTML을 현재 워크트리와 미리보기에 복원한다. */
     @PostMapping("/{frdId}/history/{historyId}/restore")
     public String restoreHistory(@PathVariable String projectId, @PathVariable String frdId,

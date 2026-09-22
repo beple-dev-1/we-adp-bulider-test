@@ -14,6 +14,7 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.LinkedHashMap;
@@ -30,6 +31,9 @@ import java.util.stream.Collectors;
 public class FrdWorkspace {
 
     private static final Logger log = LoggerFactory.getLogger(FrdWorkspace.class);
+
+    /** ⚠ 올리기는 검사보다 오래 걸린다 — 사내망에서 큰 가지를 밀 때를 생각한 값이다(IaPublisher 와 같다). */
+    private static final Duration PUSH_TIMEOUT = Duration.ofMinutes(10);
 
     private final ProjectPaths paths;
     private final GitCommand git;
@@ -283,6 +287,55 @@ public class FrdWorkspace {
         String after = require(workspace, "완료한 FRD 커밋을 확인하지 못했습니다.", "rev-parse", "HEAD")
                 .stdout().strip();
         return new Commit(workspace, before, after);
+    }
+
+    /**
+     * 확정한 FRD 가지를 기획 저장소에 올린다.
+     *
+     * <p>정본: {@code docs/frd-worktree-lifecycle-design.md} 「종료 계약」 — 그 문서의
+     * 「원격 반영」이 이것이다.
+     *
+     * <p>⛔ <b>기본 브랜치로 밀지 마라.</b> 올리는 것은 {@code frd/<FRD ID>} 하나다.
+     * {@code core/<시스템>/pages/} 는 <b>as-is(사실)</b> 를 담는 자리라, 기획이 그린 to-be 가
+     * 기본 브랜치로 넘어가면 <b>다음 FRD 가 그것을 as-is 로 읽는다.</b> 기본 브랜치 병합은
+     * 개발이 끝난 뒤 사용자가 「개발 결과 반영」을 고를 때만 한다.
+     *
+     * <p>⭐ <b>여러 번 불러도 된다.</b> 올릴 것이 없으면 git 이 그대로 성공을 돌려준다 —
+     * 올리기가 실패했을 때 사람이 다시 누를 수 있어야 하므로 그 성질에 기댄다.
+     *
+     * @param authenticatedUrl {@code ProjectService.cloneMaterials(projectId).authenticatedUrl()}.
+     *                         ⚠ 토큰이 박힌 주소다 — 로그나 오류 메시지에 담지 마라.
+     */
+    public synchronized void publishBranch(String projectId, String frdId, String authenticatedUrl) {
+        Path workspace = verifiedWorkspace(projectId, frdId);
+        String branch = branch(frdId);
+        GitResult pushed = git.run(workspace, PUSH_TIMEOUT, "push", authenticatedUrl,
+                "HEAD:refs/heads/" + branch);
+        if (!pushed.succeeded()) {
+            /*
+             * ⛔ git 출력을 그대로 붙이지 않는다 — 실패 메시지에 원격 주소를 되뱉고 그 주소에
+             *   토큰이 박혀 있다. ⚠ 그렇다고 **버리지도 않는다**(2026-09-22 실측: 버려 놓으니
+             *   정작 실패했을 때 로그에 「로그를 보라」만 남아 원인을 못 봤다). 가려서 남긴다.
+             */
+            String reason = redactCredentials(detail(pushed));
+            log.warn("FRD 가지를 기획 저장소에 올리지 못했다 projectId={} frdId={} 가지={} 사유={}",
+                    projectId, frdId, branch, reason);
+            throw new IllegalStateException(authenticationRejected(reason)
+                    ? "기획 저장소가 자격을 거절했습니다. 프로젝트 설정의 저장소 토큰을 확인해 주십시오."
+                    : "FRD 작업을 기획 저장소에 올리지 못했습니다. 가지=" + branch + " " + reason);
+        }
+        log.info("FRD 가지를 기획 저장소에 올렸다 projectId={} frdId={} 가지={}", projectId, frdId, branch);
+    }
+
+    /** {@code https://사용자:토큰@호스트} 의 자격 부분을 지운다. ⛔ 자격이 밖으로 나가는 유일한 길이다. */
+    static String redactCredentials(String text) {
+        return text == null ? null : text.replaceAll("(?i)(https?://)[^/@\s]*@", "$1<자격 가림>@");
+    }
+
+    private static boolean authenticationRejected(String reason) {
+        String lower = reason == null ? "" : reason.toLowerCase();
+        return lower.contains("authentication failed") || lower.contains("invalid username or token")
+                || lower.contains("403") || lower.contains("permission");
     }
 
     /**

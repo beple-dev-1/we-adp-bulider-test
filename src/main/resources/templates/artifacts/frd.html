@@ -34,9 +34,16 @@
                 th:attr="data-work-modified=${completionStatus.modified()},
                          data-completion-status-url=@{/projects/{p}/artifacts/frds/{f}/completion-status(p=${projectId},f=${frd.id()})}">FRD 작업 완료</button>
       </form>
-      <details class="pop rq-head__overflow" th:if="${frd.canDelete() or !resetDisabled}">
+      <details class="pop rq-head__overflow" th:if="${frd.canDelete() or !resetDisabled or frd.state().name() == 'REVIEW'}">
         <summary class="icon-button rq-head__more" aria-label="기타 작업" title="기타 작업"><span aria-hidden="true">⋮</span></summary>
         <div class="pop__body rq-head__overflow-menu">
+          <!-- 사람이 가지를 올리는 자리. 여러 번 눌러도 된다.
+               ⛔ 전송이 서면 그쪽이 설계서·꾸러미와 함께 올린다 — 이 버튼은 그때까지의 손잡이다. -->
+          <form method="post" th:if="${frd.state().name() == 'REVIEW'}"
+                th:action="@{/projects/{p}/artifacts/frds/{f}/publish(p=${projectId},f=${frd.id()})}">
+            <button type="submit">기획 저장소에 올리기</button>
+          </form>
+          <hr th:if="${frd.state().name() == 'REVIEW' and !resetDisabled}">
           <form method="post" th:action="@{/projects/{p}/artifacts/frds/{f}/reset(p=${projectId},f=${frd.id()})}"
                 onsubmit="return confirm('작업 중인 모든 화면 변경이 삭제됩니다. 원본 저장소 기준으로 다시 시작할까요?')">
             <button type="submit" th:disabled="${resetDisabled}">작업공간 초기화</button>
