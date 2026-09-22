@@ -91,6 +91,36 @@
 
 
 
+    <update id="updateDeliveryState">
+        update builder.adk_builder_dev_request
+           set delivery_state = #{deliveryState}, updated_at = now()
+         where id = #{id}
+    </update>
+
+    <select id="selectDeliveryKey" resultType="java.lang.String">
+        select delivery_key
+          from builder.adk_builder_dev_request_delivery
+         where dev_request_id = #{devRequestId}
+         order by started_at desc
+         limit 1
+    </select>
+
+    <insert id="insertDeliveryAttempt">
+        insert into builder.adk_builder_dev_request_delivery
+               (id, dev_request_id, delivery_key, outcome, requested_by, started_at)
+        values (#{id}, #{devRequestId}, #{deliveryKey}, 'SENDING', #{requestedBy}, now())
+    </insert>
+
+    <update id="finishDeliveryAttempt">
+        update builder.adk_builder_dev_request_delivery
+           set outcome = #{outcome},
+               response_id = #{responseId},
+               body_fingerprint = #{bodyFingerprint},
+               failure = #{failure},
+               finished_at = now()
+         where id = #{id}
+    </update>
+
     <select id="countReferencing" parameterType="java.lang.String" resultType="_int">
         select count(*) from builder.adk_builder_dev_request where previous_request_id = #{id}
     </select>

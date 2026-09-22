@@ -14,6 +14,21 @@
             th:classappend="${request.deliveryState().name() == 'SENT' ? request.developmentStateClass() : view.stateClass()}"
             th:text="${request.deliveryState().name() == 'SENT' ? request.developmentStateLabel() : view.stateLabel()}">대기</span>
       <a class="button rq-head__list-action" th:href="@{/projects/{p}/artifacts/dev-requests(p=${projectId},query=${listQuery},state=${listState},owner=${listOwner},system=${listSystem},page=${listPage},pageSize=${listPageSize})}">목록으로</a>
+      <!--
+        개발에 넘기기 — 설계의 칸 3. ⛔ 사람이 누른다. 바깥으로 나가는 일이라 되돌리기 어렵고,
+        「이걸로 넘겨도 된다」는 기계가 아니라 사람만 아는 판단이다.
+        ⚠ 막는 항목이 있거나 정의서를 만드는 중이면 누를 수 없다 — 「보내기 전 확인」이 판정한다.
+      -->
+      <form class="rq-head__deliver-action" method="post"
+            th:action="@{/projects/{p}/artifacts/dev-requests/{r}/deliver(p=${projectId},r=${request.id()})}"
+            th:attr="onsubmit=|return confirm('개발에 넘길까요? 기획 저장소에 dr/${request.label()} 브랜치로 꾸러미를 올립니다.')|">
+        <button class="button button--primary" type="submit"
+                data-submit-loading="꾸러미를 만들어 올리는 중"
+                th:disabled="${view.generating() or !precheck.sendable()}"
+                th:title="${view.generating() ? '정의서 생성이 끝나면 넘길 수 있습니다.'
+                          : (!precheck.sendable() ? '보내기 전 확인의 막는 항목을 먼저 고쳐 주세요.' : null)}"
+                th:text="${request.deliveryState().name() == 'SENT' ? '개발에 다시 넘기기' : '개발에 넘기기'}">개발에 넘기기</button>
+      </form>
       <details class="pop rq-head__overflow"
                th:if="${request.deliveryState().name() == 'NOT_SENT' and !view.srtSource()}">
         <summary class="icon-button rq-head__more" aria-label="기타 작업" title="기타 작업"><span aria-hidden="true">⋮</span></summary>

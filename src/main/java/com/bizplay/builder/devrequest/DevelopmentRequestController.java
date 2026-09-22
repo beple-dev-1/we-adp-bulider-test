@@ -1,7 +1,9 @@
 package com.bizplay.builder.devrequest;
 
+import com.bizplay.builder.account.BuilderUser;
 import com.bizplay.builder.intake.ProjectFacetMapper;
 import com.bizplay.builder.project.ProjectSystemService;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -26,12 +28,15 @@ public class DevelopmentRequestController {
     private static final int PAGE_WINDOW = 10;
 
     private final DevelopmentRequestService requests;
+    private final DevRequestDeliveryService deliveries;
     private final ProjectFacetMapper projectFacets;
     private final ProjectSystemService projectSystems;
 
     public DevelopmentRequestController(DevelopmentRequestService requests,
+                                        DevRequestDeliveryService deliveries,
                                         ProjectFacetMapper projectFacets,
                                         ProjectSystemService projectSystems) {
+        this.deliveries = deliveries;
         this.requests = requests;
         this.projectFacets = projectFacets;
         this.projectSystems = projectSystems;
@@ -162,6 +167,28 @@ public class DevelopmentRequestController {
     public DevelopmentRequestService.Progress progress(@PathVariable String projectId,
                                                        @PathVariable String requestId) {
         return requests.progress(projectId, requestId);
+    }
+
+    /**
+     * 「개발에 넘기기」 — 설계의 칸 3.
+     *
+     * <p>⛔ <b>사람이 누른다.</b> 바깥으로 나가는 일이라 되돌리기 어렵고, 「이걸로 넘겨도 된다」는
+     * 기계가 아니라 사람만 아는 판단이다.
+     *
+     * <p>⭐ 실패해도 <b>개발요청서는 그대로 남는다</b> — 상태만 「대기」로 돌아온다. 사유를 보고
+     * 고친 뒤 다시 누르면 <b>같은 전송 키</b>로 다시 간다.
+     */
+    @PostMapping("/{requestId}/deliver")
+    public String deliver(@PathVariable String projectId, @PathVariable String requestId,
+                          @AuthenticationPrincipal BuilderUser me, RedirectAttributes flash) {
+        try {
+            var published = deliveries.deliver(projectId, requestId, me == null ? null : me.accountId());
+            flash.addFlashAttribute("message",
+                    "개발에 넘겼습니다. 기획 저장소의 %s 브랜치에 꾸러미를 올렸습니다.".formatted(published.branch()));
+        } catch (IllegalArgumentException | IllegalStateException rejected) {
+            flash.addFlashAttribute("error", rejected.getMessage());
+        }
+        return "redirect:/projects/%s/artifacts/dev-requests/%s".formatted(projectId, requestId);
     }
 
     @PostMapping("/{requestId}/return-to-frd")

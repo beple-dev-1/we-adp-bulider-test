@@ -24,8 +24,10 @@ class DevelopmentRequestControllerTest {
     private final DevelopmentRequestService requests = mock(DevelopmentRequestService.class);
     private final ProjectFacetMapper projectFacets = mock(ProjectFacetMapper.class);
     private final ProjectSystemService projectSystems = mock(ProjectSystemService.class);
+    // 넘기기는 이 시험의 관심이 아니다 — 목록·상세만 본다.
+    private final DevRequestDeliveryService deliveries = mock(DevRequestDeliveryService.class);
     private final DevelopmentRequestController controller =
-            new DevelopmentRequestController(requests, projectFacets, projectSystems);
+            new DevelopmentRequestController(requests, deliveries, projectFacets, projectSystems);
 
     @Test
     void 개발요청서_목록은_요청한_페이지와_목록_크기만_내린다() {
