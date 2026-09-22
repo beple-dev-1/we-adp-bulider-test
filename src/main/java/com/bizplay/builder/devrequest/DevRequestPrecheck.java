@@ -8,6 +8,7 @@ import com.bizplay.builder.frd.FrdScreenHistory;
 import com.bizplay.builder.frd.FrdScreenHistoryMapper;
 import com.bizplay.builder.frd.FrdScreenMapper;
 import com.bizplay.builder.frd.FrdWorkspace;
+import com.bizplay.builder.frd.ScreenIdFormat;
 import com.bizplay.builder.frd.ScreenTobeDocumentWorker;
 import com.bizplay.builder.project.ProjectPaths;
 import org.springframework.stereotype.Component;
@@ -213,14 +214,21 @@ public class DevRequestPrecheck {
                              List<Item> blocking, List<Item> warnings) {
         String subject = screen.displayName();
 
-        if (screen.deliveryScreenId() == null || screen.deliveryScreenId().isBlank()
-                || screen.deliveryScreenId().startsWith("tmp-")
-                || !screen.deliveryScreenId().matches("^[a-z0-9][a-z0-9-]*$")) {
+        if (!ScreenIdFormat.isDeliverable(screen.deliveryScreenId())) {
+            /*
+             * ⚠ 안내는 **사람이 실제로 할 수 있는 것**만 적는다 (2026-09-22).
+             *   종전 문구는 「FRD 작업 완료를 다시 실행해 화면 ID를 자동 생성해 주세요」였는데,
+             *   기존 화면의 화면ID 는 클론이 정하는 값이라 몇 번 눌러도 안 바뀐다 —
+             *   못 고치는 것을 고치라고 해서 사용자가 같은 자리를 반복해 눌렀다.
+             */
             blocking.add(new Item(subject, "개발에서 사용할 화면 ID가 없습니다.",
-                    "FRD 작업 완료를 다시 실행해 화면 ID를 자동 생성해 주세요."));
+                    screen.isNewScreen()
+                            ? "이 신규 화면의 개발용 이름이 아직 예약되지 않았습니다. "
+                              + "개발 범위 확인에서 화면 위치를 확정하면 이름이 정해집니다."
+                            : "이 화면의 ID 를 개발 이름으로 쓸 수 없습니다. 클론이 준 값이라 "
+                              + "이 화면에서는 고칠 수 없습니다 — 관리자에게 알려 주십시오."));
         }
-        if (screen.isNewScreen() && screen.deliveryScreenId() != null
-                && screen.deliveryScreenId().matches("^[a-z0-9][a-z0-9-]*$")) {
+        if (screen.isNewScreen() && ScreenIdFormat.isValid(screen.deliveryScreenId())) {
             Path occupied = paths.cloneDir(request.projectId()).resolve("core")
                     .resolve(system(screen)).resolve("pages")
                     .resolve(screen.deliveryScreenId() + ".html");

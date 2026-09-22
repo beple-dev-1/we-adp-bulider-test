@@ -136,7 +136,7 @@ public class FrdScreenIaPlacementService {
                                                 Set<String> unavailableNames) {
         String prefix = safePart(screen.systemCode(), "screen");
         String base = screen.baseScreenId();
-        String stem = base != null && base.matches("^[a-z0-9][a-z0-9-]*$") && !base.startsWith("tmp-")
+        String stem = ScreenIdFormat.isDeliverable(base)
                 ? base + "-new"
                 : prefix + "-" + typePart(screen.screenType());
         String suffix = screen.id() == null ? "new" : screen.id().replaceFirst("^0+", "");
