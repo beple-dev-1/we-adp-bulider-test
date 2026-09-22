@@ -12,7 +12,6 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
 import java.util.Comparator;
-import java.util.function.Consumer;
 
 /**
  * 꾸러미를 <b>전달 전용 브랜치</b>({@code dr/DR-nnn})로 올린다.
@@ -50,8 +49,19 @@ public class DevRequestDeliveryWorkspace {
         this.timeout = timeout;
     }
 
-    /** 올린 자리 — 어느 브랜치의 어느 커밋인가. 이 둘이 「보냈다」의 증거다. */
-    public record Published(String branch, String commit) {
+    /**
+     * 올린 자리 — 어느 브랜치의 어느 커밋인가. 이 둘이 「보냈다」의 증거다.
+     *
+     * @param base 이 꾸러미가 갈라 나온 <b>기본 브랜치의 그때 판</b>. 역류가 이 값 위에서 갈라 와야
+     *             한다 — 개발에게 알려 줄 기준이고, 목록과 {@code expected-back.md} 가 같은 값을 쓴다
+     */
+    public record Published(String branch, String commit, String base) {
+    }
+
+    /** 꾸러미를 쓰는 일. 기준 커밋을 함께 받는다 — 「돌려받을 것」이 그 값을 담기 때문이다. */
+    @FunctionalInterface
+    public interface PackageWriter {
+        void write(Path worktree, String base);
     }
 
     /**
@@ -65,16 +75,25 @@ public class DevRequestDeliveryWorkspace {
      */
     public synchronized Published publish(String projectId, String requestId, String label,
                                           String defaultBranch, String authenticatedUrl,
-                                          Consumer<Path> writePackage) {
+                                          PackageWriter writePackage) {
         Path clone = paths.cloneDir(projectId);
         Path worktree = paths.devRequestDeliveryWorktree(projectId, requestId);
         String branch = "dr/" + label;
         try {
             discard(clone, worktree);
+            /*
+             * ⭐ 로컬 클론이 아니라 **원격의 지금 판**에서 가른다. 로컬은 낡아 있을 수 있고
+             *   (사용자가 일부러 안 맞춰 두기도 한다), 낡은 자리에서 가르면 개발에게
+             *   **낡은 기준**을 알려 주게 된다 — 그 기준으로 갈라 온 역류는 병합이 막힌다.
+             */
+            require(clone, "기획 저장소의 기본 브랜치를 받지 못했습니다.",
+                    "fetch", authenticatedUrl, defaultBranch);
+            String base = require(clone, "기준 커밋을 확인하지 못했습니다.",
+                    "rev-parse", "FETCH_HEAD").stdout().strip();
             require(clone, "전달 작업 자리를 만들지 못했습니다.",
-                    "worktree", "add", "-B", branch, worktree.toString(), defaultBranch);
+                    "worktree", "add", "-B", branch, worktree.toString(), base);
 
-            writePackage.accept(worktree);
+            writePackage.write(worktree, base);
 
             require(worktree, "꾸러미를 커밋 대상으로 올리지 못했습니다.", "add", "-A");
             GitResult changed = git.run(worktree, timeout, "diff", "--cached", "--quiet");
@@ -108,9 +127,9 @@ public class DevRequestDeliveryWorkspace {
                         ? "기획 저장소가 자격을 거절했습니다. 프로젝트 설정의 저장소 토큰을 확인해 주십시오."
                         : "꾸러미를 기획 저장소에 올리지 못했습니다. 브랜치=" + branch + " " + reason);
             }
-            log.info("꾸러미를 올렸다 projectId={} 개발요청서={} 브랜치={} 커밋={}",
-                    projectId, requestId, branch, commit);
-            return new Published(branch, commit);
+            log.info("꾸러미를 올렸다 projectId={} 개발요청서={} 브랜치={} 커밋={} 기준={}",
+                    projectId, requestId, branch, commit, base);
+            return new Published(branch, commit, base);
         } finally {
             // ⭐ 전달 워크트리는 전송이 끝나면 지운다 — 성공이든 실패든. 브랜치는 남는다.
             discard(clone, worktree);

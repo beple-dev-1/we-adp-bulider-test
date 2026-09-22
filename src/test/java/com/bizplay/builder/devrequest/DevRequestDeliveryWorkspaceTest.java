@@ -96,7 +96,7 @@ class DevRequestDeliveryWorkspaceTest {
     @Test
     void 다시_구우면_앞판이_남지_않는다() throws IOException {
         deliveries.publish(PROJECT, REQUEST, "DR-009", "main", remote.toUri().toString(),
-                worktree -> {
+                (worktree, base) -> {
                     write(worktree, "DR-009/dev-request.md", "첫 판");
                     write(worktree, "DR-009/버린다.md", "두 번째 판에는 없다");
                 });
@@ -181,7 +181,7 @@ class DevRequestDeliveryWorkspaceTest {
                 "key");
     }
 
-    private void writePackage(Path worktree) {
+    private void writePackage(Path worktree, String base) {
         write(worktree, "DR-009/dev-request.md", "# DR-009 · 에이블리 회원가입 프리필\n");
         write(worktree, "DR-009/manifest.json", "{\"specVersion\": 2}\n");
         write(worktree, "DR-009/screens/EXW/EXW-UWV-70-30-10-C/to-be.html", "<main>프리필된 회원가입</main>");

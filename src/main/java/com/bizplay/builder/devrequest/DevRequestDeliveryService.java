@@ -62,6 +62,7 @@ public class DevRequestDeliveryService {
     private final DevRequestDeliveryWorkspace deliveries;
     private final DevRequestPackage packages;
     private final DevRequestDocument documents;
+    private final ExpectedBackDocument expectedBacks;
     private final ProjectService projects;
     private final ProjectPaths paths;
     private final IdSequence ids;
@@ -72,6 +73,7 @@ public class DevRequestDeliveryService {
                                      FrdScreenHistoryMapper histories, FrdWorkspace workspaces,
                                      DevRequestDeliveryWorkspace deliveries,
                                      DevRequestPackage packages, DevRequestDocument documents,
+                                     ExpectedBackDocument expectedBacks,
                                      ProjectService projects, ProjectPaths paths, IdSequence ids) {
         this.requests = requests;
         this.requestService = requestService;
@@ -82,6 +84,7 @@ public class DevRequestDeliveryService {
         this.deliveries = deliveries;
         this.packages = packages;
         this.documents = documents;
+        this.expectedBacks = expectedBacks;
         this.projects = projects;
         this.paths = paths;
         this.ids = ids;
@@ -124,7 +127,8 @@ public class DevRequestDeliveryService {
             DevRequestDeliveryWorkspace.Published published = deliveries.publish(
                     projectId, requestId, sent.label(), projects.cloneMaterials(projectId).defaultBranch(),
                     projects.cloneMaterials(projectId).authenticatedUrl(),
-                    worktree -> fingerprint[0] = writePackage(projectId, sent, view, worktree));
+                    (worktree, base) -> fingerprint[0] =
+                            writePackage(projectId, sent, view, worktree, base));
 
             /*
              * ⭐ 목록을 올린 **뒤에** 전송완료로 표시한다 — 그래야 「SENT」가
@@ -163,7 +167,7 @@ public class DevRequestDeliveryService {
                                       DevRequestDeliveryWorkspace.Published published,
                                       String deliveryKey) {
         DeliveryIndex.Entry entry = new DeliveryIndex.Entry(sent.label(), published.branch(),
-                published.commit(), sent.workspaceBaseSha(), sent.systemCode(),
+                published.commit(), published.base(), sent.systemCode(),
                 view.content().screens().stream()
                         .map(DevelopmentRequestContent.Screen::deliveryScreenId).toList(),
                 Instant.now(), deliveryKey);
@@ -222,14 +226,26 @@ public class DevRequestDeliveryService {
      * @return 보낸 몸의 지문 — {@code manifest.json} 의 sha256
      */
     private String writePackage(String projectId, DevelopmentRequest request,
-                                DevelopmentRequestService.View view, Path deliveryWorktree) {
+                                DevelopmentRequestService.View view, Path deliveryWorktree,
+                                String base) {
         Path dir = deliveryWorktree.resolve(request.label());
         Path frdWorktree = paths.frdWorktree(projectId, request.frdId());
-        packages.write(frdWorktree, packageRequest(request, view), dir);
+        /*
+         * ⭐ 「돌려받을 것」을 여기서 한 번 계산해 **셋이 같은 것을 쓴다** —
+         *   manifest.expectedBack · expected-back.md · (나중에) 받는 자리의 검사.
+         * ⚠ 보호 화면 목록은 오늘 늘 비어 있다 — 그 표시를 담는 자리가 빌더에 아직 없다.
+         */
+        ExpectedBack back = ExpectedBack.of("feedback/" + request.label(), base,
+                view.content(), List.of());
+        packages.write(frdWorktree, packageRequest(request, view, back), dir);
         try {
             Path manifest = dir.resolve("manifest.json");
             Files.writeString(dir.resolve("dev-request.md"),
                     documents.render(meta(request, view), view.content(), manifest),
+                    StandardCharsets.UTF_8);
+            Files.writeString(dir.resolve("expected-back.md"),
+                    expectedBacks.render(new ExpectedBackDocument.Meta(request.label()), back,
+                            view.content()),
                     StandardCharsets.UTF_8);
             return sha256(Files.readAllBytes(manifest));
         } catch (IOException failed) {
@@ -238,13 +254,14 @@ public class DevRequestDeliveryService {
     }
 
     private static DevRequestPackage.Request packageRequest(DevelopmentRequest request,
-                                                            DevelopmentRequestService.View view) {
+                                                            DevelopmentRequestService.View view,
+                                                            ExpectedBack back) {
         List<DevRequestPackage.Screen> screens = view.content().screens().stream()
                 .map(screen -> new DevRequestPackage.Screen(screen.systemCode(),
                         screen.deliveryScreenId(), screen.displayName(), screen.changes()))
                 .toList();
         return new DevRequestPackage.Request(request.label(),
-                request.workspaceBaseSha(), request.workspaceHeadSha(), screens);
+                request.workspaceBaseSha(), request.workspaceHeadSha(), screens, back);
     }
 
     private DevRequestDocument.Meta meta(DevelopmentRequest request,

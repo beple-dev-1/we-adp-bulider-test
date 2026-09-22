@@ -45,6 +45,9 @@ public class DevRequestPackage {
     /** ⚠ {@code expected-back.md} 가 필수가 된 판의 번호다. 배치를 바꾸면 이 값을 올린다. */
     private static final int SPEC_VERSION = 2;
 
+    /** ⚠ 자바 소스에 줄바꿈을 직접 적으면 문자열이 깨진다 — 한 자리에 둔다. */
+    private static final String NEWLINE = "\n";
+
     private final GitCommand git;
     private final Duration timeout;
 
@@ -64,7 +67,13 @@ public class DevRequestPackage {
      * @param asIsCommit 완료 커밋의 앞판
      * @param toBeCommit 완료 커밋의 뒷판
      */
-    public record Request(String label, String asIsCommit, String toBeCommit, List<Screen> screens) {
+    public record Request(String label, String asIsCommit, String toBeCommit, List<Screen> screens,
+                         ExpectedBack expectedBack) {
+
+        /** ⚠ 「돌려받을 것」이 아직 없는 자리(시험·옛 호출)에서 쓴다. */
+        public Request(String label, String asIsCommit, String toBeCommit, List<Screen> screens) {
+            this(label, asIsCommit, toBeCommit, screens, null);
+        }
     }
 
     /**
@@ -247,13 +256,68 @@ public class DevRequestPackage {
          *   대조 없이 자리를 지키는 유일한 문 지킴이다(설계 2026-08-24).
          *   ⚠ 지금은 화면 목록만 담는다. 백엔드 모듈은 스냅샷이 버리고 있어 다음 걸음이다.
          */
-        json.append("  \"expectedBack\": {\n    \"screens\": [");
-        List<String> ids = screens.stream().map(screen -> (String) screen.get("screenId")).toList();
-        for (int i = 0; i < ids.size(); i++) {
-            json.append(i == 0 ? "" : ", ").append(quote(ids.get(i)));
-        }
-        json.append("]\n  }\n}\n");
+        json.append("  \"expectedBack\": ")
+                .append(expectedBackJson(request.expectedBack(), screens)).append("\n");
+        json.append("}\n");
         return json.toString();
+    }
+
+    /**
+     * 「돌려받을 것」 — <b>목록 밖 화면ID 거절의 근거</b>다. 역류가 as-is 재료를 실어 오므로
+     * 대조 없이 자리를 지키는 유일한 문 지킴이다(설계 2026-08-24).
+     *
+     * <p>⛔ <b>여기서 계산하지 않는다</b> — {@link ExpectedBack} 이 계산하고 사람용
+     * {@code expected-back.md} 도 그것을 그린다. 둘이 갈리면 개발이 본 표와 우리가 검사하는
+     * 목록이 달라진다.
+     *
+     * <p>⚠ 아직 없는 꾸러미(옛 호출·시험)는 화면ID 목록만 낸다 — 종전 꼴 그대로다.
+     */
+    private static String expectedBackJson(ExpectedBack back, List<Map<String, Object>> screens) {
+        StringBuilder json = new StringBuilder("{" + NEWLINE);
+        if (back == null) {
+            json.append("    " + quote("screens") + ": [");
+            List<String> ids = screens.stream().map(screen -> (String) screen.get("screenId")).toList();
+            for (int i = 0; i < ids.size(); i++) {
+                json.append(i == 0 ? "" : ", ").append(quote(ids.get(i)));
+            }
+            return json.append("]" + NEWLINE + "  }").toString();
+        }
+        json.append("    ").append(quote("returnBranch")).append(": ")
+                .append(quote(back.returnBranch())).append("," + NEWLINE);
+        json.append("    ").append(quote("base")).append(": ")
+                .append(quote(back.base())).append("," + NEWLINE);
+        json.append("    ").append(quote("screens")).append(": [");
+        for (int i = 0; i < back.screens().size(); i++) {
+            ExpectedBack.Screen screen = back.screens().get(i);
+            json.append(i == 0 ? "" : ", ").append("{")
+                    .append(quote("screenId")).append(": ").append(quote(screen.screenId())).append(", ")
+                    .append(quote("system")).append(": ").append(quote(screen.systemCode())).append(", ")
+                    .append(quote("required")).append(": ").append(strings(screen.required()))
+                    .append("}");
+        }
+        json.append("]," + NEWLINE);
+        json.append("    ").append(quote("domains")).append(": [");
+        for (int i = 0; i < back.domains().size(); i++) {
+            ExpectedBack.Domain domain = back.domains().get(i);
+            json.append(i == 0 ? "" : ", ").append("{")
+                    .append(quote("target")).append(": ").append(quote(domain.target())).append(", ")
+                    .append(quote("change")).append(": ").append(quote(domain.change()))
+                    .append("}");
+        }
+        json.append("]," + NEWLINE);
+        json.append("    ").append(quote("tests")).append(": {")
+                .append(quote("unit")).append(": ").append(strings(back.unitTests())).append(", ")
+                .append(quote("integration")).append(": ").append(strings(back.integrationTests()))
+                .append("}" + NEWLINE);
+        return json.append("  }").toString();
+    }
+
+    private static String strings(List<String> values) {
+        StringBuilder json = new StringBuilder("[");
+        for (int i = 0; i < values.size(); i++) {
+            json.append(i == 0 ? "" : ", ").append(quote(values.get(i)));
+        }
+        return json.append("]").toString();
     }
 
     private static String screenJson(Map<String, Object> screen) {
