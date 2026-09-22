@@ -14,7 +14,11 @@ import java.time.Duration;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.LinkedHashSet;
 import java.util.Map;
+import java.util.Set;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipInputStream;
 
 /**
  * 전송 꾸러미의 <b>화면 층과 {@code manifest.json}</b> 을 만든다.
@@ -76,11 +80,73 @@ public class DevRequestPackage {
             for (Screen screen : request.screens()) {
                 screens.add(writeScreen(worktree, request, screen, outDir));
             }
+            List<Map<String, Object>> assetRoots = writeAssets(worktree, request, outDir);
             Files.writeString(outDir.resolve("manifest.json"),
-                    manifest(request, screens), StandardCharsets.UTF_8);
+                    manifest(request, screens, assetRoots), StandardCharsets.UTF_8);
             return outDir;
         } catch (IOException failed) {
             throw new UncheckedIOException("전송 꾸러미를 쓰지 못했습니다.", failed);
+        }
+    }
+
+    /**
+     * 시스템마다 자산({@code css}·{@code js}·이미지)을 <b>한 벌</b> 담는다.
+     *
+     * <p>⭐ <b>이 층이 목업을 혼자 서게 한다.</b> 페이지 html 은 자산을
+     * {@code ../assets/webview_api/css/style.css} 꼴 <b>상대경로</b>로 부른다. 그래서
+     * {@code screens/<시스템>/<화면ID>/to-be.html} 에 두면 {@code ../assets/} 가
+     * {@code screens/<시스템>/assets/} 로 그대로 맞는다 — <b>html 을 한 글자도 안 고친다.</b>
+     * ⛔ 자산을 빼면 개발이 to-be 를 열었을 때 스타일이 깨진 화면을 본다.
+     *
+     * <p>⭐ <b>무게를 겁내지 않아도 되는 까닭</b> — 꾸러미를 같은 저장소 브랜치에 커밋하면
+     * git 이 내용으로 저장하므로 같은 파일이 다시 쌓이지 않는다. 늘어나는 것은 트리 항목이다.
+     * (실측 2026-09-22: EXW 자산은 42MB · 1211파일이다.)
+     *
+     * <p>⚠ {@code git archive} 로 받는다. {@code git show} 로 하나씩 받으면 자산 1200장에 git
+     * 호출이 1200번이고, <b>그림은 stdout 으로 받으면 깨진다</b>. 그래서 {@code -o} 로 zip 에
+     * 받아 자바가 푼다.
+     *
+     * @return {@code manifest.assetRoots} 에 적을 「어디서 떠 왔나」 — ⛔ 무엇을 골랐나가 아니다
+     */
+    private List<Map<String, Object>> writeAssets(Path worktree, Request request, Path outDir)
+            throws IOException {
+        List<Map<String, Object>> roots = new ArrayList<>();
+        Set<String> systems = new LinkedHashSet<>();
+        request.screens().forEach(screen -> systems.add(screen.systemCode()));
+        for (String system : systems) {
+            String from = "core/" + system + "/assets";
+            Path zip = outDir.resolve("_assets-" + system + ".zip");
+            GitResult archived = git.run(worktree, timeout, "archive", "--format=zip",
+                    "-o", zip.toString(), request.toBeCommit(), from);
+            if (!archived.succeeded()) {
+                // ⚠ 자산이 없는 시스템도 있다 — 빈 폴더를 만들지 않고 manifest 에도 적지 않는다.
+                Files.deleteIfExists(zip);
+                continue;
+            }
+            unzipInto(zip, from + "/", outDir.resolve("screens/" + system + "/assets"));
+            Files.deleteIfExists(zip);
+            Map<String, Object> root = new LinkedHashMap<>();
+            root.put("systemCode", system);
+            root.put("from", from);
+            roots.add(root);
+        }
+        return roots;
+    }
+
+    private static void unzipInto(Path zip, String stripPrefix, Path target) throws IOException {
+        try (ZipInputStream zis = new ZipInputStream(Files.newInputStream(zip))) {
+            for (ZipEntry entry = zis.getNextEntry(); entry != null; entry = zis.getNextEntry()) {
+                if (entry.isDirectory() || !entry.getName().startsWith(stripPrefix)) {
+                    continue;
+                }
+                Path out = target.resolve(entry.getName().substring(stripPrefix.length())).normalize();
+                // ⛔ zip 안의 이름이 밖을 가리키면 거절한다 — 우리가 만든 zip 이지만 규율은 둔다.
+                if (!out.startsWith(target)) {
+                    throw new IllegalStateException("자산 경로가 꾸러미 밖을 가리킵니다: " + entry.getName());
+                }
+                Files.createDirectories(out.getParent());
+                Files.copy(zis, out);
+            }
         }
     }
 
@@ -150,7 +216,8 @@ public class DevRequestPackage {
         return entry;
     }
 
-    private static String manifest(Request request, List<Map<String, Object>> screens) {
+    private static String manifest(Request request, List<Map<String, Object>> screens,
+                                   List<Map<String, Object>> assetRoots) {
         StringBuilder json = new StringBuilder();
         json.append("{\n  \"specVersion\": ").append(SPEC_VERSION).append(",\n");
         json.append("  \"request\": {\n")
@@ -163,6 +230,18 @@ public class DevRequestPackage {
             json.append(i == 0 ? "\n" : ",\n").append(screenJson(screens.get(i)));
         }
         json.append(screens.isEmpty() ? "]," : "\n  ],").append('\n');
+        /*
+         * ⭐ 「어디서 떠 왔나」만 적는다 (설계) — 무엇을 골랐나가 아니다. 고른 목록을 적으면
+         *   screens/<시스템>/assets/ 의 실물과 갈리고, 갈린 순간 어느 쪽이 맞는지 모른다.
+         */
+        json.append("  \"assetRoots\": [");
+        for (int i = 0; i < assetRoots.size(); i++) {
+            Map<String, Object> root = assetRoots.get(i);
+            json.append(i == 0 ? "" : ", ")
+                    .append("{\"systemCode\": ").append(quote((String) root.get("systemCode")))
+                    .append(", \"from\": ").append(quote((String) root.get("from"))).append('}');
+        }
+        json.append("],\n");
         /*
          * ⭐ expectedBack 은 「목록 밖 화면ID 거절」의 근거다 — 역류가 as-is 재료를 실어 오므로
          *   대조 없이 자리를 지키는 유일한 문 지킴이다(설계 2026-08-24).

@@ -41,7 +41,10 @@ class DevRequestPackageTest {
         packages = new DevRequestPackage(git, Duration.ofSeconds(30));
         worktree = root.resolve("worktree");
         Files.createDirectories(worktree.resolve("core/EXW/pages"));
-        write("core/EXW/pages/EXW-UWV-70-30-10-C.html", "<main>현재 회원가입</main>");
+        write("core/EXW/assets/webview_api/css/style.css", "body{color:#111}");
+        write("core/EXW/assets/webview_api/img/logo.png", "PNG-표본");
+        write("core/EXW/pages/EXW-UWV-70-30-10-C.html",
+                "<link href=\"../assets/webview_api/css/style.css\"><main>현재 회원가입</main>");
         write("core/EXW/pages/EXW-UWV-70-30-10-C.md", "# 회원가입\n현재 정의서\n");
         run("init", "-q");
         run("config", "user.email", "t@example.com");
@@ -50,7 +53,8 @@ class DevRequestPackageTest {
         run("commit", "-q", "-m", "as-is");
         asIsSha = run("rev-parse", "HEAD").stdout().strip();
 
-        write("core/EXW/pages/EXW-UWV-70-30-10-C.html", "<main>프리필된 회원가입</main>");
+        write("core/EXW/pages/EXW-UWV-70-30-10-C.html",
+                "<link href=\"../assets/webview_api/css/style.css\"><main>프리필된 회원가입</main>");
         write("core/EXW/pages/EXW-UWV-70-30-10-C.md", "# 회원가입\n프리필 정의서\n");
         run("add", ".");
         run("commit", "-q", "-m", "to-be");
@@ -88,6 +92,56 @@ class DevRequestPackageTest {
         assertThat(files.get(0).get("path").asText())
                 .isEqualTo("screens/EXW/EXW-UWV-70-30-10-C/as-is.html");
         assertThat(files.get(0).get("sha256").asText()).hasSize(64);
+    }
+
+    /**
+     * ⭐ <b>시스템 층이 왜 있나 — 목업이 혼자 서게 하는 값이다.</b>
+     * 페이지 html 은 자산을 {@code ../assets/webview_api/css/style.css} 꼴 <b>상대경로</b>로 부른다.
+     * 그래서 {@code screens/<시스템>/<화면ID>/to-be.html} 에 두면 {@code ../assets/} 가
+     * {@code screens/<시스템>/assets/} 로 <b>그대로 맞는다</b> — 경로를 손대지 않으려는 배치다.
+     * 이 시험이 그 상대경로를 실제로 따라가 파일이 있는지 본다.
+     */
+    @Test
+    void 화면이_부르는_상대경로가_꾸러미_안에서_그대로_맞는다() throws IOException {
+        Path out = root.resolve("DR-009");
+
+        packages.write(worktree, request(), out);
+
+        Path tobe = out.resolve("screens/EXW/EXW-UWV-70-30-10-C/to-be.html");
+        String html = Files.readString(tobe);
+        assertThat(html).contains("../assets/webview_api/css/style.css");
+        // ⭐ html 이 적은 그 경로를 그대로 따라간다 — 계산한 경로가 아니라 적힌 경로다.
+        Path resolved = tobe.getParent().resolve("../assets/webview_api/css/style.css").normalize();
+        assertThat(resolved).exists();
+        assertThat(Files.readString(resolved)).contains("color:#111");
+        assertThat(out.resolve("screens/EXW/assets/webview_api/img/logo.png")).exists();
+    }
+
+    @Test
+    void manifest_는_자산을_어디서_떠_왔는지_적는다() throws IOException {
+        Path out = root.resolve("DR-009");
+
+        packages.write(worktree, request(), out);
+
+        JsonNode roots = new ObjectMapper().readTree(out.resolve("manifest.json").toFile())
+                .get("assetRoots");
+        assertThat(roots).hasSize(1);
+        assertThat(roots.get(0).get("systemCode").asText()).isEqualTo("EXW");
+        assertThat(roots.get(0).get("from").asText()).isEqualTo("core/EXW/assets");
+    }
+
+    /** ⚠ 자산이 없는 시스템도 있다 — 그때 빈 폴더를 만들지 않고 manifest 에도 적지 않는다. */
+    @Test
+    void 자산이_없으면_폴더도_manifest_항목도_만들지_않는다() throws IOException {
+        Path out = root.resolve("DR-012");
+
+        packages.write(worktree, new DevRequestPackage.Request("DR-012", asIsSha, toBeSha,
+                List.of(new DevRequestPackage.Screen("MGC", "MGC-AAA-10-S", "없는 시스템 화면",
+                        List.of("바꾼다")))), out);
+
+        assertThat(out.resolve("screens/MGC/assets")).doesNotExist();
+        assertThat(new ObjectMapper().readTree(out.resolve("manifest.json").toFile())
+                .get("assetRoots")).isEmpty();
     }
 
     /**
