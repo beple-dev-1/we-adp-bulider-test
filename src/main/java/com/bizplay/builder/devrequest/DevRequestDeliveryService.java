@@ -111,12 +111,19 @@ public class DevRequestDeliveryService {
 
         try {
             materializeTobeDocuments(projectId, request);
+            /*
+             * ⛔ 설계서를 커밋한 뒤 **다시 읽는다.** materializeTobeDocuments 가 전달 기준판
+             *   (workspace_head_sha)을 옮기는데, 손에 든 객체는 옛 값 그대로다. 그대로 쓰면
+             *   꾸러미가 **설계서가 없던 판**에서 뽑혀 to-be.md 가 as-is 와 같아진다 —
+             *   2026-09-22 에 실제로 겪은 그 모양이다.
+             */
+            DevelopmentRequest sent = requests.selectById(requestId);
             DevelopmentRequestService.View view = requestService.read(projectId, requestId);
             String[] fingerprint = new String[1];
             DevRequestDeliveryWorkspace.Published published = deliveries.publish(
-                    projectId, requestId, request.label(), projects.cloneMaterials(projectId).defaultBranch(),
+                    projectId, requestId, sent.label(), projects.cloneMaterials(projectId).defaultBranch(),
                     projects.cloneMaterials(projectId).authenticatedUrl(),
-                    worktree -> fingerprint[0] = writePackage(projectId, request, view, worktree));
+                    worktree -> fingerprint[0] = writePackage(projectId, sent, view, worktree));
 
             requests.finishDeliveryAttempt(attemptId, DevelopmentRequest.DeliveryState.SENT.name(),
                     published.commit(), fingerprint[0], null);
