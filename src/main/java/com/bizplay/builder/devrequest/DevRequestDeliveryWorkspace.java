@@ -11,7 +11,10 @@ import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.LinkedHashSet;
+import java.util.List;
 
 /**
  * 꾸러미를 <b>전달 전용 브랜치</b>({@code dr/DR-nnn})로 올린다.
@@ -35,6 +38,13 @@ import java.util.Comparator;
 public class DevRequestDeliveryWorkspace {
 
     private static final Logger log = LoggerFactory.getLogger(DevRequestDeliveryWorkspace.class);
+
+    /**
+     * ⭐ 받기 커밋의 신원 — 기획이 만든 커밋과 <b>이력에서 갈린다</b>(설계 「커밋 신원 — 빌더 수신」).
+     * ⛔ 기획 쪽 신원과 같게 두지 마라 — 무엇이 개발에서 온 것인지 나중에 못 가린다.
+     */
+    private static final String RECEIVER_NAME = "WE-ADP Builder 수신";
+    private static final String RECEIVER_EMAIL = "builder+received@we-adp.local";
 
     /** ⚠ 올리기는 검사보다 오래 걸린다 — 자산이 함께 나가므로 넉넉히 둔다. */
     private static final Duration PUSH_TIMEOUT = Duration.ofMinutes(10);
@@ -213,6 +223,103 @@ public class DevRequestDeliveryWorkspace {
             Files.writeString(path, content, java.nio.charset.StandardCharsets.UTF_8);
         } catch (IOException failed) {
             throw new UncheckedIOException("전달 목록을 쓰지 못했습니다.", failed);
+        }
+    }
+
+    /** 받은 결과 — 놓았으면 커밋이, 거절이면 사유가 담긴다. */
+    public record Received(boolean accepted, List<String> rejections, String commit) {
+    }
+
+    /** 회신서와 지금 기준을 받아 판정하는 일. ⛔ 규율은 이 클래스가 아니라 판정기가 안다. */
+    @FunctionalInterface
+    public interface Judge {
+        ReturnBatch.Verdict judge(String returnJson, String currentBase);
+    }
+
+    /**
+     * 개발이 돌려보낸 배치를 <b>골라 담아</b> 기본 브랜치에 놓는다.
+     *
+     * <p>정본: {@code docs/superpowers/specs/2026-08-07-dev-feedback-design.md}
+     * 「받으면 바로 넣는다 — 사람이 끼어들지 않는다」.
+     *
+     * <p>⭐ <b>통째 병합이 아니다.</b> 받지 않기로 한 것이 있으므로 {@code merge} 는 못 쓴다 —
+     * {@code checkout <회신판> -- <받을 파일>} 로 꺼내 <b>커밋 하나</b>를 만든다.
+     * 그래서 「배치가 다 차고 전부 규격을 지나야 커밋한다 · 커밋은 배치당 하나」가 성립한다.
+     *
+     * <p>⭐ <b>하나라도 떨어지면 아무것도 안 놓는다.</b> 임시 워크트리에서만 만들다 버리므로
+     * 반쪽 상태가 원격에 남을 길이 없다.
+     *
+     * <p>⭐ <b>받기 커밋은 신원을 갈라 찍는다</b> — 설계에 「커밋 신원 — 『빌더 수신』」 절이 있다.
+     * 기획이 만든 커밋과 개발 결과를 받아 놓은 커밋이 이력에서 구분되어야 한다.
+     */
+    public synchronized Received receive(String projectId, String requestId, String defaultBranch,
+                                         String authenticatedUrl, String feedbackBranch,
+                                         String returnFilePath, Judge judge, String message) {
+        Path clone = paths.cloneDir(projectId);
+        Path worktree = paths.devRequestDeliveryWorktree(projectId, requestId);
+        try {
+            discard(clone, worktree);
+            require(clone, "기획 저장소의 기본 브랜치를 받지 못했습니다.",
+                    "fetch", authenticatedUrl, defaultBranch);
+            String currentBase = require(clone, "기준 커밋을 확인하지 못했습니다.",
+                    "rev-parse", "FETCH_HEAD").stdout().strip();
+
+            GitResult fetched = git.run(clone, timeout, "fetch", authenticatedUrl, feedbackBranch);
+            if (!fetched.succeeded()) {
+                return new Received(false,
+                        List.of("돌려보낸 브랜치를 받지 못했습니다: " + feedbackBranch), null);
+            }
+            String returnedHead = require(clone, "회신 커밋을 확인하지 못했습니다.",
+                    "rev-parse", "FETCH_HEAD").stdout().strip();
+
+            GitResult shown = git.run(clone, timeout, "show", returnedHead + ":" + returnFilePath);
+            if (!shown.succeeded()) {
+                // ⚠ 회신서가 없으면 배치가 무엇인지 알 길이 없다 — 거절이지 「그냥 다 받기」가 아니다.
+                return new Received(false,
+                        List.of("회신서가 없습니다: " + returnFilePath), null);
+            }
+            ReturnBatch.Verdict verdict = judge.judge(shown.stdout(), currentBase);
+            if (!verdict.accepted()) {
+                return new Received(false, verdict.rejections(), null);
+            }
+            if (verdict.filesToTake().isEmpty()) {
+                return new Received(true, List.of(), null);
+            }
+
+            require(clone, "받을 자리를 만들지 못했습니다.",
+                    "worktree", "add", "--detach", worktree.toString(), currentBase);
+            List<String> checkout = new ArrayList<>(List.of("checkout", returnedHead, "--"));
+            checkout.addAll(new LinkedHashSet<>(verdict.filesToTake()));
+            require(worktree, "돌려받은 파일을 꺼내지 못했습니다.", checkout.toArray(String[]::new));
+
+            require(worktree, "받은 것을 커밋 대상으로 올리지 못했습니다.", "add", "-A");
+            GitResult changed = git.run(worktree, timeout, "diff", "--cached", "--quiet");
+            if (changed.exitCode() == 0) {
+                // ⚠ 내용이 같으면 빈 커밋을 만들지 않는다 — 「changed 라 했는데 같았다」는 흔하다.
+                return new Received(true, List.of(), null);
+            }
+            require(worktree, "받기 커밋을 만들지 못했습니다.",
+                    "-c", "user.name=" + RECEIVER_NAME, "-c", "user.email=" + RECEIVER_EMAIL,
+                    "commit", "-m", message);
+            String commit = require(worktree, "받기 커밋을 확인하지 못했습니다.",
+                    "rev-parse", "HEAD").stdout().strip();
+
+            GitResult pushed = git.run(worktree, PUSH_TIMEOUT, "push", authenticatedUrl,
+                    "HEAD:refs/heads/" + defaultBranch);
+            if (!pushed.succeeded()) {
+                // ⛔ 강제로 밀지 마라 — 거절은 대개 그 사이 남이 올렸다는 뜻이다. 다시 받으면 된다.
+                String reason = redactCredentials(detail(pushed));
+                log.warn("받은 것을 올리지 못했다 projectId={} 개발요청서={} 사유={}",
+                        projectId, requestId, reason);
+                return new Received(false,
+                        List.of("받은 것을 기획 저장소에 올리지 못했습니다. 다시 받아 주십시오. " + reason),
+                        null);
+            }
+            log.info("개발 결과를 받았다 projectId={} 개발요청서={} 커밋={} 파일={}",
+                    projectId, requestId, commit, verdict.filesToTake().size());
+            return new Received(true, List.of(), commit);
+        } finally {
+            discard(clone, worktree);
         }
     }
 
