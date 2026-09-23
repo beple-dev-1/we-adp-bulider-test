@@ -6,6 +6,7 @@ import com.bizplay.builder.project.SystemLabels;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import org.springframework.ui.ConcurrentModel;
+import org.springframework.web.servlet.mvc.support.RedirectAttributesModelMap;
 
 import java.util.Collections;
 import java.util.List;
@@ -15,6 +16,7 @@ import java.nio.file.Path;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.BDDMockito.willThrow;
 import static org.mockito.Mockito.mock;
 
 class DevelopmentRequestControllerTest {
@@ -26,8 +28,9 @@ class DevelopmentRequestControllerTest {
     private final ProjectSystemService projectSystems = mock(ProjectSystemService.class);
     // 넘기기는 이 시험의 관심이 아니다 — 목록·상세만 본다.
     private final DevRequestDeliveryService deliveries = mock(DevRequestDeliveryService.class);
+    private final DevRequestReceiveService receives = mock(DevRequestReceiveService.class);
     private final DevelopmentRequestController controller =
-            new DevelopmentRequestController(requests, deliveries, projectFacets, projectSystems);
+            new DevelopmentRequestController(requests, deliveries, receives, projectFacets, projectSystems);
 
     @Test
     void 개발요청서_목록은_요청한_페이지와_목록_크기만_내린다() {
@@ -178,6 +181,51 @@ class DevelopmentRequestControllerTest {
                 "r=${row.request().id()},query=${query},state=${stateFilter},owner=${ownerFilter},system=${systemFilter},page=${page},pageSize=${pageSize}");
         assertThat(detailTemplate).contains(
                 "query=${listQuery},state=${listState},owner=${listOwner},system=${listSystem},page=${listPage},pageSize=${listPageSize}");
+    }
+
+    /**
+     * ⭐ <b>거절 사유는 그대로 사람에게 보인다</b> — 개발이 무엇을 고쳐 다시 밀어야 하는지가
+     * 그 글자에만 있다. 「받지 못했습니다」만 남기면 다음 걸음이 없다.
+     */
+    @Test
+    void 개발_결과를_받지_못하면_사유를_그대로_보여_준다() {
+        given(receives.receive("project-1", "request-1")).willReturn(
+                new DevRequestReceiveService.Result(false,
+                        List.of("기준 커밋이 다릅니다", "회신서가 없습니다"), null, 0));
+        RedirectAttributesModelMap flash = new RedirectAttributesModelMap();
+
+        String view = controller.receive("project-1", "request-1", flash);
+
+        assertThat(view).isEqualTo("redirect:/projects/project-1/artifacts/dev-requests/request-1");
+        assertThat(flash.getFlashAttributes().get("error").toString())
+                .contains("기준 커밋이 다릅니다", "회신서가 없습니다");
+        assertThat(flash.getFlashAttributes()).doesNotContainKey("message");
+    }
+
+    @Test
+    void 개발_결과를_받으면_담은_테스트_줄_수를_알린다() {
+        given(receives.receive("project-1", "request-1")).willReturn(
+                new DevRequestReceiveService.Result(true, List.of(), "abc1234", 12));
+        RedirectAttributesModelMap flash = new RedirectAttributesModelMap();
+
+        controller.receive("project-1", "request-1", flash);
+
+        assertThat(flash.getFlashAttributes().get("message").toString())
+                .contains("반영했습니다", "12줄");
+    }
+
+    /** ⚠ 안 보낸 것을 받을 수는 없다 — 그 거절도 화면에서는 같은 자리에 뜬다. */
+    @Test
+    void 아직_넘기지_않았으면_거절_사유를_화면에_띄운다() {
+        willThrow(new IllegalStateException("아직 개발에 넘기지 않은 개발요청서입니다."))
+                .given(receives).receive("project-1", "request-1");
+        RedirectAttributesModelMap flash = new RedirectAttributesModelMap();
+
+        String view = controller.receive("project-1", "request-1", flash);
+
+        assertThat(view).isEqualTo("redirect:/projects/project-1/artifacts/dev-requests/request-1");
+        assertThat(flash.getFlashAttributes().get("error"))
+                .isEqualTo("아직 개발에 넘기지 않은 개발요청서입니다.");
     }
 
     private static DevelopmentRequestService.Row row(

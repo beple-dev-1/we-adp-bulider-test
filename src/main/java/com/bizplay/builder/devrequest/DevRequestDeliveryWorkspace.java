@@ -226,8 +226,14 @@ public class DevRequestDeliveryWorkspace {
         }
     }
 
-    /** 받은 결과 — 놓았으면 커밋이, 거절이면 사유가 담긴다. */
-    public record Received(boolean accepted, List<String> rejections, String commit) {
+    /**
+     * 받은 결과 — 놓았으면 커밋이, 거절이면 사유가 담긴다.
+     *
+     * @param returnedHead 개발이 보낸 판. ⭐ 테스트 결과 md 를 여기서 더 꺼내 읽는다 —
+     *                     받는 자리가 파일을 다 아는 것이 아니라, 부르는 쪽이 필요한 것을 더 본다
+     */
+    public record Received(boolean accepted, List<String> rejections, String commit,
+                           String returnedHead) {
     }
 
     /** 회신서와 지금 기준을 받아 판정하는 일. ⛔ 규율은 이 클래스가 아니라 판정기가 안다. */
@@ -267,7 +273,7 @@ public class DevRequestDeliveryWorkspace {
             GitResult fetched = git.run(clone, timeout, "fetch", authenticatedUrl, feedbackBranch);
             if (!fetched.succeeded()) {
                 return new Received(false,
-                        List.of("돌려보낸 브랜치를 받지 못했습니다: " + feedbackBranch), null);
+                        List.of("돌려보낸 브랜치를 받지 못했습니다: " + feedbackBranch), null, null);
             }
             String returnedHead = require(clone, "회신 커밋을 확인하지 못했습니다.",
                     "rev-parse", "FETCH_HEAD").stdout().strip();
@@ -276,14 +282,14 @@ public class DevRequestDeliveryWorkspace {
             if (!shown.succeeded()) {
                 // ⚠ 회신서가 없으면 배치가 무엇인지 알 길이 없다 — 거절이지 「그냥 다 받기」가 아니다.
                 return new Received(false,
-                        List.of("회신서가 없습니다: " + returnFilePath), null);
+                        List.of("회신서가 없습니다: " + returnFilePath), null, returnedHead);
             }
             ReturnBatch.Verdict verdict = judge.judge(shown.stdout(), currentBase);
             if (!verdict.accepted()) {
-                return new Received(false, verdict.rejections(), null);
+                return new Received(false, verdict.rejections(), null, returnedHead);
             }
             if (verdict.filesToTake().isEmpty()) {
-                return new Received(true, List.of(), null);
+                return new Received(true, List.of(), null, returnedHead);
             }
 
             require(clone, "받을 자리를 만들지 못했습니다.",
@@ -296,7 +302,7 @@ public class DevRequestDeliveryWorkspace {
             GitResult changed = git.run(worktree, timeout, "diff", "--cached", "--quiet");
             if (changed.exitCode() == 0) {
                 // ⚠ 내용이 같으면 빈 커밋을 만들지 않는다 — 「changed 라 했는데 같았다」는 흔하다.
-                return new Received(true, List.of(), null);
+                return new Received(true, List.of(), null, returnedHead);
             }
             require(worktree, "받기 커밋을 만들지 못했습니다.",
                     "-c", "user.name=" + RECEIVER_NAME, "-c", "user.email=" + RECEIVER_EMAIL,
@@ -313,14 +319,25 @@ public class DevRequestDeliveryWorkspace {
                         projectId, requestId, reason);
                 return new Received(false,
                         List.of("받은 것을 기획 저장소에 올리지 못했습니다. 다시 받아 주십시오. " + reason),
-                        null);
+                        null, returnedHead);
             }
             log.info("개발 결과를 받았다 projectId={} 개발요청서={} 커밋={} 파일={}",
                     projectId, requestId, commit, verdict.filesToTake().size());
-            return new Received(true, List.of(), commit);
+            return new Received(true, List.of(), commit, returnedHead);
         } finally {
             discard(clone, worktree);
         }
+    }
+
+    /**
+     * 어느 커밋의 파일 한 장을 그대로 읽는다 — 없으면 {@code null}.
+     *
+     * <p>⚠ 받는 자리가 <b>모든 파일을 알지 않는다.</b> as-is 재동기는 계약이 정한 목록만 놓고,
+     * 테스트 결과 md 처럼 <b>DB 로 가는 것</b>은 부르는 쪽이 여기서 더 꺼내 읽는다.
+     */
+    public String fileAt(String projectId, String commit, String path) {
+        GitResult shown = git.run(paths.cloneDir(projectId), timeout, "show", commit + ":" + path);
+        return shown.succeeded() ? shown.stdout() : null;
     }
 
     /**
