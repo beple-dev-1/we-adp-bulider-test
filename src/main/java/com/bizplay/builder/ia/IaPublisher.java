@@ -2,6 +2,7 @@ package com.bizplay.builder.ia;
 
 import com.bizplay.builder.git.GitCommand;
 import com.bizplay.builder.git.GitResult;
+import com.bizplay.builder.project.PlanningRepositoryUpdater;
 import com.bizplay.builder.project.ProjectPaths;
 import com.bizplay.builder.project.ProjectService;
 import org.springframework.stereotype.Component;
@@ -26,16 +27,31 @@ public class IaPublisher {
     private final ProjectPaths paths;
     private final ProjectService projects;
     private final GitCommand git;
+    private final PlanningRepositoryUpdater repositoryUpdater;
 
-    public IaPublisher(ProjectPaths paths, ProjectService projects, GitCommand git) {
+    public IaPublisher(ProjectPaths paths, ProjectService projects, GitCommand git,
+                       PlanningRepositoryUpdater repositoryUpdater) {
         this.paths = paths;
         this.projects = projects;
         this.git = git;
+        this.repositoryUpdater = repositoryUpdater;
     }
 
+    /**
+     * ⭐ <b>원격을 받아 앞으로 감은 뒤에 커밋한다</b> — FRD 완료와 같은 잠금 안에서.
+     * 「개발 결과 받기」와 사람이 원격 {@code main} 에 직접 올리므로, 클론에만 커밋해 밀면
+     * 「원격이 앞서 있다」로 거절된다(2026-09-23 실측: 로컬 {@code 370cd63} · 원격 {@code 896b7e6}).
+     */
     public String publish(String projectId, String systemCode, int revision, String content) {
+        return repositoryUpdater.withLatest(projectId,
+                () -> publishLatest(projectId, systemCode, revision, content));
+    }
+
+    private String publishLatest(String projectId, String systemCode, int revision, String content) {
         Path clone = paths.cloneDir(projectId);
         ensureClean(clone);
+        String before = require(git.run(clone, GIT_TIMEOUT, "rev-parse", "HEAD"),
+                "기획 저장소의 현재 커밋을 확인하지 못했습니다.").stdout().strip();
         Path ia = paths.iaFile(projectId, systemCode);
         Path index = clone.resolve("index.json");
         boolean hadIa = Files.exists(ia);
@@ -66,7 +82,14 @@ public class IaPublisher {
                     "HEAD:" + material.defaultBranch()), "IA를 기획 저장소에 올리지 못했습니다.");
             return commit;
         } catch (RuntimeException failed) {
-            if (!committed) {
+            if (committed) {
+                /*
+                 * ⛔ 못 올린 커밋을 클론에 남기지 마라. 남기면 로컬과 원격이 갈라져 다음 최신화
+                 *   (앞으로 감기)가 「바로 반영할 수 없습니다」로 막힌다 — FRD 완료까지 같이 막힌다.
+                 *   게시 전에 깨끗함을 확인했으므로 되돌려도 잃는 것은 이번 IA 뿐이다.
+                 */
+                git.run(clone, GIT_TIMEOUT, "reset", "--hard", before);
+            } else {
                 restore(clone, relativeIa, hadIa, Files.exists(index));
             }
             throw failed;
