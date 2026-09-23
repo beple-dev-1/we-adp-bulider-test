@@ -214,6 +214,58 @@ class DevRequestRoundTripTest {
     }
 
     /**
+     * ⭐ <b>SRT 로 만든 요청서도 넘기고 받는다</b> — 화면 0장 · 시스템 없음 · FRD 워크트리 없음.
+     * 이름은 {@code dr/SRT/DR-012} 이고(2026-09-23 사용자 확정), 돌려받을 화면이 없으니 기본 브랜치에는
+     * 아무것도 안 놓이고 테스트 결과만 담긴다.
+     */
+    @Test
+    void SRT_요청서도_넘기고_테스트_결과를_받는다() throws IOException {
+        DevelopmentRequestContent srt = new DevelopmentRequestContent("정산 배치 주기를 바꾼다.", null,
+                List.of(new DevelopmentRequestContent.Requirement(1, "배치 주기를 바꾼다", "DEVELOP", "개발", null)),
+                List.of(), List.of(),
+                List.of(new DevelopmentRequestContent.Note("ACCEPTANCE_CRITERION", "새 주기로 배치가 돈다")))
+                .withTestScenarios(List.of(new DevelopmentRequestContent.TestScenario("INTEGRATION", 1,
+                        "TC-001", "새 주기로 배치가 돈다", "없음", "운영 설정", "하루를 기다린다", "두 번 돈다")));
+        given(request.label()).willReturn("DR-012");
+        given(request.systemCode()).willReturn(null);
+        given(request.workspaceBaseSha()).willReturn(null);
+        given(request.workspaceHeadSha()).willReturn(null);
+        given(requestService.read(PROJECT, REQUEST)).willReturn(new DevelopmentRequestService.View(
+                request, srt, "김기획", Map.of(), Map.of(), Map.of(), false, null));
+        String mainBefore = remoteMain();
+
+        deliveries.deliver(PROJECT, REQUEST, "account-1");
+
+        assertThat(run(remote, "ls-tree", "-r", "--name-only", "refs/heads/dr/SRT/DR-012").stdout())
+                .contains("DR-012/dev-request.md", "DR-012/expected-back.md", "DR-012/manifest.json");
+        assertThat(remoteMain()).isEqualTo(mainBefore);
+
+        // 개발 — 문서의 머리 표와 견본만 보고 돌려보낸다
+        Path dev = dataRoot.resolve("dev-srt");
+        run(dataRoot, "clone", "-q", "-b", "main", remote.toUri().toString(), dev.toString());
+        run(dev, "config", "user.email", "dev@example.com");
+        run(dev, "config", "user.name", "개발");
+        run(dev, "fetch", "-q", "origin", "dr/SRT/DR-012");
+        String contract = run(dev, "show", "FETCH_HEAD:DR-012/expected-back.md").stdout();
+        Map<String, String> places = places(contract);
+        assertThat(places).doesNotContainKey(SCREEN + " 화면(html)");
+        run(dev, "checkout", "-q", "-b", returnBranch(contract), mainBefore);
+        write(dev, places.get("회신서"), template(contract));
+        write(dev, places.get("통합테스트 결과"), filledTable(contract, "## 4. 통합테스트"));
+        run(dev, "add", ".");
+        run(dev, "commit", "-q", "-m", "DR-012 결과");
+        run(dev, "push", "-q", "origin", returnBranch(contract));
+
+        DevRequestReceiveService.Result result = receives.receive(PROJECT, REQUEST, "account-1");
+
+        assertThat(returnBranch(contract)).isEqualTo("feedback/SRT/DR-012");
+        assertThat(result.rejections()).isEmpty();
+        assertThat(result.commit()).as("돌려받을 화면이 없으니 기본 브랜치에 놓을 것도 없다").isNull();
+        assertThat(result.testRows()).isEqualTo(1);
+        assertThat(remoteMain()).isEqualTo(mainBefore);
+    }
+
+    /**
      * 개발 흉내 — <b>원격에 올라간 것만 읽고</b> 문서대로 돌려보낸다.
      *
      * <ol>
@@ -298,13 +350,18 @@ class DevRequestRoundTripTest {
     private static String filledTable(String contract, String heading) {
         String section = contract.substring(contract.indexOf(heading));
         StringBuilder md = new StringBuilder();
+        boolean inTable = false;
         for (String line : section.lines().toList()) {
-            if (line.startsWith("| TC ") || line.startsWith("|---")) {
+            // ⚠ TC 표 머리부터 뜬다 — 통합테스트 절은 그 앞에 완료 조건 대응표가 있다.
+            if (line.startsWith("| TC ")) {
+                inTable = true;
                 md.append(line).append('\n');
-            } else if (line.startsWith("| TC-")) {
+            } else if (inTable && line.startsWith("|---")) {
+                md.append(line).append('\n');
+            } else if (inTable && line.startsWith("| TC-")) {
                 md.append(line, 0, line.lastIndexOf("|  |  |  |"))
                         .append("| 빈 칸이었다 | 통과 | 로그 12행 |").append('\n');
-            } else if (md.length() > 0 && !line.startsWith("|")) {
+            } else if (inTable && !line.startsWith("|")) {
                 break;
             }
         }
