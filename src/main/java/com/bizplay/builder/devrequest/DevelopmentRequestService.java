@@ -79,6 +79,7 @@ public class DevelopmentRequestService {
     private final ProjectRepositoryLocks repositoryLocks;
     private final DevRequestPrecheck prechecks;
     private final ScreenTobeDocumentWorker tobeDocuments;
+    private final DevRequestTestScenarioWorker testScenarios;
     private final FrdWorkspace workspaces;
     private final IdSequence ids;
     private final ObjectMapper json;
@@ -97,8 +98,10 @@ public class DevelopmentRequestService {
                                      ProjectPaths paths, ProjectRepositoryLocks repositoryLocks,
                                      DevRequestPrecheck prechecks,
                                      ScreenTobeDocumentWorker tobeDocuments,
+                                     DevRequestTestScenarioWorker testScenarios,
                                      FrdWorkspace workspaces,
                                      IdSequence ids, ObjectMapper json) {
+        this.testScenarios = testScenarios;
         this.requests = requests;
         this.frds = frds;
         this.items = items;
@@ -570,16 +573,18 @@ public class DevelopmentRequestService {
      * <b>FRD 완료의 도착 화면이 500 으로 죽어</b> 「완료는 됐는데 개발요청서가 안 만들어졌다」로 보였다.
      * 읽기라고 선언한 자리에 부작용을 두지 않는다.
      *
+     * <p>⭐ <b>2026-09-23 되살렸다</b> (사용자 지시). 2026-09-04 [003] 산출물 공유 기능을 걷어낼 때
+     * 「테스트 md 수신」과 함께 지워졌는데, 받는 자리가 git 통로로 다시 섰고 설계(2026-08-27 확정)는
+     * 여전히 「무엇을 검증하나는 우리가 먼저 적는다」다. 없으면 개발이 TC 를 마음대로 적어 보내고,
+     * 「보낸 적 없는 TC 는 거절」도 한 번도 안 걸린다.
+     *
      * <p>⛔ <b>트랜잭션을 걸지 마라</b> — {@link #requestTobeDocuments} 에 적은 사유가 그대로다.
      *
-     * <p>⚠ <b>2026-09-04 003 — 산출물 공유 기능 제거로 만드는 창구({@code DevRequestTestScenarioWorker})가
-     * 사라졌다.</b> {@link com.bizplay.builder.frd.FrdCompletionService} 가 완료 시점에 그대로 부르므로
-     * 자리만 남기고 신호를 끈다 — 항상 거짓이다.
-     *
-     * @return 항상 거짓이다 (테스트 시나리오 자동 생성 창구 제거됨)
+     * @return 청했으면 참. 이미 있거나·도는 중이거나·앞서 실패했거나·이미 넘겼으면 거짓이다
      */
     public boolean requestTestScenarios(String projectId, String requestId) {
-        return false;
+        View view = read(projectId, requestId);
+        return testScenarios.requestIfMissing(view.request(), view.content());
     }
 
     /**
