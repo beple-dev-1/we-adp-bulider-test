@@ -71,7 +71,7 @@ class DevRequestReceiveWorkspaceTest {
 
         var received = workspaces.receive(PROJECT, REQUEST, "main", remote.toUri().toString(),
                 "feedback/DR-009", "DR-009/" + ReturnBatch.FILE,
-                (returnJson, currentBase, returnedFile) -> ReturnBatch.judge(expected(), returnJson, currentBase),
+                (returnJson, main, returnedFile) -> ReturnBatch.judge(expected(), returnJson, main),
                 "chore: DR-009 개발 결과 반영");
 
         assertThat(received.accepted()).isTrue();
@@ -95,7 +95,7 @@ class DevRequestReceiveWorkspaceTest {
 
         workspaces.receive(PROJECT, REQUEST, "main", remote.toUri().toString(),
                 "feedback/DR-009", "DR-009/" + ReturnBatch.FILE,
-                (returnJson, currentBase, returnedFile) -> ReturnBatch.judge(expected(), returnJson, currentBase),
+                (returnJson, main, returnedFile) -> ReturnBatch.judge(expected(), returnJson, main),
                 "chore: DR-009 개발 결과 반영");
 
         String head = run(remote, "rev-parse", "refs/heads/main").stdout().strip();
@@ -114,7 +114,7 @@ class DevRequestReceiveWorkspaceTest {
 
         var received = workspaces.receive(PROJECT, REQUEST, "main", remote.toUri().toString(),
                 "feedback/DR-009", "DR-009/" + ReturnBatch.FILE,
-                (returnJson, currentBase, returnedFile) -> ReturnBatch.judge(expected(), returnJson, currentBase),
+                (returnJson, main, returnedFile) -> ReturnBatch.judge(expected(), returnJson, main),
                 "chore: DR-009 개발 결과 반영");
 
         assertThat(received.accepted()).isFalse();
@@ -122,11 +122,61 @@ class DevRequestReceiveWorkspaceTest {
         assertThat(remoteMain()).isEqualTo(before);
     }
 
+    /**
+     * ⭐ <b>개발이 갈라 간 뒤 기본 브랜치가 다른 파일로 움직였어도 받는다</b> (2026-09-23 사용자 확정).
+     * 개발은 며칠 뒤에 돌려준다 — 그 사이의 움직임으로 멀쩡한 결과를 떨어뜨리지 않는다.
+     * ⭐ 받은 것은 <b>지금 기본 브랜치 위에</b> 얹는다 — 그 사이 들어온 커밋이 안 사라진다.
+     */
+    @Test
+    void 기본_브랜치가_다른_파일로_움직였어도_받는다() throws IOException {
+        String base = remoteMain();
+        pushFeedback("""
+                {"dr": "DR-009", "base": "%s", "screens": [
+                  {"screenId": "EXW-1", "pages": "changed", "screen-md": "unchanged", "index": "changed"}
+                ]}
+                """.formatted(base));
+        advanceMain("core/EXW/ia.md", "그 사이 기획이 고친 메뉴구조도");
+
+        var received = workspaces.receive(PROJECT, REQUEST, "main", remote.toUri().toString(),
+                "feedback/DR-009", "DR-009/" + ReturnBatch.FILE,
+                (returnJson, main, returnedFile) -> ReturnBatch.judge(expected(), returnJson, main),
+                "chore: DR-009 개발 결과 반영");
+
+        assertThat(received.rejections()).isEmpty();
+        String head = remoteMain();
+        assertThat(run(remote, "show", head + ":core/EXW/pages/EXW-1.html").stdout())
+                .contains("개발이 만든 것");
+        assertThat(run(remote, "show", head + ":core/EXW/ia.md").stdout())
+                .contains("그 사이 기획이 고친 메뉴구조도");
+    }
+
+    /** ⛔ 갈라 간 뒤 <b>같은 파일</b>이 바뀌었으면 거절하고 한 글자도 안 놓는다 — 받으면 그 변경이 덮인다. */
+    @Test
+    void 갈라_간_뒤_같은_파일이_바뀌었으면_아무것도_안_놓는다() throws IOException {
+        String base = remoteMain();
+        pushFeedback("""
+                {"dr": "DR-009", "base": "%s", "screens": [
+                  {"screenId": "EXW-1", "pages": "changed", "screen-md": "unchanged", "index": "changed"}
+                ]}
+                """.formatted(base));
+        advanceMain("core/EXW/pages/EXW-1.html", "<main>그 사이 기획이 고친 것</main>");
+        String before = remoteMain();
+
+        var received = workspaces.receive(PROJECT, REQUEST, "main", remote.toUri().toString(),
+                "feedback/DR-009", "DR-009/" + ReturnBatch.FILE,
+                (returnJson, main, returnedFile) -> ReturnBatch.judge(expected(), returnJson, main),
+                "chore: DR-009 개발 결과 반영");
+
+        assertThat(received.accepted()).isFalse();
+        assertThat(received.rejections()).anyMatch(reason -> reason.contains("core/EXW/pages/EXW-1.html"));
+        assertThat(remoteMain()).isEqualTo(before);
+    }
+
     /** ⚠ 회신서가 아예 없으면 거절이다 — 배치가 뭔지 알 길이 없다. */
     @Test
     void 회신서가_없으면_거절한다() throws IOException {
         Path work = dataRoot.resolve("dev");
-        run(dataRoot, "clone", "-q", remote.toUri().toString(), work.toString());
+        run(dataRoot, "clone", "-q", "-b", "main", remote.toUri().toString(), work.toString());
         run(work, "config", "user.email", "d@example.com");
         run(work, "config", "user.name", "개발");
         run(work, "checkout", "-q", "-b", "feedback/DR-009");
@@ -137,7 +187,7 @@ class DevRequestReceiveWorkspaceTest {
 
         var received = workspaces.receive(PROJECT, REQUEST, "main", remote.toUri().toString(),
                 "feedback/DR-009", "DR-009/" + ReturnBatch.FILE,
-                (returnJson, currentBase, returnedFile) -> ReturnBatch.judge(expected(), returnJson, currentBase),
+                (returnJson, main, returnedFile) -> ReturnBatch.judge(expected(), returnJson, main),
                 "chore: DR-009 개발 결과 반영");
 
         assertThat(received.accepted()).isFalse();
@@ -146,7 +196,7 @@ class DevRequestReceiveWorkspaceTest {
 
     private void pushFeedback(String returnJson) throws IOException {
         Path work = dataRoot.resolve("dev-" + System.nanoTime());
-        run(dataRoot, "clone", "-q", remote.toUri().toString(), work.toString());
+        run(dataRoot, "clone", "-q", "-b", "main", remote.toUri().toString(), work.toString());
         run(work, "config", "user.email", "d@example.com");
         run(work, "config", "user.name", "개발");
         run(work, "checkout", "-q", "-b", "feedback/DR-009");
@@ -156,6 +206,18 @@ class DevRequestReceiveWorkspaceTest {
         run(work, "add", ".");
         run(work, "commit", "-q", "-m", "개발 결과");
         run(work, "push", "-q", "origin", "feedback/DR-009");
+    }
+
+    /** 개발이 갈라 간 뒤 기획이 기본 브랜치에 커밋 하나를 더한다. */
+    private void advanceMain(String relative, String content) throws IOException {
+        Path work = dataRoot.resolve("planner-" + System.nanoTime());
+        run(dataRoot, "clone", "-q", "-b", "main", remote.toUri().toString(), work.toString());
+        run(work, "config", "user.email", "p@example.com");
+        run(work, "config", "user.name", "기획");
+        write(work, relative, content);
+        run(work, "add", ".");
+        run(work, "commit", "-q", "-m", "그 사이 기획 변경");
+        run(work, "push", "-q", "origin", "HEAD:refs/heads/main");
     }
 
     private String remoteMain() {

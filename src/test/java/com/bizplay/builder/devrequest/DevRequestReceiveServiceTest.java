@@ -160,7 +160,18 @@ class DevRequestReceiveServiceTest {
                 | TC-777 | 지어낸 것 | 없음 | 조건 | 행위 | 기대 | 실제 | 통과 | 근거 |
                 """;
         ReturnBatch.Verdict verdict = judge.getValue().judge(
-                "{\"dr\": \"DR-009\", \"base\": \"b\", \"screens\": []}", "b",
+                "{\"dr\": \"DR-009\", \"base\": \"b\", \"screens\": []}",
+                new ReturnBatch.MainHistory() {
+                    @Override
+                    public boolean contains(String commit) {
+                        return "b".equals(commit);
+                    }
+
+                    @Override
+                    public java.util.Set<String> changedSince(String commit) {
+                        return java.util.Set.of();
+                    }
+                },
                 path -> path.equals("DR-009/" + ReturnBatch.UNIT_TESTS) ? unit : null);
 
         assertThat(verdict.accepted()).isFalse();

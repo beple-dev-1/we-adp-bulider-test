@@ -23,7 +23,7 @@ class ReturnBatchTest {
                 {"dr": "DR-009", "base": "base-1", "screens": [
                   {"screenId": "EXW-1", "pages": "changed", "screen-md": "unchanged", "index": "changed"}
                 ]}
-                """), "base-1");
+                """), unmoved());
 
         assertThat(verdict.accepted()).isTrue();
         assertThat(verdict.rejections()).isEmpty();
@@ -32,18 +32,79 @@ class ReturnBatchTest {
                 "core/EXW/pages/EXW-1.html", "index.json");
     }
 
-    /** ⭐ 기준이 어긋나면 통째로 거절한다 — 그 사이 남이 올린 것을 덮지 않기 위해서다. */
+    /**
+     * ⭐ <b>기본 브랜치가 움직였어도 다른 파일만 바뀌었으면 받는다</b> (2026-09-23 사용자 확정).
+     * 개발은 며칠 뒤에 돌려주고 그 사이 {@code main} 은 바뀔 수 있다 — 판이 같은지로 거절하면
+     * 멀쩡한 결과가 매번 떨어진다. ⛔ 「HEAD 와 같아야 받는다」로 되돌리지 마라.
+     */
     @Test
-    void 기준이_어긋나면_통째로_거절한다() {
+    void 기본_브랜치가_움직였어도_다른_파일만_바뀌었으면_받는다() {
         ReturnBatch.Verdict verdict = ReturnBatch.judge(expected(), returned("""
-                {"dr": "DR-009", "base": "낡은-기준", "screens": [
-                  {"screenId": "EXW-1", "pages": "changed", "screen-md": "changed", "index": "changed"}
+                {"dr": "DR-009", "base": "base-1", "screens": [
+                  {"screenId": "EXW-1", "pages": "changed", "screen-md": "unchanged", "index": "unchanged"}
                 ]}
-                """), "base-1");
+                """), movedSince("base-1", "core/EXW/pages/EXW-2.html", "core/EXW/ia.md"));
+
+        assertThat(verdict.rejections()).isEmpty();
+        assertThat(verdict.filesToTake()).containsExactly("core/EXW/pages/EXW-1.html");
+    }
+
+    /**
+     * ⛔ <b>갈라 온 뒤 기본 브랜치에서 같은 파일이 바뀌었으면 거절한다.</b> 받으면 그 변경이
+     * 아무도 모르게 덮인다. 내용은 대조하지 않고 파일 이름만 본다.
+     */
+    @Test
+    void 갈라_온_뒤_같은_파일이_바뀌었으면_거절한다() {
+        ReturnBatch.Verdict verdict = ReturnBatch.judge(expected(), returned("""
+                {"dr": "DR-009", "base": "base-1", "screens": [
+                  {"screenId": "EXW-1", "pages": "changed", "screen-md": "unchanged", "index": "changed"}
+                ]}
+                """), movedSince("base-1", "index.json"));
 
         assertThat(verdict.accepted()).isFalse();
-        assertThat(verdict.rejections()).anyMatch(reason -> reason.contains("기준"));
+        assertThat(verdict.rejections()).singleElement().asString().contains("index.json");
         assertThat(verdict.filesToTake()).isEmpty();
+    }
+
+    /** ⚠ 같은 파일이 바뀌었어도 이번에 안 받는 것(unchanged)이면 덮을 일이 없다. */
+    @Test
+    void 바뀐_파일이라도_받지_않는_것이면_거절하지_않는다() {
+        ReturnBatch.Verdict verdict = ReturnBatch.judge(expected(), returned("""
+                {"dr": "DR-009", "base": "base-1", "screens": [
+                  {"screenId": "EXW-1", "pages": "changed", "screen-md": "unchanged", "index": "unchanged"}
+                ]}
+                """), movedSince("base-1", "index.json"));
+
+        assertThat(verdict.accepted()).isTrue();
+    }
+
+    /**
+     * ⛔ <b>기본 브랜치 이력에 없는 기준은 거절한다.</b> 전달 브랜치 위에서 갈라 오면 이렇게 된다 —
+     * 거기 든 기획의 to-be 가 사실인 척 섞여 들어온다.
+     */
+    @Test
+    void 기본_브랜치_이력에_없는_기준은_거절한다() {
+        ReturnBatch.Verdict verdict = ReturnBatch.judge(expected(), returned("""
+                {"dr": "DR-009", "base": "전달-브랜치의-판", "screens": [
+                  {"screenId": "EXW-1", "pages": "changed", "screen-md": "changed", "index": "changed"}
+                ]}
+                """), unmoved());
+
+        assertThat(verdict.accepted()).isFalse();
+        assertThat(verdict.rejections()).anyMatch(reason -> reason.contains("이력에 없습니다"));
+    }
+
+    /** ⚠ 기준을 안 적으면 무엇과 견줄지 없다 — 거절이지 「그냥 받기」가 아니다. */
+    @Test
+    void 기준을_안_적으면_거절한다() {
+        ReturnBatch.Verdict verdict = ReturnBatch.judge(expected(), returned("""
+                {"dr": "DR-009", "screens": [
+                  {"screenId": "EXW-1", "pages": "changed", "screen-md": "changed", "index": "changed"}
+                ]}
+                """), unmoved());
+
+        assertThat(verdict.accepted()).isFalse();
+        assertThat(verdict.rejections()).anyMatch(reason -> reason.contains("base"));
     }
 
     /** ⚠ 필수인데 안 온 칸이 있으면 배치가 안 찬 것이다 — 「누락」과 「안 바뀜」을 갈라야 한다. */
@@ -53,7 +114,7 @@ class ReturnBatchTest {
                 {"dr": "DR-009", "base": "base-1", "screens": [
                   {"screenId": "EXW-1", "pages": "changed"}
                 ]}
-                """), "base-1");
+                """), unmoved());
 
         assertThat(verdict.accepted()).isFalse();
         assertThat(verdict.rejections()).anyMatch(reason -> reason.contains("screen-md"));
@@ -67,7 +128,7 @@ class ReturnBatchTest {
                   {"screenId": "EXW-1", "pages": "changed", "screen-md": "changed", "index": "changed"},
                   {"screenId": "남의-화면", "pages": "changed", "screen-md": "changed", "index": "changed"}
                 ]}
-                """), "base-1");
+                """), unmoved());
 
         assertThat(verdict.accepted()).isFalse();
         assertThat(verdict.rejections()).anyMatch(reason -> reason.contains("남의-화면"));
@@ -80,7 +141,7 @@ class ReturnBatchTest {
                 {"dr": "DR-009", "base": "base-1", "screens": [
                   {"screenId": "EXW-1", "pages": "했음", "screen-md": "unchanged", "index": "changed"}
                 ]}
-                """), "base-1");
+                """), unmoved());
 
         assertThat(verdict.accepted()).isFalse();
         assertThat(verdict.rejections()).anyMatch(reason -> reason.contains("했음"));
@@ -89,7 +150,7 @@ class ReturnBatchTest {
     /** ⛔ 깨진 파일은 거절이지 무시가 아니다 — 못 읽은 것을 통과로 세면 반쪽이 들어온다. */
     @Test
     void 깨진_회신서는_거절한다() {
-        ReturnBatch.Verdict verdict = ReturnBatch.judge(expected(), "{ 이건 json 이 아니다", "base-1");
+        ReturnBatch.Verdict verdict = ReturnBatch.judge(expected(), "{ 이건 json 이 아니다", unmoved());
 
         assertThat(verdict.accepted()).isFalse();
         assertThat(verdict.rejections()).anyMatch(reason -> reason.contains("읽지 못했"));
@@ -148,6 +209,26 @@ class ReturnBatchTest {
 
     private static ExpectedBack withTests(List<String> unit, List<String> integration) {
         return new ExpectedBack("feedback/DR-009", "base-1", List.of(), List.of(), unit, integration);
+    }
+
+    /** 기본 브랜치가 {@code base-1} 에서 안 움직인 판. */
+    private static ReturnBatch.MainHistory unmoved() {
+        return movedSince("base-1");
+    }
+
+    /** {@code base} 가 기본 브랜치 이력에 있고, 그 뒤 {@code changed} 파일들이 바뀐 판. */
+    private static ReturnBatch.MainHistory movedSince(String base, String... changed) {
+        return new ReturnBatch.MainHistory() {
+            @Override
+            public boolean contains(String commit) {
+                return base.equals(commit);
+            }
+
+            @Override
+            public java.util.Set<String> changedSince(String commit) {
+                return java.util.Set.of(changed);
+            }
+        };
     }
 
     private static String returned(String json) {

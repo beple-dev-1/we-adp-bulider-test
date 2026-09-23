@@ -30,7 +30,10 @@ class ExpectedBackDocumentTest {
 
         assertThat(md).contains("DR-009")
                 .contains("370cd63e")
-                .contains("feedback/DR-009");
+                .contains("feedback/DR-009")
+                // ⭐ 기본 브랜치가 움직여도 받는다는 것과, 거절되는 단 하나의 경우를 알린다.
+                .contains("그 뒤 기본 브랜치가 바뀌어도 괜찮습니다")
+                .contains("돌려주는 파일을 그 사이 기본 브랜치에서도 누가 고쳤으면");
     }
 
     /** ⭐ 화면마다 필수 구성요소와 채울 칸을 함께 낸다. */
@@ -129,9 +132,9 @@ class ExpectedBackDocumentTest {
         ExpectedBack back = back(List.of());
         String template = returnTemplate(documents.render(meta(), back, content()));
 
-        assertThat(ReturnBatch.judge(back, template, back.base()).accepted()).isFalse();
+        assertThat(ReturnBatch.judge(back, template, unmoved(back.base())).accepted()).isFalse();
         String filled = template.replace(ExpectedBackDocument.PICK, "changed");
-        ReturnBatch.Verdict verdict = ReturnBatch.judge(back, filled, back.base());
+        ReturnBatch.Verdict verdict = ReturnBatch.judge(back, filled, unmoved(back.base()));
         assertThat(verdict.rejections()).isEmpty();
         assertThat(verdict.accepted()).isTrue();
     }
@@ -144,6 +147,21 @@ class ExpectedBackDocumentTest {
 
         assertThat(template).contains("\"pages\"").contains("\"index\"")
                 .doesNotContain("\"screen-md\"");
+    }
+
+    /** 꾸러미를 보낸 뒤 기본 브랜치가 안 움직인 판. */
+    private static ReturnBatch.MainHistory unmoved(String base) {
+        return new ReturnBatch.MainHistory() {
+            @Override
+            public boolean contains(String commit) {
+                return base.equals(commit);
+            }
+
+            @Override
+            public java.util.Set<String> changedSince(String commit) {
+                return java.util.Set.of();
+            }
+        };
     }
 
     private static String returnTemplate(String md) {

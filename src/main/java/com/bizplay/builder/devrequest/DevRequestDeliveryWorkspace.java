@@ -264,7 +264,7 @@ public class DevRequestDeliveryWorkspace {
      */
     @FunctionalInterface
     public interface Judge {
-        ReturnBatch.Verdict judge(String returnJson, String currentBase,
+        ReturnBatch.Verdict judge(String returnJson, ReturnBatch.MainHistory main,
                                   java.util.function.Function<String, String> returnedFile);
     }
 
@@ -310,7 +310,7 @@ public class DevRequestDeliveryWorkspace {
                 return new Received(false,
                         List.of("회신서가 없습니다: " + returnFilePath), null, returnedHead);
             }
-            ReturnBatch.Verdict verdict = judge.judge(shown.stdout(), currentBase,
+            ReturnBatch.Verdict verdict = judge.judge(shown.stdout(), mainHistory(clone, currentBase),
                     path -> fileAt(projectId, returnedHead, path));
             if (!verdict.accepted()) {
                 return new Received(false, verdict.rejections(), null, returnedHead);
@@ -354,6 +354,36 @@ public class DevRequestDeliveryWorkspace {
         } finally {
             discard(clone, worktree);
         }
+    }
+
+    /**
+     * 판정기에 건널 기본 브랜치의 사정 — 지금 판 {@code currentBase} 를 기준으로 잰다.
+     *
+     * <p>⚠ 개발이 적은 기준값은 <b>밖에서 온 글자</b>다 — 커밋 꼴이 아니면 git 에 넘기지 않는다.
+     * {@code -} 로 시작하는 값이 인자로 들어가면 옵션으로 읽힌다.
+     */
+    private ReturnBatch.MainHistory mainHistory(Path clone, String currentBase) {
+        return new ReturnBatch.MainHistory() {
+            @Override
+            public boolean contains(String commit) {
+                return isCommitLike(commit) && git.run(clone, timeout, "merge-base", "--is-ancestor",
+                        commit, currentBase).exitCode() == 0;
+            }
+
+            @Override
+            public java.util.Set<String> changedSince(String commit) {
+                // ⚠ -z 로 받는다 — 한글 경로가 따옴표로 감싸여 오면 받을 파일과 안 맞는다.
+                String listed = require(clone, "기준 이후 바뀐 파일을 확인하지 못했습니다.",
+                        "diff", "--name-only", "-z", commit, currentBase).stdout();
+                return java.util.Arrays.stream(listed.split("\u0000"))
+                        .filter(path -> !path.isBlank())
+                        .collect(java.util.stream.Collectors.toSet());
+            }
+        };
+    }
+
+    private static boolean isCommitLike(String value) {
+        return value != null && value.matches("[0-9a-f]{7,64}");
     }
 
     /**

@@ -28,7 +28,15 @@ import java.util.Set;
  * 배치가 <b>요청 본문</b>이었다. git 통로에서는 파일이어야 해서 {@code DR-nnn/return.json} 을
  * 새로 정했다 — 바꾸려면 개발에 고지해야 한다.
  *
- * <p>⛔ <b>DB 도 git 도 만지지 않는다</b> — 값을 받아 판정만 한다. 그래서 시험이 가볍다.
+ * <p>⭐ <b>기본 브랜치가 그 사이 움직였어도 거절하지 않는다</b> (2026-09-23 사용자 확정).
+ * 설계는 「받을 때 HEAD 와 다르면 거절」이었으나, 개발은 며칠 뒤에 돌려주고 그 사이 {@code main} 은
+ * 바뀔 수 있다 — 판이 같은지로 거절하면 멀쩡한 결과가 매번 떨어진다. 대신 <b>갈라 온 뒤 기본
+ * 브랜치에서 바뀐 파일과 이번에 받을 파일이 겹칠 때만</b> 거절한다. 겹치지 않으면 덮을 것이 없다.
+ * ⭐ 내용은 여전히 대조하지 않는다 — 파일 이름만 본다(설계의 「무대조」는 그대로다).
+ * ⛔ 「HEAD 와 같아야 받는다」로 되돌리지 마라.
+ *
+ * <p>⛔ <b>DB 도 git 도 만지지 않는다</b> — 값을 받아 판정만 한다. 기본 브랜치의 사정은
+ * {@link MainHistory} 로 받는다. 그래서 시험이 가볍다.
  */
 public final class ReturnBatch {
 
@@ -51,6 +59,18 @@ public final class ReturnBatch {
     }
 
     /**
+     * 판정에 필요한 <b>기본 브랜치의 사정</b> 둘 — 받는 자리가 git 으로 재서 건넨다.
+     */
+    public interface MainHistory {
+
+        /** 이 커밋이 기본 브랜치 이력에 있나. ⚠ 전달 브랜치 위에서 갈라 오면 여기서 떨어진다. */
+        boolean contains(String commit);
+
+        /** 이 커밋 이후 지금까지 기본 브랜치에서 바뀐 파일들. */
+        Set<String> changedSince(String commit);
+    }
+
+    /**
      * 판정 결과.
      *
      * @param filesToTake ⭐ {@code changed} 인 것만 담는다 — {@code unchanged} 는 파일이 아니다
@@ -69,9 +89,10 @@ public final class ReturnBatch {
     }
 
     /**
-     * @param currentBase 지금 기획 저장소 기본 브랜치의 판. 회신서가 적은 기준과 다르면 통째로 거절한다
+     * @param main 지금 기본 브랜치의 사정. 갈라 온 기준이 그 이력에 있어야 하고, 그 뒤 바뀐 파일과
+     *             받을 파일이 겹치면 거절한다
      */
-    public static Verdict judge(ExpectedBack expected, String returnJson, String currentBase) {
+    public static Verdict judge(ExpectedBack expected, String returnJson, MainHistory main) {
         JsonNode returned;
         try {
             returned = JSON.readTree(returnJson);
@@ -82,14 +103,16 @@ public final class ReturnBatch {
 
         List<String> rejections = new ArrayList<>();
         String declaredBase = returned.path("base").asText(null);
-        if (declaredBase == null || !declaredBase.equals(currentBase)) {
-            /*
-             * ⭐ 내용을 대조하지 않고 **기준 커밋 이후의 동시 변경**을 잡는 유일한 장치다.
-             * ⛔ 「그냥 다시 보내면 된다」로 읽지 마라 — 같은 파일을 그대로 재전송하면 그 사이의
-             *   남의 변경을 다시 덮는다. 거절된 대상만 새 기준으로 다시 만들어야 한다.
-             */
-            rejections.add("갈라 온 기준이 지금 기본 브랜치와 다릅니다 — 새 기준으로 다시 만들어 주십시오."
-                    + " (회신 " + declaredBase + " · 지금 " + currentBase + ")");
+        boolean baseKnown = false;
+        if (declaredBase == null || declaredBase.isBlank()) {
+            rejections.add("회신서에 갈라 온 기준(base)이 없습니다 — 기본 브랜치의 어느 커밋에서"
+                    + " 갈라 왔는지 적어 주십시오.");
+        } else if (!main.contains(declaredBase)) {
+            // ⛔ 전달 브랜치 위에서 갈라 오면 여기서 떨어진다 — 기획의 to-be 가 사실인 척 섞인다.
+            rejections.add("갈라 온 기준이 기본 브랜치 이력에 없습니다: " + declaredBase
+                    + " — 기본 브랜치에서 갈라 주십시오. 전달 브랜치 위에서 갈라 오면 이렇게 됩니다.");
+        } else {
+            baseKnown = true;
         }
 
         Set<String> known = new LinkedHashSet<>();
@@ -128,6 +151,19 @@ public final class ReturnBatch {
             if (!came) {
                 rejections.add("돌려받아야 할 화면이 안 왔습니다: " + screenId);
             }
+        }
+
+        if (baseKnown && rejections.isEmpty()) {
+            /*
+             * ⭐ 갈라 온 뒤 기본 브랜치에서 바뀐 파일과 받을 파일이 겹치면 거절한다.
+             *   겹치지 않으면 지금 기본 브랜치 위에 얹어도 덮을 것이 없다.
+             * ⚠ 안 받는 것(unchanged)은 겹쳐도 상관없다 — 놓지 않으므로 덮을 일이 없다.
+             */
+            Set<String> moved = main.changedSince(declaredBase);
+            new LinkedHashSet<>(take).stream().filter(moved::contains).forEach(path -> rejections.add(
+                    "갈라 온 뒤 기본 브랜치에서 이 파일이 바뀌었습니다: " + path
+                            + " — 지금 기본 브랜치의 것을 보고 합쳐서 다시 보내 주십시오."
+                            + " 그대로 받으면 그 변경이 덮입니다."));
         }
 
         boolean accepted = rejections.isEmpty();
