@@ -1,5 +1,6 @@
 package com.bizplay.builder.devrequest;
 
+import com.bizplay.builder.project.PlanningRepositoryUpdater;
 import com.bizplay.builder.project.ProjectService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -39,17 +40,20 @@ public class DevRequestReceiveService {
     private final DevRequestDeliveryWorkspace workspaces;
     private final DevRequestTestResultMapper testResults;
     private final ProjectService projects;
+    private final PlanningRepositoryUpdater repositoryUpdater;
 
     public DevRequestReceiveService(DevelopmentRequestMapper requests,
                                     DevelopmentRequestService requestService,
                                     DevRequestDeliveryWorkspace workspaces,
                                     DevRequestTestResultMapper testResults,
-                                    ProjectService projects) {
+                                    ProjectService projects,
+                                    PlanningRepositoryUpdater repositoryUpdater) {
         this.requests = requests;
         this.requestService = requestService;
         this.workspaces = workspaces;
         this.testResults = testResults;
         this.projects = projects;
+        this.repositoryUpdater = repositoryUpdater;
     }
 
     /** 받은 결과 — 화면이 이것을 그대로 보여 준다. */
@@ -93,9 +97,31 @@ public class DevRequestReceiveService {
         }
 
         int rows = storeTestResults(projectId, requestId, received.returnedHead(), request.label());
+        if (received.commit() != null) {
+            refreshClone(projectId, requestId);
+        }
         log.info("개발 결과를 받았다 projectId={} 개발요청서={} 커밋={} 테스트={}줄",
                 projectId, requestId, received.commit(), rows);
         return new Result(true, List.of(), received.commit(), rows);
+    }
+
+    /**
+     * 받아 놓은 뒤 클론을 원격에 맞춘다.
+     *
+     * <p>⭐ <b>클론을 뒤처지게 만드는 것이 이 받기다</b> — 원격 {@code main} 에 직접 커밋하고 클론은 안
+     * 건드린다. 그린존 문서(기능명세서·화면설계서·사용자 매뉴얼)는 클론의 {@code core/} 를 재료로 읽고
+     * 「최신인가」도 그 파일 지문으로 잰다 — 맞추지 않으면 받은 개발 결과가 문서에 안 담기고, 옛 문서가
+     * 최신으로 보인다(2026-09-23 실측: DR-010 을 받은 뒤 클론 {@code 896b7e6} · 원격 {@code 02924c1}).
+     *
+     * <p>⚠ <b>못 맞춰도 받기는 성공이다</b> — 원격에는 이미 들어갔다. 실패로 알리면 사람이 다시 누르고
+     * 두 번째는 「바뀐 것 없음」이 된다. 클론은 다음 FRD 작업하기·IA 게시가 맞춘다.
+     */
+    private void refreshClone(String projectId, String requestId) {
+        try {
+            repositoryUpdater.refresh(projectId);
+        } catch (RuntimeException failure) {
+            log.warn("받은 뒤 클론을 원격에 맞추지 못했다 projectId={} 개발요청서={}", projectId, requestId, failure);
+        }
     }
 
     /**

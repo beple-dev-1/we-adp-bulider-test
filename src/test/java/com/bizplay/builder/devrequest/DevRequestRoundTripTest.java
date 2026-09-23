@@ -8,7 +8,9 @@ import com.bizplay.builder.frd.FrdWorkspace;
 import com.bizplay.builder.git.GitCommand;
 import com.bizplay.builder.git.GitResult;
 import com.bizplay.builder.id.IdSequence;
+import com.bizplay.builder.project.PlanningRepositoryUpdater;
 import com.bizplay.builder.project.ProjectPaths;
+import com.bizplay.builder.project.ProjectRepositoryLocks;
 import com.bizplay.builder.project.ProjectService;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -143,7 +145,8 @@ class DevRequestRoundTripTest {
                 mock(FrdScreenMapper.class), mock(FrdScreenHistoryMapper.class), mock(FrdWorkspace.class),
                 workspace, new DevRequestPackage(git, TIMEOUT), new DevRequestDocument(),
                 new ExpectedBackDocument(), projects, paths, ids);
-        receives = new DevRequestReceiveService(requests, requestService, workspace, testResults, projects);
+        receives = new DevRequestReceiveService(requests, requestService, workspace, testResults, projects,
+                new PlanningRepositoryUpdater(projects, paths, git, new ProjectRepositoryLocks()));
     }
 
     /**
@@ -168,6 +171,10 @@ class DevRequestRoundTripTest {
         String head = remoteMain();
         assertThat(show(head, "core/EXW/pages/" + SCREEN + ".html")).contains("개발이 만든 프리필");
         assertThat(show(head, "core/EXW/ia.md")).contains("그 사이 기획이 고쳤다");
+        // ⭐ 받은 뒤 클론도 원격과 같다 — 그린존 문서가 여기서 재료를 읽는다.
+        assertThat(run(paths.cloneDir(PROJECT), "rev-parse", "main").stdout().strip()).isEqualTo(head);
+        assertThat(Files.readString(paths.cloneDir(PROJECT).resolve("core/EXW/pages/" + SCREEN + ".html")))
+                .contains("개발이 만든 프리필");
         assertThat(run(remote, "log", "-1", "--format=%an", head).stdout()).contains("수신");
         // ⛔ 회신서와 테스트 결과는 기본 브랜치에 안 들어간다.
         assertThat(run(remote, "ls-tree", "-r", "--name-only", head).stdout())

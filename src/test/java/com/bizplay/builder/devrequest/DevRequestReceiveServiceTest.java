@@ -1,5 +1,6 @@
 package com.bizplay.builder.devrequest;
 
+import com.bizplay.builder.project.PlanningRepositoryUpdater;
 import com.bizplay.builder.project.ProjectService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -13,6 +14,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -34,8 +36,9 @@ class DevRequestReceiveServiceTest {
     private final DevRequestDeliveryWorkspace workspaces = mock(DevRequestDeliveryWorkspace.class);
     private final DevRequestTestResultMapper testResults = mock(DevRequestTestResultMapper.class);
     private final ProjectService projects = mock(ProjectService.class);
+    private final PlanningRepositoryUpdater updater = mock(PlanningRepositoryUpdater.class);
     private final DevRequestReceiveService service = new DevRequestReceiveService(
-            requests, requestService, workspaces, testResults, projects);
+            requests, requestService, workspaces, testResults, projects, updater);
 
     private final DevelopmentRequest request = mock(DevelopmentRequest.class);
 
@@ -177,6 +180,49 @@ class DevRequestReceiveServiceTest {
         assertThat(verdict.accepted()).isFalse();
         assertThat(verdict.rejections()).anyMatch(reason -> reason.contains("TC-777"));
         assertThat(verdict.filesToTake()).isEmpty();
+    }
+
+    /**
+     * ⭐ <b>받아 놓은 뒤 클론을 원격에 맞춘다.</b> 받기는 원격 {@code main} 에 직접 커밋하므로
+     * 클론이 한 판 뒤처지고, 그린존 문서(기능명세서·화면설계서·사용자 매뉴얼)는 클론의
+     * {@code core/} 를 재료로 읽는다 — 맞추지 않으면 받은 개발 결과가 문서에 안 담긴다.
+     */
+    @Test
+    void 받아_놓은_뒤_클론을_원격에_맞춘다() {
+        given(workspaces.receive(any(), any(), any(), any(), any(), any(), any(), any()))
+                .willReturn(new DevRequestDeliveryWorkspace.Received(true, List.of(), "새커밋", "돌려받은판"));
+
+        service.receive(PROJECT, REQUEST);
+
+        verify(updater).refresh(PROJECT);
+    }
+
+    /** ⚠ 거절이면 원격이 안 움직였으니 맞출 것도 없다. */
+    @Test
+    void 거절이면_클론을_건드리지_않는다() {
+        given(workspaces.receive(any(), any(), any(), any(), any(), any(), any(), any()))
+                .willReturn(new DevRequestDeliveryWorkspace.Received(false, List.of("x"), null, null));
+
+        service.receive(PROJECT, REQUEST);
+
+        verify(updater, never()).refresh(any());
+    }
+
+    /**
+     * ⚠ <b>못 맞춰도 받기는 성공이다</b> — 원격에는 이미 들어갔다. 실패로 알리면 사람이 다시 누르고,
+     * 두 번째는 「바뀐 것 없음」이 된다. 클론은 다음 FRD 작업하기나 IA 게시가 맞춘다.
+     */
+    @Test
+    void 클론을_못_맞춰도_받기는_성공이다() {
+        given(workspaces.receive(any(), any(), any(), any(), any(), any(), any(), any()))
+                .willReturn(new DevRequestDeliveryWorkspace.Received(true, List.of(), "새커밋", "돌려받은판"));
+        doThrow(new IllegalStateException("기획 저장소에 커밋되지 않은 변경이 있어 최신 내용을 받을 수 없습니다."))
+                .when(updater).refresh(PROJECT);
+
+        DevRequestReceiveService.Result result = service.receive(PROJECT, REQUEST);
+
+        assertThat(result.accepted()).isTrue();
+        assertThat(result.commit()).isEqualTo("새커밋");
     }
 
     /** ⚠ 남의 프로젝트의 개발요청서를 이름만으로 받아 가지 못한다. */
