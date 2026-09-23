@@ -231,12 +231,16 @@ class DevRequestRoundTripTest {
         assertThat(delivery).as("전달 목록에 DR-009 가 있어야 개발이 찾는다").isNotNull();
         String branch = delivery.path("branch").asText();
         String base = delivery.path("base").asText();
+        // ⭐ 브랜치 이름에 프로젝트가 붙는다 — 한 저장소를 여러 프로젝트가 써도 안 덮인다.
+        assertThat(branch).isEqualTo("dr/" + PROJECT + "/DR-009");
+        assertThat(delivery.path("project").asText()).isEqualTo(PROJECT);
 
         run(dev, "fetch", "-q", "origin", branch);
         String contract = run(dev, "show", "FETCH_HEAD:DR-009/expected-back.md").stdout();
         Map<String, String> places = places(contract);
 
-        run(dev, "checkout", "-q", "-b", "feedback/DR-009", base);
+        String returnBranch = returnBranch(contract);
+        run(dev, "checkout", "-q", "-b", returnBranch, base);
         write(dev, places.get(SCREEN + " 화면(html)"), builtHtml);
 
         ObjectNode reply = (ObjectNode) json(template(contract));
@@ -252,8 +256,14 @@ class DevRequestRoundTripTest {
 
         run(dev, "add", ".");
         run(dev, "commit", "-q", "-m", "DR-009 개발 결과");
-        run(dev, "push", "-q", "origin", "feedback/DR-009");
+        run(dev, "push", "-q", "origin", returnBranch);
         return dev;
+    }
+
+    /** 머리 표의 「돌려보낼 브랜치」. */
+    private static String returnBranch(String contract) {
+        String line = contract.lines().filter(row -> row.startsWith("| 돌려보낼 브랜치 |")).findFirst().orElseThrow();
+        return line.split("\\|")[2].strip().replace("`", "");
     }
 
     /** 「돌려보내는 법」 표 — 첫 칸의 이름 → 둘째 칸의 자리. */

@@ -29,10 +29,11 @@ class DeliveryIndexTest {
         String merged = DeliveryIndex.merge(null, entry("DR-009", "9db65709"));
 
         JsonNode tree = json.readTree(merged);
-        assertThat(tree.get("specVersion").asInt()).isEqualTo(1);
+        assertThat(tree.get("specVersion").asInt()).isEqualTo(2);
         JsonNode row = tree.get("deliveries").get(0);
+        assertThat(row.get("project").asText()).isEqualTo("0000001");
         assertThat(row.get("dr").asText()).isEqualTo("DR-009");
-        assertThat(row.get("branch").asText()).isEqualTo("dr/DR-009");
+        assertThat(row.get("branch").asText()).isEqualTo("dr/0000001/DR-009");
         assertThat(row.get("commit").asText()).isEqualTo("9db65709");
         assertThat(row.get("base").asText()).isEqualTo("370cd63");
         assertThat(row.get("system").asText()).isEqualTo("EXW");
@@ -67,6 +68,50 @@ class DeliveryIndexTest {
         assertThat(rows.get(0).get("commit").asText()).isEqualTo("bbbbbbb");
     }
 
+    /**
+     * ⛔ <b>다른 프로젝트의 같은 번호는 서로 안 덮는다</b> (2026-09-23 사용자 확정).
+     * DR 번호는 프로젝트마다 1번부터라, 한 기획 저장소를 두 프로젝트가 쓰면 {@code DR-001} 이 둘이다.
+     * 번호만으로 가르면 뒤에 보낸 쪽이 앞 프로젝트의 줄을 갈아 낀다.
+     */
+    @Test
+    void 다른_프로젝트의_같은_번호는_서로_안_덮는다() throws IOException {
+        String first = DeliveryIndex.merge(null, entry("0000001", "DR-001", "aaaaaaa"));
+
+        String merged = DeliveryIndex.merge(first, entry("0000002", "DR-001", "bbbbbbb"));
+
+        JsonNode rows = json.readTree(merged).get("deliveries");
+        assertThat(rows).hasSize(2);
+        assertThat(rows.get(0).get("branch").asText()).isEqualTo("dr/0000001/DR-001");
+        assertThat(rows.get(1).get("branch").asText()).isEqualTo("dr/0000002/DR-001");
+    }
+
+    /** ⭐ 전달·돌려보낼 브랜치 이름에 프로젝트가 붙는다 — 같은 번호가 둘이어도 브랜치가 갈린다. */
+    @Test
+    void 브랜치_이름에_프로젝트가_붙는다() {
+        assertThat(DeliveryIndex.deliveryBranch("0000001", "DR-009")).isEqualTo("dr/0000001/DR-009");
+        assertThat(DeliveryIndex.returnBranch("0000001", "DR-009")).isEqualTo("feedback/0000001/DR-009");
+        assertThat(DeliveryIndex.deliveryBranch("0000002", "DR-009"))
+                .isNotEqualTo(DeliveryIndex.deliveryBranch("0000001", "DR-009"));
+    }
+
+    /**
+     * ⭐ <b>README 는 개발의 입구다</b> — 개발은 이 브랜치 하나만 알면 나머지를 찾아간다.
+     * ⛔ 브랜치 규칙을 글로 따로 적지 않는다 — 이름을 짓는 함수로 그린다. 따로 적으면 한쪽만 고쳐진다.
+     * ⛔ 돌려보내는 법은 여기에 다시 적지 않는다 — 요청마다의 값이 {@code expected-back.md} 에 있다.
+     */
+    @Test
+    void README_는_목록의_칸과_브랜치_규칙을_짓는_자리에서_그린다() {
+        String readme = DeliveryIndex.readme();
+
+        assertThat(readme)
+                .contains(DeliveryIndex.BRANCH).contains(DeliveryIndex.PATH)
+                .contains(DeliveryIndex.deliveryBranch("<project>", "<dr>"))
+                .contains(DeliveryIndex.returnBranch("<project>", "<dr>"))
+                .contains("expected-back.md").contains("dev-request.md")
+                .contains("`project`").contains("`dr`").contains("`branch`").contains("`base`")
+                .doesNotContain("return.json");
+    }
+
     /** ⚠ 남이 먼저 적어 둔 줄을 지우지 않는다 — 같은 파일을 여러 전달이 나눠 쓴다. */
     @Test
     void 모르는_칸이_있어도_남의_줄을_지우지_않는다() throws IOException {
@@ -94,8 +139,12 @@ class DeliveryIndexTest {
     }
 
     private DeliveryIndex.Entry entry(String dr, String commit) {
-        return new DeliveryIndex.Entry(dr, "dr/" + dr, commit, "370cd63", "EXW",
-                List.of("EXW-UWV-70-30-10-C"), Instant.parse("2026-09-22T08:24:58Z"),
+        return entry("0000001", dr, commit);
+    }
+
+    private DeliveryIndex.Entry entry(String project, String dr, String commit) {
+        return new DeliveryIndex.Entry(project, dr, DeliveryIndex.deliveryBranch(project, dr), commit,
+                "370cd63", "EXW", List.of("EXW-UWV-70-30-10-C"), Instant.parse("2026-09-22T08:24:58Z"),
                 "key-" + dr.substring(dr.length() - 3));
     }
 }

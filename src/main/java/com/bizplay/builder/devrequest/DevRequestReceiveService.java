@@ -15,7 +15,7 @@ import java.util.List;
  * 「받으면 바로 넣는다 — 사람이 끼어들지 않는다」.
  *
  * <pre>
- * feedback/DR-nnn 을 받는다 → 회신서로 판정 → 통과하면 골라 담아 기본 브랜치에 커밋 하나
+ * feedback/<프로젝트>/DR-nnn 을 받는다 → 회신서로 판정 → 통과하면 골라 담아 기본 브랜치에 커밋 하나
  *                          → 테스트 결과 md 둘을 TC 번호별로 DB 에 담는다
  * </pre>
  *
@@ -71,7 +71,7 @@ public class DevRequestReceiveService {
         }
 
         DevelopmentRequestService.View view = requestService.read(projectId, requestId);
-        String feedbackBranch = "feedback/" + request.label();
+        String feedbackBranch = DeliveryIndex.returnBranch(projectId, request.label());
         /*
          * ⚠ 보호 화면 목록은 오늘 늘 비어 있다 — 그 표시를 담는 자리가 빌더에 아직 없다.
          *   표시가 생기면 여기에 넘겨야 그 화면의 화면 md 를 안 받는 규율이 실제로 선다.

@@ -70,8 +70,8 @@ class DevRequestDeliveryWorkspaceTest {
         var published = deliveries.publish(PROJECT, REQUEST, "DR-009", "main",
                 remote.toUri().toString(), this::writePackage);
 
-        assertThat(published.branch()).isEqualTo("dr/DR-009");
-        assertThat(run(remote, "rev-parse", "refs/heads/dr/DR-009").stdout().strip())
+        assertThat(published.branch()).isEqualTo("dr/" + PROJECT + "/DR-009");
+        assertThat(run(remote, "rev-parse", "refs/heads/dr/" + PROJECT + "/DR-009").stdout().strip())
                 .isEqualTo(published.commit());
         assertThat(run(remote, "rev-parse", "refs/heads/main").stdout().strip())
                 .isEqualTo(remoteMainBefore);
@@ -144,9 +144,11 @@ class DevRequestDeliveryWorkspaceTest {
         assertThat(run(remote, "rev-parse", "refs/heads/main").stdout().strip()).isEqualTo(mainBefore);
         String ref = "refs/heads/" + DeliveryIndex.BRANCH;
         assertThat(run(remote, "show", ref + ":" + DeliveryIndex.PATH).stdout()).contains("DR-009");
-        // ⭐ 뿌리가 따로인 브랜치다 — main 의 파일도 이력도 안 섞인다.
-        assertThat(run(remote, "ls-tree", "-r", "--name-only", ref).stdout().strip())
-                .isEqualTo(DeliveryIndex.PATH);
+        // ⭐ 뿌리가 따로인 브랜치다 — main 의 파일도 이력도 안 섞인다. 목록과 그 입구 README 뿐이다.
+        assertThat(run(remote, "ls-tree", "-r", "--name-only", ref).stdout().strip().lines().sorted().toList())
+                .containsExactly(DeliveryIndex.README, DeliveryIndex.PATH);
+        assertThat(run(remote, "show", ref + ":" + DeliveryIndex.README).stdout())
+                .contains(DeliveryIndex.deliveryBranch("<project>", "<dr>"));
         assertThat(run(remote, "rev-list", "--count", ref).stdout().strip()).isEqualTo("1");
     }
 
@@ -181,7 +183,8 @@ class DevRequestDeliveryWorkspaceTest {
     }
 
     private DeliveryIndex.Entry indexEntry(String dr) {
-        return new DeliveryIndex.Entry(dr, "dr/" + dr, "commit-" + dr, "base", "EXW",
+        return new DeliveryIndex.Entry(PROJECT, dr, DeliveryIndex.deliveryBranch(PROJECT, dr),
+                "commit-" + dr, "base", "EXW",
                 java.util.List.of("EXW-UWV-70-30-10-C"), java.time.Instant.parse("2026-09-22T08:24:58Z"),
                 "key");
     }

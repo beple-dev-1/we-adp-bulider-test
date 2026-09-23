@@ -21,7 +21,7 @@
       -->
       <form class="rq-head__deliver-action" method="post"
             th:action="@{/projects/{p}/artifacts/dev-requests/{r}/deliver(p=${projectId},r=${request.id()})}"
-            th:attr="onsubmit=|return confirm('개발에 넘길까요? 기획 저장소에 dr/${request.label()} 브랜치로 꾸러미를 올립니다.')|">
+            th:attr="onsubmit=|return confirm('개발에 넘길까요? 기획 저장소에 ${deliveryBranch} 브랜치로 꾸러미를 올립니다.')|">
         <button class="button button--primary" type="submit"
                 data-submit-loading="꾸러미를 만들어 올리는 중"
                 th:disabled="${view.generating() or !precheck.sendable()}"
@@ -36,7 +36,7 @@
       <form class="rq-head__receive-action" method="post"
             th:if="${request.deliveryState().name() == 'SENT'}"
             th:action="@{/projects/{p}/artifacts/dev-requests/{r}/receive(p=${projectId},r=${request.id()})}"
-            th:attr="onsubmit=|return confirm('개발이 돌려보낸 것을 받을까요? feedback/${request.label()} 브랜치를 읽습니다.')|">
+            th:attr="onsubmit=|return confirm('개발이 돌려보낸 것을 받을까요? ${returnBranch} 브랜치를 읽습니다.')|">
         <button class="button" type="submit" data-submit-loading="개발 결과를 받는 중">개발 결과 받기</button>
       </form>
       <details class="pop rq-head__overflow"

@@ -17,7 +17,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 
 /**
- * 꾸러미를 <b>전달 전용 브랜치</b>({@code dr/DR-nnn})로 올린다.
+ * 꾸러미를 <b>전달 전용 브랜치</b>({@code dr/<프로젝트>/DR-nnn})로 올린다.
  *
  * <p>정본: {@code docs/superpowers/specs/2026-08-07-handoff-to-dev-design.md} 「줄기 — 칸 넷」의
  * 칸 3·4. 그 문서는 개발 API 로 보내는 그림이었고, <b>통로가 git 뿐이라 브랜치로 옮겼다</b>
@@ -88,7 +88,7 @@ public class DevRequestDeliveryWorkspace {
                                           PackageWriter writePackage) {
         Path clone = paths.cloneDir(projectId);
         Path worktree = paths.devRequestDeliveryWorktree(projectId, requestId);
-        String branch = "dr/" + label;
+        String branch = DeliveryIndex.deliveryBranch(projectId, label);
         try {
             discard(clone, worktree);
             /*
@@ -192,7 +192,10 @@ public class DevRequestDeliveryWorkspace {
 
             String existing = parent == null ? null : fileAt(projectId, parent, DeliveryIndex.PATH);
             writeString(worktree.resolve(DeliveryIndex.PATH), update.apply(existing));
-            require(worktree, "목록을 커밋 대상으로 올리지 못했습니다.", "add", "-f", "--", DeliveryIndex.PATH);
+            // ⭐ 개발의 입구 — 넘길 때마다 다시 써서 코드와 어긋나지 않는다.
+            writeString(worktree.resolve(DeliveryIndex.README), DeliveryIndex.readme());
+            require(worktree, "목록을 커밋 대상으로 올리지 못했습니다.", "add", "-f", "--",
+                    DeliveryIndex.PATH, DeliveryIndex.README);
             String tree = require(worktree, "목록 판을 만들지 못했습니다.", "write-tree").stdout().strip();
             if (parent != null && tree.equals(require(clone, "앞 목록 판을 확인하지 못했습니다.",
                     "rev-parse", parent + "^{tree}").stdout().strip())) {

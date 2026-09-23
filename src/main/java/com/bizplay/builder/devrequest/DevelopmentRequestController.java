@@ -153,6 +153,9 @@ public class DevelopmentRequestController {
         model.addAttribute("current", "dev-requests");
         model.addAttribute("view", view);
         model.addAttribute("precheck", requests.precheck(projectId, requestId));
+        // ⛔ 화면에서 브랜치 이름을 다시 짓지 않는다 — 이름 규칙은 DeliveryIndex 한 자리다.
+        model.addAttribute("deliveryBranch", DeliveryIndex.deliveryBranch(projectId, view.request().label()));
+        model.addAttribute("returnBranch", DeliveryIndex.returnBranch(projectId, view.request().label()));
         model.addAttribute("listQuery", listQuery);
         model.addAttribute("listState", listState);
         model.addAttribute("listOwner", listOwner);
