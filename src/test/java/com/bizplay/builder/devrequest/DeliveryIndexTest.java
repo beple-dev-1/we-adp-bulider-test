@@ -111,6 +111,22 @@ class DeliveryIndexTest {
                 .doesNotContain("return.json");
     }
 
+    /**
+     * ⭐ <b>개발이 스스로 「받아졌나」를 알 수 있게 한다.</b> 거절 사유는 기획 화면에만 뜨므로, 받기 커밋의
+     * 작성자와 꼬리표를 알려 둔다. ⛔ 두 글자는 받는 자리의 것을 그대로 쓴다 — 따로 적으면 한쪽만 고쳐진다.
+     * ⚠ 시스템이 없는 요청(SRT)의 자리도 브랜치 꼴로 알린다.
+     */
+    @Test
+    void README_는_받았는지_확인하는_법과_SRT_자리를_알린다() {
+        String readme = DeliveryIndex.readme();
+
+        assertThat(readme)
+                .contains(DevRequestDeliveryWorkspace.RECEIVER_NAME)
+                .contains(DevRequestDeliveryWorkspace.RETURNED_HEAD_TRAILER)
+                .contains(DeliveryIndex.deliveryBranch(null, "<dr>"))
+                .contains("거절");
+    }
+
     /** ⚠ 남이 먼저 적어 둔 줄을 지우지 않는다 — 같은 파일을 여러 전달이 나눠 쓴다. */
     @Test
     void 모르는_칸이_있어도_남의_줄을_지우지_않는다() throws IOException {
