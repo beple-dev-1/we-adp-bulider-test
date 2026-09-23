@@ -189,12 +189,12 @@ class DevelopmentRequestControllerTest {
      */
     @Test
     void 개발_결과를_받지_못하면_사유를_그대로_보여_준다() {
-        given(receives.receive("project-1", "request-1")).willReturn(
+        given(receives.receive("project-1", "request-1", null)).willReturn(
                 new DevRequestReceiveService.Result(false,
-                        List.of("기준 커밋이 다릅니다", "회신서가 없습니다"), null, 0));
+                        List.of("기준 커밋이 다릅니다", "회신서가 없습니다"), null, 0, false));
         RedirectAttributesModelMap flash = new RedirectAttributesModelMap();
 
-        String view = controller.receive("project-1", "request-1", flash);
+        String view = controller.receive("project-1", "request-1", null, flash);
 
         assertThat(view).isEqualTo("redirect:/projects/project-1/artifacts/dev-requests/request-1");
         assertThat(flash.getFlashAttributes().get("error").toString())
@@ -204,24 +204,37 @@ class DevelopmentRequestControllerTest {
 
     @Test
     void 개발_결과를_받으면_담은_테스트_줄_수를_알린다() {
-        given(receives.receive("project-1", "request-1")).willReturn(
-                new DevRequestReceiveService.Result(true, List.of(), "abc1234", 12));
+        given(receives.receive("project-1", "request-1", null)).willReturn(
+                new DevRequestReceiveService.Result(true, List.of(), "abc1234", 12, false));
         RedirectAttributesModelMap flash = new RedirectAttributesModelMap();
 
-        controller.receive("project-1", "request-1", flash);
+        controller.receive("project-1", "request-1", null, flash);
 
         assertThat(flash.getFlashAttributes().get("message").toString())
                 .contains("반영했습니다", "12줄");
+    }
+
+    /** ⭐ 이미 받은 판을 다시 누르면 그렇다고 알린다 — 「거절」로 보이면 사람이 무엇이 틀렸나 찾는다. */
+    @Test
+    void 이미_받은_판이면_그렇다고_알린다() {
+        given(receives.receive("project-1", "request-1", null)).willReturn(
+                new DevRequestReceiveService.Result(true, List.of(), "abc1234", 6, true));
+        RedirectAttributesModelMap flash = new RedirectAttributesModelMap();
+
+        controller.receive("project-1", "request-1", null, flash);
+
+        assertThat(flash.getFlashAttributes().get("message").toString())
+                .contains("이미 받은").contains("6줄");
     }
 
     /** ⚠ 안 보낸 것을 받을 수는 없다 — 그 거절도 화면에서는 같은 자리에 뜬다. */
     @Test
     void 아직_넘기지_않았으면_거절_사유를_화면에_띄운다() {
         willThrow(new IllegalStateException("아직 개발에 넘기지 않은 개발요청서입니다."))
-                .given(receives).receive("project-1", "request-1");
+                .given(receives).receive("project-1", "request-1", null);
         RedirectAttributesModelMap flash = new RedirectAttributesModelMap();
 
-        String view = controller.receive("project-1", "request-1", flash);
+        String view = controller.receive("project-1", "request-1", null, flash);
 
         assertThat(view).isEqualTo("redirect:/projects/project-1/artifacts/dev-requests/request-1");
         assertThat(flash.getFlashAttributes().get("error"))

@@ -102,6 +102,48 @@ class DevRequestReceiveWorkspaceTest {
         assertThat(run(remote, "log", "-1", "--format=%an", head).stdout()).contains("수신");
     }
 
+    /**
+     * ⭐ <b>받기 커밋에 돌려받은 판을 적는다.</b> 같은 회신을 다시 받는지 git 이력만으로 알아보는 열쇠다 —
+     * DB 에 기대면, 밀고 나서 DB 가 실패했을 때 다시 누를 길이 없어진다.
+     */
+    @Test
+    void 받기_커밋에_돌려받은_판을_적는다() throws IOException {
+        pushFeedback("""
+                {"dr": "DR-009", "base": "%s", "screens": [
+                  {"screenId": "EXW-1", "pages": "changed", "screen-md": "unchanged", "index": "changed"}
+                ]}
+                """.formatted(remoteMain()));
+
+        var received = receiveOnce();
+
+        assertThat(run(remote, "log", "-1", "--format=%B", remoteMain()).stdout())
+                .contains(DevRequestDeliveryWorkspace.RETURNED_HEAD_TRAILER + " " + received.returnedHead());
+    }
+
+    /**
+     * ⭐ <b>같은 판을 다시 받으면 「이미 받았다」로 답하고 한 글자도 안 놓는다.</b> 그냥 판정하면 빌더 자신의
+     * 받기 커밋이 그 화면 파일을 바꿨으니 「그 사이 이 파일이 바뀌었습니다」로 떨어진다 — 맞는 거절이지만
+     * 사람을 헷갈리게 한다. 그리고 밀고 나서 테스트 결과 담기가 실패했을 때 다시 누를 길이 이것이다.
+     */
+    @Test
+    void 같은_판을_다시_받으면_이미_받은_것으로_답한다() throws IOException {
+        pushFeedback("""
+                {"dr": "DR-009", "base": "%s", "screens": [
+                  {"screenId": "EXW-1", "pages": "changed", "screen-md": "unchanged", "index": "changed"}
+                ]}
+                """.formatted(remoteMain()));
+        var first = receiveOnce();
+        String afterFirst = remoteMain();
+
+        var second = receiveOnce();
+
+        assertThat(second.accepted()).isTrue();
+        assertThat(second.alreadyReceived()).isTrue();
+        assertThat(second.commit()).isEqualTo(first.commit());
+        assertThat(second.returnedHead()).isEqualTo(first.returnedHead());
+        assertThat(remoteMain()).isEqualTo(afterFirst);
+    }
+
     /** ⛔ 거절이면 기본 브랜치가 한 글자도 안 움직인다. */
     @Test
     void 거절이면_아무것도_안_놓는다() throws IOException {
@@ -218,6 +260,13 @@ class DevRequestReceiveWorkspaceTest {
         run(work, "add", ".");
         run(work, "commit", "-q", "-m", "그 사이 기획 변경");
         run(work, "push", "-q", "origin", "HEAD:refs/heads/main");
+    }
+
+    private DevRequestDeliveryWorkspace.Received receiveOnce() {
+        return workspaces.receive(PROJECT, REQUEST, "main", remote.toUri().toString(),
+                "feedback/DR-009", "DR-009/" + ReturnBatch.FILE,
+                (returnJson, main, returnedFile) -> ReturnBatch.judge(expected(), returnJson, main),
+                "chore: DR-009 개발 결과 반영");
     }
 
     private String remoteMain() {

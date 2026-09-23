@@ -211,7 +211,7 @@ BRD 의 잠금과 워크트리 배정 · 개발 전송 상태 셋이 어디 사�
 > 정본은 `src/main/resources/db/migration/*.sql` 이고 스크립트가 그것을 재생한다.
 > 다시 그리기: `python docs/tools/erd_from_migrations.py`
 >
-> 지금 기준 — 마이그레이션 **V77** · 표 **46개** · 열 **481개** (그중 **242개**에 한글 `COMMENT` 가 있다).
+> 지금 기준 — 마이그레이션 **V78** · 표 **47개** · 열 **490개** (그중 **251개**에 한글 `COMMENT` 가 있다).
 > 열 뒤의 `"..."` 는 DB 의 `COMMENT` 를 그대로 옮긴 것이다. 빈 것은 DB 에 뜻이 안 적힌 열이다.
 > **PK** 기본키 · **FK** 외래키 · **UK** 유니크.
 > 관계선 — `||--|{` 여럿(필수) · `||--o{` 여럿(널 허용) · `||--||` 하나(필수) · `||--o|` 하나(널 허용).
@@ -843,6 +843,7 @@ erDiagram
 - `adk_builder_business_document` (V74)
 - `adk_builder_business_document_revision` (V76)
 - `adk_builder_business_document_seed` (V74)
+- `adk_builder_dev_request_receipt` (V78)
 - `adk_builder_dev_request_test_result` (V77)
 - `adk_builder_feature_spec` (V69)
 - `adk_builder_feature_spec_revision` (V69)

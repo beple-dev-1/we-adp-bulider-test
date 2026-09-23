@@ -70,6 +70,7 @@ class DevRequestRoundTripTest {
     private final DevRequestTestResultMapper testResults = mock(DevRequestTestResultMapper.class);
     private final ProjectService projects = mock(ProjectService.class);
     private final DevelopmentRequest request = mock(DevelopmentRequest.class);
+    private final DevRequestReceiptMapper receipts = mock(DevRequestReceiptMapper.class);
 
     private DevRequestDeliveryService deliveries;
     private DevRequestReceiveService receives;
@@ -146,7 +147,7 @@ class DevRequestRoundTripTest {
                 workspace, new DevRequestPackage(git, TIMEOUT), new DevRequestDocument(),
                 new ExpectedBackDocument(), projects, paths, ids);
         receives = new DevRequestReceiveService(requests, requestService, workspace, testResults, projects,
-                new PlanningRepositoryUpdater(projects, paths, git, new ProjectRepositoryLocks()));
+                new PlanningRepositoryUpdater(projects, paths, git, new ProjectRepositoryLocks()), receipts);
     }
 
     /**
@@ -164,7 +165,7 @@ class DevRequestRoundTripTest {
         Path dev = developerFollowsTheDocuments("<main>개발이 만든 프리필</main>");
         plannerCommits("core/EXW/ia.md", "# 메뉴구조도\n그 사이 기획이 고쳤다\n");
 
-        DevRequestReceiveService.Result result = receives.receive(PROJECT, REQUEST);
+        DevRequestReceiveService.Result result = receives.receive(PROJECT, REQUEST, "account-1");
 
         assertThat(result.rejections()).isEmpty();
         assertThat(result.accepted()).isTrue();
@@ -185,6 +186,12 @@ class DevRequestRoundTripTest {
         assertThat(rows.getValue().tcId()).isEqualTo("TC-001");
         assertThat(rows.getValue().verdict()).isEqualTo(TestResultReader.PASS);
         assertThat(dev).exists();
+
+        // ⭐ 같은 회신을 다시 받으면 「이미 받았다」 — 빌더 자신의 받기 커밋과 겹쳐 거절되지 않는다.
+        DevRequestReceiveService.Result again = receives.receive(PROJECT, REQUEST, "account-1");
+        assertThat(again.rejections()).isEmpty();
+        assertThat(again.alreadyReceived()).isTrue();
+        assertThat(remoteMain()).isEqualTo(head);
     }
 
     /**
@@ -198,7 +205,7 @@ class DevRequestRoundTripTest {
         plannerCommits("core/EXW/pages/" + SCREEN + ".md", "# 회원가입\n그 사이 다른 DR 이 고친 정의서\n");
         String before = remoteMain();
 
-        DevRequestReceiveService.Result result = receives.receive(PROJECT, REQUEST);
+        DevRequestReceiveService.Result result = receives.receive(PROJECT, REQUEST, "account-1");
 
         assertThat(result.accepted()).isFalse();
         assertThat(result.rejections()).anyMatch(reason -> reason.contains(SCREEN + ".md"));

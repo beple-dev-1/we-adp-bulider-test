@@ -41,26 +41,34 @@ public class DevRequestReceiveService {
     private final DevRequestTestResultMapper testResults;
     private final ProjectService projects;
     private final PlanningRepositoryUpdater repositoryUpdater;
+    private final DevRequestReceiptMapper receipts;
 
     public DevRequestReceiveService(DevelopmentRequestMapper requests,
                                     DevelopmentRequestService requestService,
                                     DevRequestDeliveryWorkspace workspaces,
                                     DevRequestTestResultMapper testResults,
                                     ProjectService projects,
-                                    PlanningRepositoryUpdater repositoryUpdater) {
+                                    PlanningRepositoryUpdater repositoryUpdater,
+                                    DevRequestReceiptMapper receipts) {
         this.requests = requests;
         this.requestService = requestService;
         this.workspaces = workspaces;
         this.testResults = testResults;
         this.projects = projects;
         this.repositoryUpdater = repositoryUpdater;
+        this.receipts = receipts;
     }
 
     /** 받은 결과 — 화면이 이것을 그대로 보여 준다. */
-    public record Result(boolean accepted, List<String> rejections, String commit, int testRows) {
+    /** @param alreadyReceived 이미 받은 판을 다시 누름 — git 은 건너뛰고 테스트 결과만 다시 담았다 */
+    public record Result(boolean accepted, List<String> rejections, String commit, int testRows,
+                         boolean alreadyReceived) {
     }
 
-    public synchronized Result receive(String projectId, String requestId) {
+    /**
+     * @param accountId 누른 계정 — 수신 이력에 남는다. 모르면 {@code null}
+     */
+    public synchronized Result receive(String projectId, String requestId, String accountId) {
         DevelopmentRequest request = requests.selectById(requestId);
         if (request == null || !request.projectId().equals(projectId)) {
             throw new IllegalArgumentException("개발요청서를 찾을 수 없습니다.");
@@ -93,16 +101,27 @@ public class DevRequestReceiveService {
         if (!received.accepted()) {
             log.info("개발 결과를 거절했다 projectId={} 개발요청서={} 사유={}",
                     projectId, requestId, received.rejections());
-            return new Result(false, received.rejections(), null, 0);
+            // ⭐ 거절도 남긴다 — 무엇 때문에 몇 번 떨어졌는지가 개발과 말을 맞출 근거다.
+            receipts.insert(DevRequestReceipt.rejected(requestId, received.returnedHead(),
+                    received.rejections(), accountId));
+            return new Result(false, received.rejections(), null, 0, false);
         }
 
+        /*
+         * ⭐ 이미 받은 판이어도 테스트 결과는 다시 담는다 — 밀고 나서 담기가 실패했을 때 다시 누르는
+         *   길이 이것이다. 같은 TC 는 갈아 끼우므로 두 번 담아도 한 벌이다.
+         */
         int rows = storeTestResults(projectId, requestId, received.returnedHead(), request.label());
         if (received.commit() != null) {
+            // ⚠ 이미 받은 판이어도 맞춘다 — 앞 받기에서 맞추기가 실패했을 수 있다.
             refreshClone(projectId, requestId);
         }
-        log.info("개발 결과를 받았다 projectId={} 개발요청서={} 커밋={} 테스트={}줄",
-                projectId, requestId, received.commit(), rows);
-        return new Result(true, List.of(), received.commit(), rows);
+        receipts.insert(received.alreadyReceived()
+                ? DevRequestReceipt.already(requestId, received.returnedHead(), received.commit(), rows, accountId)
+                : DevRequestReceipt.accepted(requestId, received.returnedHead(), received.commit(), rows, accountId));
+        log.info("개발 결과를 받았다 projectId={} 개발요청서={} 커밋={} 테스트={}줄 이미받음={}",
+                projectId, requestId, received.commit(), rows, received.alreadyReceived());
+        return new Result(true, List.of(), received.commit(), rows, received.alreadyReceived());
     }
 
     /**

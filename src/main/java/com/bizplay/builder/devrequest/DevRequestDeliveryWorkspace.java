@@ -255,8 +255,21 @@ public class DevRequestDeliveryWorkspace {
      *                     받는 자리가 파일을 다 아는 것이 아니라, 부르는 쪽이 필요한 것을 더 본다
      */
     public record Received(boolean accepted, List<String> rejections, String commit,
-                           String returnedHead) {
+                           String returnedHead, boolean alreadyReceived) {
+
+        public Received(boolean accepted, List<String> rejections, String commit, String returnedHead) {
+            this(accepted, rejections, commit, returnedHead, false);
+        }
     }
+
+    /**
+     * 받기 커밋 끝에 적는 꼬리표 — 이 뒤에 돌려받은 판이 온다.
+     *
+     * <p>⭐ <b>같은 판을 두 번 받는지 git 이력만으로 알아보는 열쇠다.</b> DB 에 기대면 밀고 나서
+     * DB 가 실패했을 때 다시 누를 길이 없다 — 판정하면 빌더 자신의 받기 커밋과 겹쳐 떨어진다.
+     * ⛔ 글자를 바꾸면 이미 놓인 받기 커밋을 못 알아본다.
+     */
+    public static final String RETURNED_HEAD_TRAILER = "Returned-Head:";
 
     /**
      * 회신서와 지금 기준을 받아 판정하는 일. ⛔ 규율은 이 클래스가 아니라 판정기가 안다.
@@ -307,6 +320,14 @@ public class DevRequestDeliveryWorkspace {
             String returnedHead = require(clone, "회신 커밋을 확인하지 못했습니다.",
                     "rev-parse", "FETCH_HEAD").stdout().strip();
 
+            String earlier = earlierReceipt(clone, currentBase, returnedHead);
+            if (earlier != null) {
+                // ⭐ 이미 받은 판이다 — 판정하지 않는다. 판정하면 빌더 자신의 받기 커밋과 겹쳐 떨어진다.
+                log.info("이미 받은 판이다 projectId={} 개발요청서={} 판={} 받기 커밋={}",
+                        projectId, requestId, returnedHead, earlier);
+                return new Received(true, List.of(), earlier, returnedHead, true);
+            }
+
             GitResult shown = git.run(clone, timeout, "show", returnedHead + ":" + returnFilePath);
             if (!shown.succeeded()) {
                 // ⚠ 회신서가 없으면 배치가 무엇인지 알 길이 없다 — 거절이지 「그냥 다 받기」가 아니다.
@@ -336,7 +357,7 @@ public class DevRequestDeliveryWorkspace {
             }
             require(worktree, "받기 커밋을 만들지 못했습니다.",
                     "-c", "user.name=" + RECEIVER_NAME, "-c", "user.email=" + RECEIVER_EMAIL,
-                    "commit", "-m", message);
+                    "commit", "-m", message + "\n\n" + RETURNED_HEAD_TRAILER + " " + returnedHead);
             String commit = require(worktree, "받기 커밋을 확인하지 못했습니다.",
                     "rev-parse", "HEAD").stdout().strip();
 
@@ -383,6 +404,17 @@ public class DevRequestDeliveryWorkspace {
                         .collect(java.util.stream.Collectors.toSet());
             }
         };
+    }
+
+    /** 기본 브랜치에 이 판을 받은 커밋이 이미 있나 — 있으면 그 커밋, 없으면 {@code null}. */
+    private String earlierReceipt(Path clone, String currentBase, String returnedHead) {
+        if (!isCommitLike(returnedHead)) {
+            return null;
+        }
+        String found = require(clone, "받기 이력을 확인하지 못했습니다.", "log", currentBase,
+                "--fixed-strings", "--grep=" + RETURNED_HEAD_TRAILER + " " + returnedHead,
+                "--format=%H", "-n", "1").stdout().strip();
+        return found.isEmpty() ? null : found;
     }
 
     private static boolean isCommitLike(String value) {

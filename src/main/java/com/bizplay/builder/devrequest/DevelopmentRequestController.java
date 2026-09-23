@@ -208,10 +208,15 @@ public class DevelopmentRequestController {
      */
     @PostMapping("/{requestId}/receive")
     public String receive(@PathVariable String projectId, @PathVariable String requestId,
-                          RedirectAttributes flash) {
+                          @AuthenticationPrincipal BuilderUser me, RedirectAttributes flash) {
         try {
-            DevRequestReceiveService.Result result = receives.receive(projectId, requestId);
-            if (result.accepted()) {
+            DevRequestReceiveService.Result result = receives.receive(projectId, requestId,
+                    me == null ? null : me.accountId());
+            if (result.accepted() && result.alreadyReceived()) {
+                // ⭐ 「거절」로 보이면 사람이 무엇이 틀렸나 찾는다 — 이미 받은 것이라고 말한다.
+                flash.addFlashAttribute("message",
+                        "이미 받은 판입니다. 테스트 결과 %d줄을 다시 담았습니다.".formatted(result.testRows()));
+            } else if (result.accepted()) {
                 flash.addFlashAttribute("message", result.commit() == null
                         ? "받을 변경이 없었습니다. 테스트 결과 %d줄을 담았습니다.".formatted(result.testRows())
                         : "개발 결과를 반영했습니다. 테스트 결과 %d줄을 담았습니다.".formatted(result.testRows()));

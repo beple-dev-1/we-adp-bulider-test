@@ -37,8 +37,9 @@ class DevRequestReceiveServiceTest {
     private final DevRequestTestResultMapper testResults = mock(DevRequestTestResultMapper.class);
     private final ProjectService projects = mock(ProjectService.class);
     private final PlanningRepositoryUpdater updater = mock(PlanningRepositoryUpdater.class);
+    private final DevRequestReceiptMapper receipts = mock(DevRequestReceiptMapper.class);
     private final DevRequestReceiveService service = new DevRequestReceiveService(
-            requests, requestService, workspaces, testResults, projects, updater);
+            requests, requestService, workspaces, testResults, projects, updater, receipts);
 
     private final DevelopmentRequest request = mock(DevelopmentRequest.class);
 
@@ -64,7 +65,7 @@ class DevRequestReceiveServiceTest {
     void 아직_넘기지_않았으면_받지_않는다() {
         given(request.deliveryState()).willReturn(DevelopmentRequest.DeliveryState.NOT_SENT);
 
-        assertThatThrownBy(() -> service.receive(PROJECT, REQUEST))
+        assertThatThrownBy(() -> service.receive(PROJECT, REQUEST, "account-1"))
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("넘기지 않은");
         verify(workspaces, never()).receive(any(), any(), any(), any(), any(), any(), any(), any());
@@ -77,7 +78,7 @@ class DevRequestReceiveServiceTest {
                 .willReturn(new DevRequestDeliveryWorkspace.Received(
                         false, List.of("기준 커밋이 다릅니다"), null, null));
 
-        DevRequestReceiveService.Result result = service.receive(PROJECT, REQUEST);
+        DevRequestReceiveService.Result result = service.receive(PROJECT, REQUEST, "account-1");
 
         assertThat(result.accepted()).isFalse();
         assertThat(result.rejections()).containsExactly("기준 커밋이 다릅니다");
@@ -105,7 +106,7 @@ class DevRequestReceiveServiceTest {
                 | TC-101 | 가입이 끝난다 | 없음 | 조건 | 행위 | 기대 | 안 됐다 | 실패 | 캡처 |
                 """);
 
-        DevRequestReceiveService.Result result = service.receive(PROJECT, REQUEST);
+        DevRequestReceiveService.Result result = service.receive(PROJECT, REQUEST, "account-1");
 
         assertThat(result.accepted()).isTrue();
         assertThat(result.commit()).isEqualTo("새커밋");
@@ -133,7 +134,7 @@ class DevRequestReceiveServiceTest {
                         true, List.of(), "새커밋", "돌려받은판"));
         given(workspaces.fileAt(any(), any(), any())).willReturn(null);
 
-        DevRequestReceiveService.Result result = service.receive(PROJECT, REQUEST);
+        DevRequestReceiveService.Result result = service.receive(PROJECT, REQUEST, "account-1");
 
         assertThat(result.accepted()).isTrue();
         assertThat(result.testRows()).isZero();
@@ -154,7 +155,7 @@ class DevRequestReceiveServiceTest {
                 ArgumentCaptor.forClass(DevRequestDeliveryWorkspace.Judge.class);
         given(workspaces.receive(any(), any(), any(), any(), any(), any(), judge.capture(), any()))
                 .willReturn(new DevRequestDeliveryWorkspace.Received(false, List.of("x"), null, null));
-        service.receive(PROJECT, REQUEST);
+        service.receive(PROJECT, REQUEST, "account-1");
 
         String unit = """
                 | TC | 무엇을 보나 | 의존 | 조건 | 행위 | 기대 결과 | 실제 결과 | 판정 | 근거 |
@@ -192,7 +193,7 @@ class DevRequestReceiveServiceTest {
         given(workspaces.receive(any(), any(), any(), any(), any(), any(), any(), any()))
                 .willReturn(new DevRequestDeliveryWorkspace.Received(true, List.of(), "새커밋", "돌려받은판"));
 
-        service.receive(PROJECT, REQUEST);
+        service.receive(PROJECT, REQUEST, "account-1");
 
         verify(updater).refresh(PROJECT);
     }
@@ -203,7 +204,7 @@ class DevRequestReceiveServiceTest {
         given(workspaces.receive(any(), any(), any(), any(), any(), any(), any(), any()))
                 .willReturn(new DevRequestDeliveryWorkspace.Received(false, List.of("x"), null, null));
 
-        service.receive(PROJECT, REQUEST);
+        service.receive(PROJECT, REQUEST, "account-1");
 
         verify(updater, never()).refresh(any());
     }
@@ -219,10 +220,67 @@ class DevRequestReceiveServiceTest {
         doThrow(new IllegalStateException("기획 저장소에 커밋되지 않은 변경이 있어 최신 내용을 받을 수 없습니다."))
                 .when(updater).refresh(PROJECT);
 
-        DevRequestReceiveService.Result result = service.receive(PROJECT, REQUEST);
+        DevRequestReceiveService.Result result = service.receive(PROJECT, REQUEST, "account-1");
 
         assertThat(result.accepted()).isTrue();
         assertThat(result.commit()).isEqualTo("새커밋");
+    }
+
+    /** ⭐ 받으면 수신 이력에 받은 판 · 받기 커밋 · 담은 줄 수 · 누른 사람을 남긴다. */
+    @Test
+    void 받으면_수신_이력을_남긴다() {
+        given(workspaces.receive(any(), any(), any(), any(), any(), any(), any(), any()))
+                .willReturn(new DevRequestDeliveryWorkspace.Received(true, List.of(), "새커밋", "돌려받은판"));
+
+        service.receive(PROJECT, REQUEST, "account-1");
+
+        ArgumentCaptor<DevRequestReceipt> row = ArgumentCaptor.forClass(DevRequestReceipt.class);
+        verify(receipts).insert(row.capture());
+        assertThat(row.getValue().outcome()).isEqualTo(DevRequestReceipt.ACCEPTED);
+        assertThat(row.getValue().devRequestId()).isEqualTo(REQUEST);
+        assertThat(row.getValue().returnedHead()).isEqualTo("돌려받은판");
+        assertThat(row.getValue().receiveCommit()).isEqualTo("새커밋");
+        assertThat(row.getValue().accountId()).isEqualTo("account-1");
+    }
+
+    /** ⭐ 거절도 사유와 함께 남긴다 — 무엇 때문에 몇 번 떨어졌는지가 개발과 말을 맞출 근거다. */
+    @Test
+    void 거절도_사유와_함께_남긴다() {
+        given(workspaces.receive(any(), any(), any(), any(), any(), any(), any(), any()))
+                .willReturn(new DevRequestDeliveryWorkspace.Received(false, List.of("회신서가 없습니다"), null, "판"));
+
+        service.receive(PROJECT, REQUEST, "account-1");
+
+        ArgumentCaptor<DevRequestReceipt> row = ArgumentCaptor.forClass(DevRequestReceipt.class);
+        verify(receipts).insert(row.capture());
+        assertThat(row.getValue().outcome()).isEqualTo(DevRequestReceipt.REJECTED);
+        assertThat(row.getValue().rejectionList()).containsExactly("회신서가 없습니다");
+    }
+
+    /**
+     * ⭐ <b>이미 받은 판이면 git 은 건너뛰고 테스트 결과만 다시 담는다.</b> 밀고 나서 담기가 실패했을 때
+     * 다시 누르는 길이 이것이다 — 같은 TC 는 갈아 끼우므로 두 번 담아도 한 벌이다.
+     */
+    @Test
+    void 이미_받은_판이면_테스트_결과만_다시_담는다() {
+        given(workspaces.receive(any(), any(), any(), any(), any(), any(), any(), any()))
+                .willReturn(new DevRequestDeliveryWorkspace.Received(true, List.of(), "앞커밋", "돌려받은판", true));
+        given(workspaces.fileAt(PROJECT, "돌려받은판", "DR-009/return/integration-tests.md")).willReturn("""
+                | TC | 무엇을 보나 | 의존 | 조건 | 행위 | 기대 결과 | 실제 결과 | 판정 | 근거 |
+                |---|---|---|---|---|---|---|---|---|
+                | TC-101 | 열린다 | 없음 | 조건 | 행위 | 기대 | 열렸다 | 통과 | 녹화 |
+                """);
+
+        DevRequestReceiveService.Result result = service.receive(PROJECT, REQUEST, "account-1");
+
+        assertThat(result.accepted()).isTrue();
+        assertThat(result.alreadyReceived()).isTrue();
+        assertThat(result.testRows()).isEqualTo(1);
+        // ⚠ 앞 받기에서 클론 맞추기가 실패했을 수 있다 — 다시 누른 이때 맞춘다.
+        verify(updater).refresh(PROJECT);
+        ArgumentCaptor<DevRequestReceipt> row = ArgumentCaptor.forClass(DevRequestReceipt.class);
+        verify(receipts).insert(row.capture());
+        assertThat(row.getValue().outcome()).isEqualTo(DevRequestReceipt.ALREADY);
     }
 
     /** ⚠ 남의 프로젝트의 개발요청서를 이름만으로 받아 가지 못한다. */
@@ -230,7 +288,7 @@ class DevRequestReceiveServiceTest {
     void 다른_프로젝트의_개발요청서는_받지_않는다() {
         given(request.projectId()).willReturn("project-2");
 
-        assertThatThrownBy(() -> service.receive(PROJECT, REQUEST))
+        assertThatThrownBy(() -> service.receive(PROJECT, REQUEST, "account-1"))
                 .isInstanceOf(IllegalArgumentException.class);
     }
 }
