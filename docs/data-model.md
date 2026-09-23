@@ -211,7 +211,7 @@ BRD 의 잠금과 워크트리 배정 · 개발 전송 상태 셋이 어디 사�
 > 정본은 `src/main/resources/db/migration/*.sql` 이고 스크립트가 그것을 재생한다.
 > 다시 그리기: `python docs/tools/erd_from_migrations.py`
 >
-> 지금 기준 — 마이그레이션 **V74** · 표 **43개** · 열 **448개** (그중 **230개**에 한글 `COMMENT` 가 있다).
+> 지금 기준 — 마이그레이션 **V77** · 표 **46개** · 열 **481개** (그중 **242개**에 한글 `COMMENT` 가 있다).
 > 열 뒤의 `"..."` 는 DB 의 `COMMENT` 를 그대로 옮긴 것이다. 빈 것은 DB 에 뜻이 안 적힌 열이다.
 > **PK** 기본키 · **FK** 외래키 · **UK** 유니크.
 > 관계선 — `||--|{` 여럿(필수) · `||--o{` 여럿(널 허용) · `||--||` 하나(필수) · `||--o|` 하나(널 허용).
@@ -264,6 +264,7 @@ erDiagram
         integer frd_seq "이 프로젝트가 지금까지 채번한 FRD 순번의 마지막 값. ⛔ FRD 를 지워도 줄지 않는다 — 번호 재사용 금지가 여기 걸려 있다. 채번은…"
         varchar platform_code "표준 화면ID 의 첫 마디(PS 꼴). 등록할 때 사람이 정하고 그 뒤로 안 바뀐다 — 클론이 앉으면 바로 채번이 도는데, 이미 박힌 표준…"
         integer dev_request_seq "프로젝트 안에서 사람이 보는 DR 번호를 중복 없이 채번하기 위한 마지막 번호다."
+        integer srt_seq
     }
     adk_builder_project_facet {
         varchar project_id PK, FK "어느 프로젝트의 적용 구분인가."
@@ -327,6 +328,7 @@ erDiagram
 
 ⚠ **뜻이 DB 에 안 적힌 열** — `COMMENT ON COLUMN` 이 없어 위 그림에도 설명이 없다. §0 규칙(「열은 영문 · 뜻은 한글 COMMENT」)을 못 지킨 자리다.
 
+- `adk_builder_project` — 1개: `srt_seq`
 - `adk_builder_repository_update` — 4개: `project_id`, `state`, `started_at`, `finished_at`
 - `adk_builder_dev_issue_target` — 4개: `project_id`, `token_nonce`, `updated_at`, `updated_by`
 - `adk_builder_design_system_curation` — 4개: `project_id`, `system_id`, `updated_at`, `updated_by`
@@ -839,11 +841,14 @@ erDiagram
 아래 표가 생겼는데 `docs/tools/erd_from_migrations.py` 의 `GROUPS` 에 없다. 어느 묶음인지 정해서 그 목록에 넣어라.
 
 - `adk_builder_business_document` (V74)
+- `adk_builder_business_document_revision` (V76)
 - `adk_builder_business_document_seed` (V74)
+- `adk_builder_dev_request_test_result` (V77)
 - `adk_builder_feature_spec` (V69)
 - `adk_builder_feature_spec_revision` (V69)
 - `adk_builder_screen_design` (V71)
 - `adk_builder_screen_design_revision` (V71)
+- `adk_builder_srt` (V73)
 
 <!-- ERD:END -->
 
