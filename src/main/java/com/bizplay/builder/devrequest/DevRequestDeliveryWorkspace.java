@@ -147,53 +147,71 @@ public class DevRequestDeliveryWorkspace {
     }
 
     /**
-     * 기본 브랜치의 파일 하나를 고쳐 올린다 — 전달 <b>목록</b>이 사는 자리다.
+     * 전달 <b>목록</b>을 전용 브랜치 {@link DeliveryIndex#BRANCH} 에 고쳐 올린다.
      *
-     * <p>⭐ <b>꾸러미와 달리 강제 갱신이 아니다.</b> 기본 브랜치는 남들도 쓰는 자리라 밀어 덮으면
-     * 남의 커밋이 사라진다. 그래서 <b>원격을 받아 그 위에서</b> 고치고 보통 push 로 올린다.
+     * <p>⭐ <b>기본 브랜치에 올리지 않는다</b> (2026-09-23 사용자 확정). 올리던 판은 넘기기가
+     * 스스로 기본 브랜치를 한 판 앞으로 밀어, 꾸러미가 알린 기준 커밋이 곧바로 낡았다 —
+     * 설계의 「받을 때 HEAD 와 다르면 거절」 때문에 문서대로 한 개발이 늘 거절됐다.
      *
-     * <p>⚠ <b>클론의 작업폴더를 쓰지 않는다.</b> 클론은 낡아 있을 수 있고(사용자가 일부러
-     * 안 맞춰 두기도 한다), 거기서 고치면 사람이 보던 자리가 흔들린다. 받아 온 판 위에
-     * <b>임시 워크트리</b>를 띄워 거기서만 고친다.
+     * <p>⭐ <b>뿌리가 따로인 브랜치다.</b> 기본 브랜치의 파일도 이력도 섞이지 않고 목록 하나만 산다.
+     * 그래서 작업폴더를 풀지 않고({@code --no-checkout}) 색인만 채워 커밋을 짓는다 — 저장소 전체를
+     * 풀 까닭이 없다.
+     *
+     * <p>⚠ <b>꾸러미와 달리 강제 갱신이 아니다.</b> 목록에는 다른 DR 의 줄도 있어 밀어 덮으면
+     * 그 줄이 사라진다. 원격을 받아 그 위에서 고치고 보통 push 로 올린다.
      *
      * @param update 기존 내용(없으면 {@code null})을 받아 새 내용을 내는 일
      * @return 올린 커밋. 바뀐 것이 없으면 {@code null}
      */
-    public synchronized String updateOnDefaultBranch(String projectId, String requestId,
-                                                     String defaultBranch, String authenticatedUrl,
-                                                     String relativePath,
-                                                     java.util.function.UnaryOperator<String> update,
-                                                     String message) {
+    public synchronized String updateIndexBranch(String projectId, String requestId,
+                                                 String authenticatedUrl,
+                                                 java.util.function.UnaryOperator<String> update,
+                                                 String message) {
         Path clone = paths.cloneDir(projectId);
         Path worktree = paths.devRequestDeliveryWorktree(projectId, requestId);
+        String branch = DeliveryIndex.BRANCH;
         try {
             discard(clone, worktree);
-            // ⭐ 원격의 지금 판을 받아 그 위에서 고친다 — 로컬 클론이 낡아도 상관없다.
-            require(clone, "기획 저장소의 기본 브랜치를 받지 못했습니다.",
-                    "fetch", authenticatedUrl, defaultBranch);
-            require(clone, "목록을 고칠 자리를 만들지 못했습니다.",
-                    "worktree", "add", "--detach", worktree.toString(), "FETCH_HEAD");
+            String listed = require(clone, "기획 저장소의 브랜치 목록을 받지 못했습니다.",
+                    "ls-remote", "--heads", authenticatedUrl, "refs/heads/" + branch).stdout();
+            String parent = null;
+            if (!listed.isBlank()) {
+                require(clone, "전달 목록 브랜치를 받지 못했습니다.", "fetch", authenticatedUrl, branch);
+                parent = require(clone, "전달 목록 커밋을 확인하지 못했습니다.",
+                        "rev-parse", "FETCH_HEAD").stdout().strip();
+            }
 
-            Path target = worktree.resolve(relativePath);
-            String existing = Files.exists(target) ? readString(target) : null;
-            writeString(target, update.apply(existing));
+            // ⚠ 처음이면 붙을 판이 없다 — 클론의 아무 판에 자리만 띄우고 색인은 비운다.
+            require(clone, "목록을 고칠 자리를 만들지 못했습니다.", "worktree", "add", "--detach",
+                    "--no-checkout", worktree.toString(), parent == null ? "HEAD" : parent);
+            if (parent == null) {
+                require(worktree, "목록 자리를 비우지 못했습니다.", "read-tree", "--empty");
+            } else {
+                require(worktree, "앞 목록을 읽지 못했습니다.", "read-tree", parent);
+            }
 
-            require(worktree, "목록을 커밋 대상으로 올리지 못했습니다.", "add", "--", relativePath);
-            GitResult changed = git.run(worktree, timeout, "diff", "--cached", "--quiet");
-            if (changed.exitCode() == 0) {
+            String existing = parent == null ? null : fileAt(projectId, parent, DeliveryIndex.PATH);
+            writeString(worktree.resolve(DeliveryIndex.PATH), update.apply(existing));
+            require(worktree, "목록을 커밋 대상으로 올리지 못했습니다.", "add", "-f", "--", DeliveryIndex.PATH);
+            String tree = require(worktree, "목록 판을 만들지 못했습니다.", "write-tree").stdout().strip();
+            if (parent != null && tree.equals(require(clone, "앞 목록 판을 확인하지 못했습니다.",
+                    "rev-parse", parent + "^{tree}").stdout().strip())) {
                 // ⚠ 바뀐 것이 없으면 빈 커밋을 만들지 않는다 — 이력이 뜻 없이 길어진다.
                 return null;
             }
-            require(worktree, "목록 커밋을 만들지 못했습니다.", "commit", "-m", message);
-            String commit = require(worktree, "목록 커밋을 확인하지 못했습니다.",
-                    "rev-parse", "HEAD").stdout().strip();
+            List<String> commitTree = new ArrayList<>(List.of("commit-tree", tree, "-m", message));
+            if (parent != null) {
+                commitTree.addAll(List.of("-p", parent));
+            }
+            String commit = require(worktree, "목록 커밋을 만들지 못했습니다.",
+                    commitTree.toArray(String[]::new)).stdout().strip();
 
-            GitResult pushed = git.run(worktree, PUSH_TIMEOUT, "push", authenticatedUrl,
-                    "HEAD:refs/heads/" + defaultBranch);
+            GitResult pushed = git.run(clone, PUSH_TIMEOUT, "push", authenticatedUrl,
+                    commit + ":refs/heads/" + branch);
             if (!pushed.succeeded()) {
                 /*
                  * ⛔ 여기서 강제로 밀지 마라. 거절은 대개 그 사이 남이 올렸다는 뜻이고,
-                 *   밀어 덮으면 그 커밋이 사라진다. 다시 부르면 새로 받아 그 위에서 고친다.
+                 *   밀어 덮으면 다른 DR 의 줄이 사라진다. 다시 부르면 새로 받아 그 위에서 고친다.
                  */
                 String reason = redactCredentials(detail(pushed));
                 log.warn("전달 목록을 올리지 못했다 projectId={} 개발요청서={} 사유={}",
@@ -202,7 +220,8 @@ public class DevRequestDeliveryWorkspace {
                         ? "기획 저장소가 자격을 거절했습니다. 프로젝트 설정의 저장소 토큰을 확인해 주십시오."
                         : "전달 목록을 기획 저장소에 올리지 못했습니다. 다시 눌러 주십시오. " + reason);
             }
-            log.info("전달 목록을 올렸다 projectId={} 개발요청서={} 커밋={}", projectId, requestId, commit);
+            log.info("전달 목록을 올렸다 projectId={} 개발요청서={} 브랜치={} 커밋={}",
+                    projectId, requestId, branch, commit);
             return commit;
         } finally {
             discard(clone, worktree);

@@ -15,7 +15,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  *
  * <p>⭐ <b>이름은 DR 마다 바뀌지만 목록이 있는 자리는 고정이다.</b> 전달 브랜치는
  * {@code dr/DR-009} · {@code dr/DR-010} 으로 계속 바뀌는데, 개발은 기본 브랜치의
- * {@code dev-requests/deliveries.json} <b>한 경로만</b> 본다.
+ * {@code dev-requests} 브랜치의 {@code deliveries.json} <b>한 자리만</b> 본다.
  *
  * <p>⭐ <b>{@code base} 가 역류의 기준이다.</b> 설계는 「기준이 어긋나면 거절한다」를 {@code baseSha}
  * 로 정했는데, 그 값을 개발에게 알려 줄 자리가 없었다 — 이 목록이 그 자리다.

@@ -10,7 +10,11 @@ import java.time.Instant;
 import java.util.List;
 
 /**
- * 개발이 <b>이름을 미리 모르고도</b> 전달을 찾는 목록 — 기본 브랜치의 {@link #PATH}.
+ * 개발이 <b>이름을 미리 모르고도</b> 전달을 찾는 목록 — {@link #BRANCH} 브랜치의 {@link #PATH}.
+ *
+ * <p>⛔ <b>기본 브랜치에 두지 마라</b> (2026-09-23 사용자 확정). 한때 {@code main:dev-requests/deliveries.json}
+ * 에 두었더니 넘기기가 목록을 커밋할 때마다 기본 브랜치가 한 판 앞으로 가, 꾸러미가 알린 기준
+ * 커밋이 곧바로 낡았다. 역류 설계가 「받을 때 HEAD 와 다르면 거절」이라 문서대로 한 개발이 늘 거절됐다.
  *
  * <p>⭐ <b>이름은 바뀌지만 자리는 고정이다.</b> 전달 브랜치는 {@code dr/DR-009} ·
  * {@code dr/DR-010} 으로 DR 마다 바뀐다. 개발이 그 이름을 미리 알 길이 없으므로,
@@ -29,8 +33,13 @@ import java.util.List;
  */
 public final class DeliveryIndex {
 
-    /** ⛔ 이 경로는 <b>영원히 안 바뀐다.</b> 바뀌면 개발이 보던 자리가 사라진다. */
-    public static final String PATH = "dev-requests/deliveries.json";
+    /**
+     * ⛔ 이 브랜치 이름과 경로는 <b>함부로 안 바꾼다.</b> 바뀌면 개발이 보던 자리가 사라진다.
+     * 2026-09-23 에 한 번 옮겼다(위 까닭) — 다시 옮기려면 개발에 먼저 고지한다.
+     */
+    public static final String BRANCH = "dev-requests";
+    /** ⚠ 전용 브랜치에는 이것 하나만 살아서 뿌리에 둔다. */
+    public static final String PATH = "deliveries.json";
 
     /** ⚠ 목록 규격의 판. 칸을 바꾸면 이 값을 올리고 개발에 고지한다. */
     private static final int SPEC_VERSION = 1;

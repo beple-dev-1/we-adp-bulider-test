@@ -130,49 +130,54 @@ class DevRequestDeliveryWorkspaceTest {
     }
 
     /**
-     * ⭐ <b>목록은 기본 브랜치에 올린다.</b> 개발이 보는 자리가 고정이어야 하기 때문이다.
-     * ⚠ 꾸러미와 달리 <b>강제 갱신이 아니다</b> — 기본 브랜치는 남들도 쓰는 자리라 밀어 덮으면 안 된다.
+     * ⭐ <b>목록은 전용 브랜치에 올리고 기본 브랜치는 안 움직인다</b> (2026-09-23 사용자 확정).
+     * 기본 브랜치에 올리던 판은 넘기기가 스스로 {@code main} 을 한 판 앞으로 밀어, 꾸러미가 알린
+     * 기준 커밋이 곧바로 낡았다 — 문서대로 한 개발이 늘 「기준이 다르다」로 거절됐다.
      */
     @Test
-    void 목록을_기본_브랜치에_올린다() throws IOException {
-        deliveries.updateOnDefaultBranch(PROJECT, REQUEST, "main", remote.toUri().toString(),
-                DeliveryIndex.PATH, existing -> "{\"deliveries\": [{\"dr\": \"DR-009\"}]}\n",
-                "docs: DR-009 전달 목록");
+    void 목록을_전용_브랜치에_올리고_기본_브랜치는_안_움직인다() {
+        String mainBefore = run(remote, "rev-parse", "refs/heads/main").stdout().strip();
 
-        String head = run(remote, "rev-parse", "refs/heads/main").stdout().strip();
-        assertThat(run(remote, "ls-tree", "-r", "--name-only", head).stdout())
-                .contains(DeliveryIndex.PATH);
-        assertThat(run(remote, "show", head + ":" + DeliveryIndex.PATH).stdout())
-                .contains("DR-009");
+        deliveries.updateIndexBranch(PROJECT, REQUEST, remote.toUri().toString(),
+                existing -> "{\"deliveries\": [{\"dr\": \"DR-009\"}]}\n", "docs: DR-009 전달 목록");
+
+        assertThat(run(remote, "rev-parse", "refs/heads/main").stdout().strip()).isEqualTo(mainBefore);
+        String ref = "refs/heads/" + DeliveryIndex.BRANCH;
+        assertThat(run(remote, "show", ref + ":" + DeliveryIndex.PATH).stdout()).contains("DR-009");
+        // ⭐ 뿌리가 따로인 브랜치다 — main 의 파일도 이력도 안 섞인다.
+        assertThat(run(remote, "ls-tree", "-r", "--name-only", ref).stdout().strip())
+                .isEqualTo(DeliveryIndex.PATH);
+        assertThat(run(remote, "rev-list", "--count", ref).stdout().strip()).isEqualTo("1");
     }
 
-    /** ⭐ 앞서 적힌 줄을 <b>읽어서</b> 합친다 — 덮어쓰지 않는다. */
+    /** ⭐ 앞서 적힌 줄을 <b>읽어서</b> 합친다 — 덮어쓰지 않는다. 두 번째부터는 앞 커밋 위에 쌓는다. */
     @Test
-    void 앞서_올린_목록을_읽어_합친다() throws IOException {
-        deliveries.updateOnDefaultBranch(PROJECT, REQUEST, "main", remote.toUri().toString(),
-                DeliveryIndex.PATH,
+    void 앞서_올린_목록을_읽어_합친다() {
+        deliveries.updateIndexBranch(PROJECT, REQUEST, remote.toUri().toString(),
                 existing -> DeliveryIndex.merge(existing, indexEntry("DR-009")), "docs: DR-009");
 
-        deliveries.updateOnDefaultBranch(PROJECT, "0000010", "main", remote.toUri().toString(),
-                DeliveryIndex.PATH,
+        deliveries.updateIndexBranch(PROJECT, "0000010", remote.toUri().toString(),
                 existing -> DeliveryIndex.merge(existing, indexEntry("DR-010")), "docs: DR-010");
 
-        String head = run(remote, "rev-parse", "refs/heads/main").stdout().strip();
-        String listed = run(remote, "show", head + ":" + DeliveryIndex.PATH).stdout();
-        assertThat(listed).contains("DR-009").contains("DR-010");
+        String ref = "refs/heads/" + DeliveryIndex.BRANCH;
+        assertThat(run(remote, "show", ref + ":" + DeliveryIndex.PATH).stdout())
+                .contains("DR-009").contains("DR-010");
+        assertThat(run(remote, "rev-list", "--count", ref).stdout().strip()).isEqualTo("2");
     }
 
     /** ⚠ 바뀐 것이 없으면 빈 커밋을 만들지 않는다. */
     @Test
-    void 바뀐_것이_없으면_커밋하지_않는다() throws IOException {
-        deliveries.updateOnDefaultBranch(PROJECT, REQUEST, "main", remote.toUri().toString(),
-                DeliveryIndex.PATH, existing -> "같은 내용\n", "docs: 처음");
-        String before = run(remote, "rev-parse", "refs/heads/main").stdout().strip();
+    void 바뀐_것이_없으면_커밋하지_않는다() {
+        deliveries.updateIndexBranch(PROJECT, REQUEST, remote.toUri().toString(),
+                existing -> "같은 내용\n", "docs: 처음");
+        String ref = "refs/heads/" + DeliveryIndex.BRANCH;
+        String before = run(remote, "rev-parse", ref).stdout().strip();
 
-        deliveries.updateOnDefaultBranch(PROJECT, REQUEST, "main", remote.toUri().toString(),
-                DeliveryIndex.PATH, existing -> "같은 내용\n", "docs: 두 번째");
+        String second = deliveries.updateIndexBranch(PROJECT, REQUEST, remote.toUri().toString(),
+                existing -> "같은 내용\n", "docs: 두 번째");
 
-        assertThat(run(remote, "rev-parse", "refs/heads/main").stdout().strip()).isEqualTo(before);
+        assertThat(second).isNull();
+        assertThat(run(remote, "rev-parse", ref).stdout().strip()).isEqualTo(before);
     }
 
     private DeliveryIndex.Entry indexEntry(String dr) {

@@ -158,7 +158,9 @@ public class DevRequestDeliveryService {
     /**
      * 개발이 <b>이름을 미리 모르고도</b> 찾도록 기본 브랜치의 목록에 한 줄을 남긴다.
      *
-     * <p>정본 경로는 {@link DeliveryIndex#PATH} 하나다 — 전달 브랜치 이름은 DR 마다 바뀌지만
+     * <p>정본 자리는 {@link DeliveryIndex#BRANCH} 브랜치의 {@link DeliveryIndex#PATH} 하나다 —
+     * ⛔ 기본 브랜치가 아니다. 거기 올리면 넘기기가 기준 커밋을 스스로 낡게 만든다.
+     * 전달 브랜치 이름은 DR 마다 바뀌지만
      * 이 자리는 고정이다. {@code base} 를 함께 적어 <b>역류가 어느 커밋 위에서 갈라 와야 하는지</b>
      * 까지 알린다.
      */
@@ -171,10 +173,8 @@ public class DevRequestDeliveryService {
                 view.content().screens().stream()
                         .map(DevelopmentRequestContent.Screen::deliveryScreenId).toList(),
                 Instant.now(), deliveryKey);
-        deliveries.updateOnDefaultBranch(projectId, requestId,
-                projects.cloneMaterials(projectId).defaultBranch(),
+        deliveries.updateIndexBranch(projectId, requestId,
                 projects.cloneMaterials(projectId).authenticatedUrl(),
-                DeliveryIndex.PATH,
                 existing -> DeliveryIndex.merge(existing, entry),
                 "docs: " + sent.label() + " 전달 목록");
     }
