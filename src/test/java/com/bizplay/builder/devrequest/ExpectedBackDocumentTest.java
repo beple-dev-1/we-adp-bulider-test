@@ -33,7 +33,9 @@ class ExpectedBackDocumentTest {
                 .contains("feedback/DR-009")
                 // ⭐ 기본 브랜치가 움직여도 받는다는 것과, 거절되는 단 하나의 경우를 알린다.
                 .contains("그 뒤 기본 브랜치가 바뀌어도 괜찮습니다")
-                .contains("돌려주는 파일을 그 사이 기본 브랜치에서도 누가 고쳤으면");
+                .contains("이 요청의 화면 파일(html·화면 md)을 그 사이 기본 브랜치에서 누가 고쳤으면")
+                .contains("`unchanged` 로")
+                .contains("색인(`index.json`)은 `changed` 로 보낼 때만 따집니다");
     }
 
     /** ⭐ 화면마다 필수 구성요소와 채울 칸을 함께 낸다. */

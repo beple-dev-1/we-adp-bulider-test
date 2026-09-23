@@ -66,14 +66,51 @@ class ReturnBatchTest {
         assertThat(verdict.filesToTake()).isEmpty();
     }
 
-    /** ⚠ 같은 파일이 바뀌었어도 이번에 안 받는 것(unchanged)이면 덮을 일이 없다. */
+    /**
+     * ⛔ <b>화면 md 를 {@code unchanged} 로 적었어도 그 사이 바뀌었으면 거절한다.</b> 설계가 본 것은
+     * 「그 배치가 다루는 경로」다. html 만 받으면 개발의 옛 기준 html 과 남의 새 md 가 한 화면에
+     * 섞인다 — 설계가 경계한 시점 혼합물이다.
+     */
     @Test
-    void 바뀐_파일이라도_받지_않는_것이면_거절하지_않는다() {
+    void 화면_md_를_unchanged_로_적었어도_그_사이_바뀌었으면_거절한다() {
+        ReturnBatch.Verdict verdict = ReturnBatch.judge(expected(), returned("""
+                {"dr": "DR-009", "base": "base-1", "screens": [
+                  {"screenId": "EXW-1", "pages": "changed", "screen-md": "unchanged", "index": "unchanged"}
+                ]}
+                """), movedSince("base-1", "core/EXW/pages/EXW-1.md"));
+
+        assertThat(verdict.accepted()).isFalse();
+        assertThat(verdict.rejections()).singleElement().asString().contains("core/EXW/pages/EXW-1.md");
+    }
+
+    /**
+     * ⭐ <b>색인은 받을 때만 본다.</b> 모든 화면의 필수라 늘 다루는 경로에 들고, IA 확정 게시가
+     * 게시할 때마다 다시 만든다 — 다루기만 해도 거절하면 IA 한 번에 나가 있는 회신이 전부 떨어진다.
+     */
+    @Test
+    void 색인은_받지_않으면_그_사이_바뀌었어도_거절하지_않는다() {
         ReturnBatch.Verdict verdict = ReturnBatch.judge(expected(), returned("""
                 {"dr": "DR-009", "base": "base-1", "screens": [
                   {"screenId": "EXW-1", "pages": "changed", "screen-md": "unchanged", "index": "unchanged"}
                 ]}
                 """), movedSince("base-1", "index.json"));
+
+        assertThat(verdict.accepted()).isTrue();
+    }
+
+    /** ⚠ 보호 화면은 화면 md 를 다루지 않는다 — 그 화면에서는 「새 html + 옛 md」가 의도된 정상이다. */
+    @Test
+    void 보호_화면의_화면_md_는_그_사이_바뀌어도_거절하지_않는다() {
+        ExpectedBack guarded = new ExpectedBack("feedback/DR-009", "base-1",
+                List.of(new ExpectedBack.Screen("EXW-1", "EXW",
+                        List.of(ExpectedBack.PAGES, ExpectedBack.INDEX))),
+                List.of(), List.of(), List.of());
+
+        ReturnBatch.Verdict verdict = ReturnBatch.judge(guarded, returned("""
+                {"dr": "DR-009", "base": "base-1", "screens": [
+                  {"screenId": "EXW-1", "pages": "changed", "index": "unchanged"}
+                ]}
+                """), movedSince("base-1", "core/EXW/pages/EXW-1.md"));
 
         assertThat(verdict.accepted()).isTrue();
     }

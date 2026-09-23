@@ -31,7 +31,9 @@ import java.util.Set;
  * <p>⭐ <b>기본 브랜치가 그 사이 움직였어도 거절하지 않는다</b> (2026-09-23 사용자 확정).
  * 설계는 「받을 때 HEAD 와 다르면 거절」이었으나, 개발은 며칠 뒤에 돌려주고 그 사이 {@code main} 은
  * 바뀔 수 있다 — 판이 같은지로 거절하면 멀쩡한 결과가 매번 떨어진다. 대신 <b>갈라 온 뒤 기본
- * 브랜치에서 바뀐 파일과 이번에 받을 파일이 겹칠 때만</b> 거절한다. 겹치지 않으면 덮을 것이 없다.
+ * 브랜치에서 바뀐 파일과 이 배치가 다루는 경로가 겹칠 때만</b> 거절한다 — 설계가 미리 적어 둔
+ * 「HEAD 가 아니라 그 배치가 다루는 경로의 기준만 보는 쪽으로 좁힌다」가 이것이다. {@code unchanged}
+ * 로 적은 것도 다루는 경로다. ⚠ 색인만은 받을 때만 본다(아래 판정 자리의 까닭).
  * ⭐ 내용은 여전히 대조하지 않는다 — 파일 이름만 본다(설계의 「무대조」는 그대로다).
  * ⛔ 「HEAD 와 같아야 받는다」로 되돌리지 마라.
  *
@@ -118,6 +120,8 @@ public final class ReturnBatch {
         Set<String> known = new LinkedHashSet<>();
         expected.screens().forEach(screen -> known.add(screen.screenId()));
         List<String> take = new ArrayList<>();
+        // ⭐ 이 배치가 다루는 경로 — 겹침을 여기서 본다(설계 「그 배치가 다루는 경로의 기준만」).
+        Set<String> covered = new LinkedHashSet<>();
 
         for (JsonNode row : returned.path("screens")) {
             String screenId = row.path("screenId").asText(null);
@@ -141,6 +145,15 @@ public final class ReturnBatch {
                 if (CHANGED.equals(state)) {
                     take.add(pathOf(screen, part));
                 }
+                /*
+                 * ⭐ unchanged 로 적은 것도 다루는 경로다 — html 만 받고 그 사이 바뀐 md 를 두면
+                 *   개발의 옛 기준 html 과 남의 새 md 가 한 화면에 섞인다(시점 혼합물).
+                 * ⚠ 색인만은 받을 때만 본다. 모든 화면의 필수라 늘 다루는 경로에 들고, IA 확정 게시가
+                 *   게시할 때마다 다시 만든다 — 다루기만 해도 거절하면 IA 한 번에 회신이 전부 떨어진다.
+                 */
+                if (!ExpectedBack.INDEX.equals(part) || CHANGED.equals(state)) {
+                    covered.add(pathOf(screen, part));
+                }
             }
         }
         for (String screenId : known) {
@@ -155,12 +168,11 @@ public final class ReturnBatch {
 
         if (baseKnown && rejections.isEmpty()) {
             /*
-             * ⭐ 갈라 온 뒤 기본 브랜치에서 바뀐 파일과 받을 파일이 겹치면 거절한다.
-             *   겹치지 않으면 지금 기본 브랜치 위에 얹어도 덮을 것이 없다.
-             * ⚠ 안 받는 것(unchanged)은 겹쳐도 상관없다 — 놓지 않으므로 덮을 일이 없다.
+             * ⭐ 갈라 온 뒤 기본 브랜치에서 바뀐 파일과 이 배치가 다루는 경로가 겹치면 거절한다.
+             *   겹치지 않으면 지금 기본 브랜치 위에 얹어도 덮을 것도, 섞일 것도 없다.
              */
             Set<String> moved = main.changedSince(declaredBase);
-            new LinkedHashSet<>(take).stream().filter(moved::contains).forEach(path -> rejections.add(
+            covered.stream().filter(moved::contains).forEach(path -> rejections.add(
                     "갈라 온 뒤 기본 브랜치에서 이 파일이 바뀌었습니다: " + path
                             + " — 지금 기본 브랜치의 것을 보고 합쳐서 다시 보내 주십시오."
                             + " 그대로 받으면 그 변경이 덮입니다."));
