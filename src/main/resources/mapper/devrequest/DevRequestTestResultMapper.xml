@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.bizplay.builder.devrequest.DevRequestTestResultMapper">
+
+    <insert id="upsert">
+        insert into builder.adk_builder_dev_request_test_result
+               (dev_request_id, kind, tc_id, title, actual, verdict, raw_verdict, evidence, received_at)
+        values (#{devRequestId}, #{result.kind}, #{result.tcId}, #{result.title}, #{result.actual},
+                #{result.verdict}, #{result.rawVerdict}, #{result.evidence}, now())
+        on conflict (dev_request_id, tc_id) do update
+           set kind = excluded.kind,
+               title = excluded.title,
+               actual = excluded.actual,
+               verdict = excluded.verdict,
+               raw_verdict = excluded.raw_verdict,
+               evidence = excluded.evidence,
+               received_at = now()
+    </insert>
+
+    <select id="selectByRequestId" resultType="com.bizplay.builder.devrequest.DevRequestTestResult">
+        select dev_request_id, kind, tc_id, title, actual, verdict, raw_verdict, evidence, received_at
+          from builder.adk_builder_dev_request_test_result
+         where dev_request_id = #{devRequestId}
+         order by kind, tc_id
+    </select>
+
+    <delete id="deleteByRequestId">
+        delete from builder.adk_builder_dev_request_test_result
+         where dev_request_id = #{devRequestId}
+    </delete>
+</mapper>

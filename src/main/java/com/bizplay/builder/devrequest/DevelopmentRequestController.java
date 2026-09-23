@@ -29,14 +29,17 @@ public class DevelopmentRequestController {
 
     private final DevelopmentRequestService requests;
     private final DevRequestDeliveryService deliveries;
+    private final DevRequestReceiveService receives;
     private final ProjectFacetMapper projectFacets;
     private final ProjectSystemService projectSystems;
 
     public DevelopmentRequestController(DevelopmentRequestService requests,
                                         DevRequestDeliveryService deliveries,
+                                        DevRequestReceiveService receives,
                                         ProjectFacetMapper projectFacets,
                                         ProjectSystemService projectSystems) {
         this.deliveries = deliveries;
+        this.receives = receives;
         this.requests = requests;
         this.projectFacets = projectFacets;
         this.projectSystems = projectSystems;
@@ -150,6 +153,11 @@ public class DevelopmentRequestController {
         model.addAttribute("current", "dev-requests");
         model.addAttribute("view", view);
         model.addAttribute("precheck", requests.precheck(projectId, requestId));
+        // ⛔ 화면에서 브랜치 이름을 다시 짓지 않는다 — 이름 규칙은 DeliveryIndex 한 자리다.
+        model.addAttribute("deliveryBranch",
+                DeliveryIndex.deliveryBranch(view.request().systemCode(), view.request().label()));
+        model.addAttribute("returnBranch",
+                DeliveryIndex.returnBranch(view.request().systemCode(), view.request().label()));
         model.addAttribute("listQuery", listQuery);
         model.addAttribute("listState", listState);
         model.addAttribute("listOwner", listOwner);
@@ -185,6 +193,39 @@ public class DevelopmentRequestController {
             var published = deliveries.deliver(projectId, requestId, me == null ? null : me.accountId());
             flash.addFlashAttribute("message",
                     "개발에 넘겼습니다. 기획 저장소의 %s 브랜치에 꾸러미를 올렸습니다.".formatted(published.branch()));
+        } catch (IllegalArgumentException | IllegalStateException rejected) {
+            flash.addFlashAttribute("error", rejected.getMessage());
+        }
+        return "redirect:/projects/%s/artifacts/dev-requests/%s".formatted(projectId, requestId);
+    }
+
+    /**
+     * 「개발 결과 받기」 — 역류를 사람이 부르는 자리.
+     *
+     * <p>⭐ <b>거절이면 아무것도 안 놓인다</b> — 기획 저장소도 DB 도. 사유를 그대로 보여 주고,
+     * 개발이 고쳐 다시 밀면 다시 누르면 된다.
+     *
+     * <p>⚠ 설계는 「받으면 바로 넣는다 — 사람이 끼어들지 않는다」이다. 이 버튼은 <b>언제 받나</b>를
+     * 사람이 고르는 것이지 <b>무엇을 받나</b>를 고르는 것이 아니다 — 그 판정은 코드가 한다.
+     */
+    @PostMapping("/{requestId}/receive")
+    public String receive(@PathVariable String projectId, @PathVariable String requestId,
+                          @AuthenticationPrincipal BuilderUser me, RedirectAttributes flash) {
+        try {
+            DevRequestReceiveService.Result result = receives.receive(projectId, requestId,
+                    me == null ? null : me.accountId());
+            if (result.accepted() && result.alreadyReceived()) {
+                // ⭐ 「거절」로 보이면 사람이 무엇이 틀렸나 찾는다 — 이미 받은 것이라고 말한다.
+                flash.addFlashAttribute("message",
+                        "이미 받은 판입니다. 테스트 결과 %d줄을 다시 담았습니다.".formatted(result.testRows()));
+            } else if (result.accepted()) {
+                flash.addFlashAttribute("message", result.commit() == null
+                        ? "받을 변경이 없었습니다. 테스트 결과 %d줄을 담았습니다.".formatted(result.testRows())
+                        : "개발 결과를 반영했습니다. 테스트 결과 %d줄을 담았습니다.".formatted(result.testRows()));
+            } else {
+                flash.addFlashAttribute("error",
+                        "개발 결과를 받지 못했습니다 — " + String.join(" · ", result.rejections()));
+            }
         } catch (IllegalArgumentException | IllegalStateException rejected) {
             flash.addFlashAttribute("error", rejected.getMessage());
         }

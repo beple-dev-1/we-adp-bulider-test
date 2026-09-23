@@ -36,6 +36,16 @@ public class PlanningRepositoryUpdater {
         });
     }
 
+    /**
+     * 원격 기본 브랜치를 fast-forward로 받기만 한다 — 뒤따를 일이 따로 잠금을 쥐지 않을 때 쓴다.
+     *
+     * <p>⭐ <b>클론이 뒤처지는 까닭이 빌더 안에 있다.</b> 「개발 결과 받기」와 전달 목록은 원격에
+     * 직접 올리고 클론은 안 건드린다. 클론에서 무엇을 따거나 게시하기 전에 이것을 거친다.
+     */
+    public void refresh(String projectId) {
+        locks.run(projectId, () -> updateLocked(projectId));
+    }
+
     private void updateLocked(String projectId) {
         ProjectService.CloneMaterials materials = projects.cloneMaterials(projectId);
         Path clone = paths.cloneDir(projectId).toAbsolutePath().normalize();

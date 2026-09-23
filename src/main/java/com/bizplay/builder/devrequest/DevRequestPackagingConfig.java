@@ -28,6 +28,11 @@ public class DevRequestPackagingConfig {
     }
 
     @Bean
+    public ExpectedBackDocument expectedBackDocument() {
+        return new ExpectedBackDocument();
+    }
+
+    @Bean
     public DevRequestDeliveryWorkspace devRequestDeliveryWorkspace(
             ProjectPaths paths, GitCommand git, BuilderProperties properties) {
         return new DevRequestDeliveryWorkspace(paths, git, properties.checkTimeout());

@@ -89,6 +89,40 @@ class DevRequestTemplateContractTest {
     }
 
 
+    /**
+     * ⭐ <b>「개발 결과 받기」는 보낸 뒤에만 뜬다</b> — 안 보낸 것은 무엇을 기준으로 판정할지가 없다.
+     * ⚠ 사람이 고르는 것은 <b>언제 받나</b>이지 <b>무엇을 받나</b>가 아니다 — 판정은 코드가 한다.
+     */
+    /**
+     * ⛔ <b>결과가 앉을 자리가 없으면 거절 사유가 어디에도 안 뜬다</b> — 화면은 되돌아오기만 하고
+     * 왜 안 됐는지는 사람이 알 길이 없다. 넘기기와 받기가 같은 자리를 쓴다.
+     */
+    @Test
+    void 넘기기와_받기의_결과가_앉을_자리가_있다() throws IOException {
+        String template = Files.readString(
+                Path.of("src/main/resources/templates/artifacts/dev-request.html"),
+                StandardCharsets.UTF_8);
+
+        assertThat(template)
+                .contains("th:if=\"${message}\"")
+                .contains("th:if=\"${error}\"")
+                .contains("role=\"alert\"");
+    }
+
+    @Test
+    void 개발_결과_받기는_보낸_뒤에만_보인다() throws IOException {
+        String template = Files.readString(
+                Path.of("src/main/resources/templates/artifacts/dev-request.html"),
+                StandardCharsets.UTF_8);
+
+        assertThat(template)
+                .contains(">개발 결과 받기</button>")
+                .contains("/receive(p=${projectId},r=${request.id()})")
+                .containsSubsequence("rq-head__receive-action",
+                        "request.deliveryState().name() == 'SENT'",
+                        ">개발 결과 받기</button>");
+    }
+
     @Test
     void 되돌리기는_상태에_따라_기타_작업에_표시한다() throws IOException {
         String template = Files.readString(

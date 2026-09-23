@@ -23,6 +23,7 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 import java.util.List;
+import java.time.Instant;
 import java.util.UUID;
 
 /**
@@ -31,7 +32,7 @@ import java.util.UUID;
  * <p>정본: {@code docs/superpowers/specs/2026-08-07-handoff-to-dev-design.md} 「줄기 — 칸 넷」.
  *
  * <pre>
- * 전송중 남기기 → 설계서를 워크트리에 커밋 → 꾸러미 쓰기 → dr/DR-nnn 로 push → 전송완료
+ * 전송중 남기기 → 설계서를 워크트리에 커밋 → 꾸러미 쓰기 → dr/<시스템>/DR-nnn 로 push → 전송완료
  * </pre>
  *
  * <p>⭐ <b>먼저 남기고 보낸다.</b> 보내기 전에 「전송중」 한 줄을 확정해 둔다 — 그래야 보내는
@@ -61,6 +62,7 @@ public class DevRequestDeliveryService {
     private final DevRequestDeliveryWorkspace deliveries;
     private final DevRequestPackage packages;
     private final DevRequestDocument documents;
+    private final ExpectedBackDocument expectedBacks;
     private final ProjectService projects;
     private final ProjectPaths paths;
     private final IdSequence ids;
@@ -71,6 +73,7 @@ public class DevRequestDeliveryService {
                                      FrdScreenHistoryMapper histories, FrdWorkspace workspaces,
                                      DevRequestDeliveryWorkspace deliveries,
                                      DevRequestPackage packages, DevRequestDocument documents,
+                                     ExpectedBackDocument expectedBacks,
                                      ProjectService projects, ProjectPaths paths, IdSequence ids) {
         this.requests = requests;
         this.requestService = requestService;
@@ -81,6 +84,7 @@ public class DevRequestDeliveryService {
         this.deliveries = deliveries;
         this.packages = packages;
         this.documents = documents;
+        this.expectedBacks = expectedBacks;
         this.projects = projects;
         this.paths = paths;
         this.ids = ids;
@@ -121,10 +125,18 @@ public class DevRequestDeliveryService {
             DevelopmentRequestService.View view = requestService.read(projectId, requestId);
             String[] fingerprint = new String[1];
             DevRequestDeliveryWorkspace.Published published = deliveries.publish(
-                    projectId, requestId, sent.label(), projects.cloneMaterials(projectId).defaultBranch(),
+                    projectId, requestId, sent.systemCode(), sent.label(), projects.cloneMaterials(projectId).defaultBranch(),
                     projects.cloneMaterials(projectId).authenticatedUrl(),
-                    worktree -> fingerprint[0] = writePackage(projectId, sent, view, worktree));
+                    (worktree, base) -> fingerprint[0] =
+                            writePackage(projectId, sent, view, worktree, base));
 
+            /*
+             * ⭐ 목록을 올린 **뒤에** 전송완료로 표시한다 — 그래야 「SENT」가
+             *   「개발이 찾을 수 있다」와 같은 뜻이 된다. 목록이 안 올라갔는데 SENT 로 두면
+             *   개발은 브랜치 이름을 알 길이 없어 영영 못 찾는다.
+             * ⚠ 다시 눌러도 안전하다 — 꾸러미는 갈아 끼우고 목록은 같은 dr 줄을 갈아 낀다.
+             */
+            publishDeliveryIndex(projectId, requestId, sent, view, published, deliveryKey);
             requests.finishDeliveryAttempt(attemptId, DevelopmentRequest.DeliveryState.SENT.name(),
                     published.commit(), fingerprint[0], null);
             requests.updateDeliveryState(requestId, DevelopmentRequest.DeliveryState.SENT.name());
@@ -141,6 +153,30 @@ public class DevRequestDeliveryService {
             requests.updateDeliveryState(requestId, DevelopmentRequest.DeliveryState.NOT_SENT.name());
             throw failed;
         }
+    }
+
+    /**
+     * 개발이 <b>이름을 미리 모르고도</b> 찾도록 기본 브랜치의 목록에 한 줄을 남긴다.
+     *
+     * <p>정본 자리는 {@link DeliveryIndex#BRANCH} 브랜치의 {@link DeliveryIndex#PATH} 하나다 —
+     * ⛔ 기본 브랜치가 아니다. 거기 올리면 넘기기가 기준 커밋을 스스로 낡게 만든다.
+     * 전달 브랜치 이름은 DR 마다 바뀌지만
+     * 이 자리는 고정이다. {@code base} 를 함께 적어 <b>역류가 어느 커밋 위에서 갈라 와야 하는지</b>
+     * 까지 알린다.
+     */
+    private void publishDeliveryIndex(String projectId, String requestId, DevelopmentRequest sent,
+                                      DevelopmentRequestService.View view,
+                                      DevRequestDeliveryWorkspace.Published published,
+                                      String deliveryKey) {
+        DeliveryIndex.Entry entry = new DeliveryIndex.Entry(sent.label(), published.branch(),
+                published.commit(), published.base(), sent.systemCode(),
+                view.content().screens().stream()
+                        .map(DevelopmentRequestContent.Screen::deliveryScreenId).toList(),
+                Instant.now(), deliveryKey);
+        deliveries.updateIndexBranch(projectId, requestId,
+                projects.cloneMaterials(projectId).authenticatedUrl(),
+                existing -> DeliveryIndex.merge(existing, entry),
+                "docs: " + sent.label() + " 전달 목록");
     }
 
     /**
@@ -190,14 +226,26 @@ public class DevRequestDeliveryService {
      * @return 보낸 몸의 지문 — {@code manifest.json} 의 sha256
      */
     private String writePackage(String projectId, DevelopmentRequest request,
-                                DevelopmentRequestService.View view, Path deliveryWorktree) {
+                                DevelopmentRequestService.View view, Path deliveryWorktree,
+                                String base) {
         Path dir = deliveryWorktree.resolve(request.label());
         Path frdWorktree = paths.frdWorktree(projectId, request.frdId());
-        packages.write(frdWorktree, packageRequest(request, view), dir);
+        /*
+         * ⭐ 「돌려받을 것」을 여기서 한 번 계산해 **셋이 같은 것을 쓴다** —
+         *   manifest.expectedBack · expected-back.md · (나중에) 받는 자리의 검사.
+         * ⚠ 보호 화면 목록은 오늘 늘 비어 있다 — 그 표시를 담는 자리가 빌더에 아직 없다.
+         */
+        ExpectedBack back = ExpectedBack.of(DeliveryIndex.returnBranch(request.systemCode(), request.label()), base,
+                view.content(), List.of());
+        packages.write(frdWorktree, packageRequest(request, view, back), dir);
         try {
             Path manifest = dir.resolve("manifest.json");
             Files.writeString(dir.resolve("dev-request.md"),
                     documents.render(meta(request, view), view.content(), manifest),
+                    StandardCharsets.UTF_8);
+            Files.writeString(dir.resolve("expected-back.md"),
+                    expectedBacks.render(new ExpectedBackDocument.Meta(request.label()), back,
+                            view.content()),
                     StandardCharsets.UTF_8);
             return sha256(Files.readAllBytes(manifest));
         } catch (IOException failed) {
@@ -206,13 +254,14 @@ public class DevRequestDeliveryService {
     }
 
     private static DevRequestPackage.Request packageRequest(DevelopmentRequest request,
-                                                            DevelopmentRequestService.View view) {
+                                                            DevelopmentRequestService.View view,
+                                                            ExpectedBack back) {
         List<DevRequestPackage.Screen> screens = view.content().screens().stream()
                 .map(screen -> new DevRequestPackage.Screen(screen.systemCode(),
                         screen.deliveryScreenId(), screen.displayName(), screen.changes()))
                 .toList();
         return new DevRequestPackage.Request(request.label(),
-                request.workspaceBaseSha(), request.workspaceHeadSha(), screens);
+                request.workspaceBaseSha(), request.workspaceHeadSha(), screens, back);
     }
 
     private DevRequestDocument.Meta meta(DevelopmentRequest request,

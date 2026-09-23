@@ -21,13 +21,23 @@
       -->
       <form class="rq-head__deliver-action" method="post"
             th:action="@{/projects/{p}/artifacts/dev-requests/{r}/deliver(p=${projectId},r=${request.id()})}"
-            th:attr="onsubmit=|return confirm('개발에 넘길까요? 기획 저장소에 dr/${request.label()} 브랜치로 꾸러미를 올립니다.')|">
+            th:attr="onsubmit=|return confirm('개발에 넘길까요? 기획 저장소에 ${deliveryBranch} 브랜치로 꾸러미를 올립니다.')|">
         <button class="button button--primary" type="submit"
                 data-submit-loading="꾸러미를 만들어 올리는 중"
                 th:disabled="${view.generating() or !precheck.sendable()}"
                 th:title="${view.generating() ? '정의서 생성이 끝나면 넘길 수 있습니다.'
                           : (!precheck.sendable() ? '보내기 전 확인의 막는 항목을 먼저 고쳐 주세요.' : null)}"
                 th:text="${request.deliveryState().name() == 'SENT' ? '개발에 다시 넘기기' : '개발에 넘기기'}">개발에 넘기기</button>
+      </form>
+      <!--
+        개발 결과 받기 — 역류. 보낸 뒤에만 보인다.
+        ⚠ 사람이 고르는 것은 「언제 받나」이지 「무엇을 받나」가 아니다 — 판정은 코드가 한다.
+      -->
+      <form class="rq-head__receive-action" method="post"
+            th:if="${request.deliveryState().name() == 'SENT'}"
+            th:action="@{/projects/{p}/artifacts/dev-requests/{r}/receive(p=${projectId},r=${request.id()})}"
+            th:attr="onsubmit=|return confirm('개발이 돌려보낸 것을 받을까요? ${returnBranch} 브랜치를 읽습니다.')|">
+        <button class="button" type="submit" data-submit-loading="개발 결과를 받는 중">개발 결과 받기</button>
       </form>
       <details class="pop rq-head__overflow"
                th:if="${request.deliveryState().name() == 'NOT_SENT' and !view.srtSource()}">
@@ -45,6 +55,13 @@
       </details>
     </div>
   </header>
+
+  <!--
+    넘기기·받기의 결과가 앉는 자리. ⛔ 없으면 거절 사유가 어디에도 안 뜬다 —
+    되돌아오기만 하고 왜 안 됐는지는 사람이 알 길이 없다.
+  -->
+  <p class="source-success" th:if="${message}" th:text="${message}"></p>
+  <p class="error-line" role="alert" th:if="${error}" th:text="${error}"></p>
 
   <main class="dev-request-practical">
     <dl class="dev-request-meta-grid">
