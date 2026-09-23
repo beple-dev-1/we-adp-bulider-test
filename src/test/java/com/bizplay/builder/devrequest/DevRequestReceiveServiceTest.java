@@ -137,6 +137,37 @@ class DevRequestReceiveServiceTest {
         verify(testResults, never()).upsert(anyString(), any());
     }
 
+    /**
+     * ⛔ <b>목록 밖 TC 는 커밋 전에 거절한다</b> — 판정 자리에서 막아야 화면 파일도 안 놓인다.
+     * 커밋 뒤에 표를 담을 때 걸러 내면 화면은 들어가고 테스트만 빠지는 반쪽이 된다.
+     */
+    @Test
+    void 보낸_적_없는_TC_는_판정에서_거절한다() {
+        DevelopmentRequestContent content = requestService.read(PROJECT, REQUEST).content();
+        given(content.testScenarios()).willReturn(List.of(
+                new DevelopmentRequestContent.TestScenario("UNIT", 1, "TC-001",
+                        "무엇", "없음", "조건", "행위", "기대")));
+        ArgumentCaptor<DevRequestDeliveryWorkspace.Judge> judge =
+                ArgumentCaptor.forClass(DevRequestDeliveryWorkspace.Judge.class);
+        given(workspaces.receive(any(), any(), any(), any(), any(), any(), judge.capture(), any()))
+                .willReturn(new DevRequestDeliveryWorkspace.Received(false, List.of("x"), null, null));
+        service.receive(PROJECT, REQUEST);
+
+        String unit = """
+                | TC | 무엇을 보나 | 의존 | 조건 | 행위 | 기대 결과 | 실제 결과 | 판정 | 근거 |
+                |---|---|---|---|---|---|---|---|---|
+                | TC-001 | 무엇 | 없음 | 조건 | 행위 | 기대 | 실제 | 통과 | 근거 |
+                | TC-777 | 지어낸 것 | 없음 | 조건 | 행위 | 기대 | 실제 | 통과 | 근거 |
+                """;
+        ReturnBatch.Verdict verdict = judge.getValue().judge(
+                "{\"dr\": \"DR-009\", \"base\": \"b\", \"screens\": []}", "b",
+                path -> path.equals("DR-009/" + ReturnBatch.UNIT_TESTS) ? unit : null);
+
+        assertThat(verdict.accepted()).isFalse();
+        assertThat(verdict.rejections()).anyMatch(reason -> reason.contains("TC-777"));
+        assertThat(verdict.filesToTake()).isEmpty();
+    }
+
     /** ⚠ 남의 프로젝트의 개발요청서를 이름만으로 받아 가지 못한다. */
     @Test
     void 다른_프로젝트의_개발요청서는_받지_않는다() {

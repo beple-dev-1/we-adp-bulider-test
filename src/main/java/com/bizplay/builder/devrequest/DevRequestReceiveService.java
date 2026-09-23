@@ -78,7 +78,12 @@ public class DevRequestReceiveService {
         DevRequestDeliveryWorkspace.Received received = workspaces.receive(
                 projectId, requestId, materials.defaultBranch(), materials.authenticatedUrl(),
                 feedbackBranch, request.label() + "/" + ReturnBatch.FILE,
-                (returnJson, currentBase) -> ReturnBatch.judge(expected, returnJson, currentBase),
+                (returnJson, currentBase, returnedFile) -> ReturnBatch
+                        .judge(expected, returnJson, currentBase)
+                        // ⛔ 테스트 결과도 커밋 전에 따진다 — 뒤에서 거르면 화면만 들어가는 반쪽이 된다.
+                        .rejectAlso(ReturnBatch.judgeTests(expected,
+                                returnedFile.apply(request.label() + "/" + ReturnBatch.UNIT_TESTS),
+                                returnedFile.apply(request.label() + "/" + ReturnBatch.INTEGRATION_TESTS))),
                 "chore: " + request.label() + " 개발 결과 반영");
 
         if (!received.accepted()) {

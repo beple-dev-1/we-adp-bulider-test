@@ -276,6 +276,8 @@ public class ExpectedBackDocument {
         line(md, "");
         line(md, "**실제 결과·판정·근거만 채워 주십시오.** 앞의 칸은 고치지 마십시오 —");
         line(md, "고치면 어느 것을 검증했는지 짝이 어긋납니다.");
+        // ⛔ 받는 쪽이 목록 밖 TC 를 거절한다(ReturnBatch.judgeTests) — 그 규율을 개발이 먼저 알아야 한다.
+        line(md, "⛔ **표에 없는 TC 를 더하면 통째로 거절합니다** — 번호를 바꿔 적어도 마찬가지입니다.");
         line(md, "");
     }
 

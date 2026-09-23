@@ -71,7 +71,7 @@ class DevRequestReceiveWorkspaceTest {
 
         var received = workspaces.receive(PROJECT, REQUEST, "main", remote.toUri().toString(),
                 "feedback/DR-009", "DR-009/" + ReturnBatch.FILE,
-                (returnJson, currentBase) -> ReturnBatch.judge(expected(), returnJson, currentBase),
+                (returnJson, currentBase, returnedFile) -> ReturnBatch.judge(expected(), returnJson, currentBase),
                 "chore: DR-009 개발 결과 반영");
 
         assertThat(received.accepted()).isTrue();
@@ -95,7 +95,7 @@ class DevRequestReceiveWorkspaceTest {
 
         workspaces.receive(PROJECT, REQUEST, "main", remote.toUri().toString(),
                 "feedback/DR-009", "DR-009/" + ReturnBatch.FILE,
-                (returnJson, currentBase) -> ReturnBatch.judge(expected(), returnJson, currentBase),
+                (returnJson, currentBase, returnedFile) -> ReturnBatch.judge(expected(), returnJson, currentBase),
                 "chore: DR-009 개발 결과 반영");
 
         String head = run(remote, "rev-parse", "refs/heads/main").stdout().strip();
@@ -114,7 +114,7 @@ class DevRequestReceiveWorkspaceTest {
 
         var received = workspaces.receive(PROJECT, REQUEST, "main", remote.toUri().toString(),
                 "feedback/DR-009", "DR-009/" + ReturnBatch.FILE,
-                (returnJson, currentBase) -> ReturnBatch.judge(expected(), returnJson, currentBase),
+                (returnJson, currentBase, returnedFile) -> ReturnBatch.judge(expected(), returnJson, currentBase),
                 "chore: DR-009 개발 결과 반영");
 
         assertThat(received.accepted()).isFalse();
@@ -137,7 +137,7 @@ class DevRequestReceiveWorkspaceTest {
 
         var received = workspaces.receive(PROJECT, REQUEST, "main", remote.toUri().toString(),
                 "feedback/DR-009", "DR-009/" + ReturnBatch.FILE,
-                (returnJson, currentBase) -> ReturnBatch.judge(expected(), returnJson, currentBase),
+                (returnJson, currentBase, returnedFile) -> ReturnBatch.judge(expected(), returnJson, currentBase),
                 "chore: DR-009 개발 결과 반영");
 
         assertThat(received.accepted()).isFalse();

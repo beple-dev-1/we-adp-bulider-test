@@ -78,7 +78,9 @@ class ExpectedBackDocumentTest {
         assertThat(md).contains("## 3. 단위테스트").contains("TC-001")
                 .contains("생년월일이 없으면 빈 값으로 응답한다");
         assertThat(md).contains("## 4. 통합테스트").contains("TC-101")
-                .contains("완료 조건").contains("실제 결과").contains("판정").contains("근거");
+                .contains("완료 조건").contains("실제 결과").contains("판정").contains("근거")
+                // ⛔ 받는 쪽이 목록 밖 TC 를 거절하므로 개발이 먼저 알아야 한다.
+                .contains("표에 없는 TC 를 더하면 통째로 거절합니다");
     }
 
     /** ⚠ 시나리오가 없어도 계약은 성립한다 — 빈 양식이 그대로 나간다(설계). */

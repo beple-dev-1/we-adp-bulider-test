@@ -56,6 +56,16 @@ public final class ReturnBatch {
      * @param filesToTake ⭐ {@code changed} 인 것만 담는다 — {@code unchanged} 는 파일이 아니다
      */
     public record Verdict(boolean accepted, List<String> rejections, List<String> filesToTake) {
+
+        /** 다른 판정의 거절을 더한다. ⭐ 하나라도 있으면 받을 파일은 빈 목록이 된다. */
+        public Verdict rejectAlso(List<String> more) {
+            if (more.isEmpty()) {
+                return this;
+            }
+            List<String> all = new ArrayList<>(rejections);
+            all.addAll(more);
+            return new Verdict(false, List.copyOf(all), List.of());
+        }
     }
 
     /**
@@ -123,6 +133,43 @@ public final class ReturnBatch {
         boolean accepted = rejections.isEmpty();
         // ⭐ 하나라도 떨어지면 아무것도 안 놓는다.
         return new Verdict(accepted, List.copyOf(rejections), accepted ? List.copyOf(take) : List.of());
+    }
+
+    /**
+     * 테스트 결과 md 둘이 <b>보낸 TC 목록 안에 있나</b>를 본다.
+     *
+     * <p>⛔ <b>보낸 적 없는 TC 가 오면 거절한다</b> (2026-09-23 사용자 확정). 담으면 테스트 화면이
+     * 부푼 숫자를 세고, 그 줄은 어느 완료 조건에도 짝이 없다. 화면의 「목록 밖은 받지 않는다」와
+     * 같은 규율이다. ⚠ 단위 쪽 번호를 통합 표에 적어도 목록 밖이다 — 갈래를 섞지 않는다.
+     *
+     * <p>⭐ <b>그 갈래에 TC 를 하나도 안 보냈으면 다 받는다.</b> 설계가 「시나리오가 없어도 계약은
+     * 성립한다」고 했고, {@code expected-back.md} 가 그때 「검증한 항목을 같은 서식으로 적어 달라」고 한다.
+     *
+     * <p>⚠ <b>보낸 것이 덜 온 것은 여기서 따지지 않는다</b> — 이번에 정한 것은 「목록 밖」뿐이다.
+     *
+     * @param unitMarkdown        없으면 {@code null}
+     * @param integrationMarkdown 없으면 {@code null}
+     */
+    public static List<String> judgeTests(ExpectedBack expected, String unitMarkdown,
+                                          String integrationMarkdown) {
+        List<String> rejections = new ArrayList<>();
+        outside(expected.unitTests(), unitMarkdown, "UNIT", "단위테스트", rejections);
+        outside(expected.integrationTests(), integrationMarkdown, "INTEGRATION", "통합테스트", rejections);
+        return List.copyOf(rejections);
+    }
+
+    private static void outside(List<String> sent, String markdown, String kind, String name,
+                                List<String> rejections) {
+        if (sent == null || sent.isEmpty()) {
+            return;   // 안 보냈으면 개발이 적은 것을 다 받는다
+        }
+        TestResultReader.read(markdown, kind).stream()
+                .map(TestResultReader.Result::tcId)
+                .filter(tcId -> !sent.contains(tcId))
+                .distinct()
+                .forEach(tcId -> rejections.add("보낸 적 없는 " + name + " TC 입니다: " + tcId
+                        + " — 우리가 적어 보낸 번호만 채워 주십시오. 보낸 목록: "
+                        + String.join(" · ", sent)));
     }
 
     /** 구성요소가 기획 저장소의 어느 자리에 앉나. ⚠ {@code expected-back.md} 도 이것으로 개발에게 알린다. */

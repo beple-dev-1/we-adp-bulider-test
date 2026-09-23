@@ -236,10 +236,17 @@ public class DevRequestDeliveryWorkspace {
                            String returnedHead) {
     }
 
-    /** 회신서와 지금 기준을 받아 판정하는 일. ⛔ 규율은 이 클래스가 아니라 판정기가 안다. */
+    /**
+     * 회신서와 지금 기준을 받아 판정하는 일. ⛔ 규율은 이 클래스가 아니라 판정기가 안다.
+     *
+     * @param returnedFile 돌려받은 판의 파일을 경로로 읽는다 — 없으면 {@code null}.
+     *                     ⭐ 테스트 결과 md 처럼 <b>기본 브랜치에 안 놓이는 것도 커밋 전에</b> 따져야
+     *                     거절일 때 아무것도 안 놓인다
+     */
     @FunctionalInterface
     public interface Judge {
-        ReturnBatch.Verdict judge(String returnJson, String currentBase);
+        ReturnBatch.Verdict judge(String returnJson, String currentBase,
+                                  java.util.function.Function<String, String> returnedFile);
     }
 
     /**
@@ -284,7 +291,8 @@ public class DevRequestDeliveryWorkspace {
                 return new Received(false,
                         List.of("회신서가 없습니다: " + returnFilePath), null, returnedHead);
             }
-            ReturnBatch.Verdict verdict = judge.judge(shown.stdout(), currentBase);
+            ReturnBatch.Verdict verdict = judge.judge(shown.stdout(), currentBase,
+                    path -> fileAt(projectId, returnedHead, path));
             if (!verdict.accepted()) {
                 return new Received(false, verdict.rejections(), null, returnedHead);
             }
