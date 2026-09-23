@@ -1,6 +1,14 @@
 package com.bizplay.builder.devrequest;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.util.DefaultIndenter;
+import com.fasterxml.jackson.core.util.DefaultPrettyPrinter;
+import com.fasterxml.jackson.databind.ObjectMapper;
+
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * 「돌려받을 것」 계약서 {@code expected-back.md} — <b>사람용 정본</b>이다.
@@ -26,6 +34,19 @@ import java.util.List;
  */
 public class ExpectedBackDocument {
 
+    /**
+     * 회신서 견본에서 개발이 골라 바꿀 자리.
+     * ⭐ 판정기가 모르는 값이라 <b>고르지 않고 그대로 보내면 거절된다</b> — 견본을 그냥 올린 것이
+     * 통과로 세어지면 「누락」과 「봤는데 안 바뀜」이 다시 뭉친다.
+     */
+    public static final String PICK = "changed 또는 unchanged";
+
+    private static final ObjectMapper JSON = new ObjectMapper();
+    /** ⚠ 줄바꿈을 {@code \n} 으로 못 박는다 — 기본값은 윈도우에서 {@code \r\n} 이라 문서가 섞인다. */
+    private static final DefaultPrettyPrinter PRETTY = new DefaultPrettyPrinter()
+            .withObjectIndenter(new DefaultIndenter("  ", "\n"))
+            .withArrayIndenter(new DefaultIndenter("  ", "\n"));
+
     /** @param label {@code DR-009} 꼴. 나머지 재료는 {@link ExpectedBack} 이 갖는다. */
     public record Meta(String label) {
     }
@@ -38,6 +59,7 @@ public class ExpectedBackDocument {
     public String render(Meta meta, ExpectedBack back, DevelopmentRequestContent content) {
         StringBuilder md = new StringBuilder();
         head(md, meta, back);
+        howToReturn(md, meta, back);
         screens(md, back);
         backend(md, content);
         unitTests(md, content);
@@ -48,7 +70,8 @@ public class ExpectedBackDocument {
     private static void head(StringBuilder md, Meta meta, ExpectedBack back) {
         line(md, "# " + meta.label() + " · 돌려받을 것");
         line(md, "");
-        line(md, "개발이 끝나면 **이 문서의 칸을 채워** 돌려보내 주십시오.");
+        line(md, "개발이 끝나면 아래 **「돌려보내는 법」대로** 돌려보내 주십시오. 이 문서는 무엇을 돌려받을지");
+        line(md, "알리는 안내서이고, 빌더가 읽는 것은 그 절에 적힌 파일들입니다.");
         line(md, "");
         line(md, "| | |");
         line(md, "|---|---|");
@@ -66,6 +89,86 @@ public class ExpectedBackDocument {
         line(md, "⛔ **전달 브랜치 위에 얹지 마십시오.** 거기에는 기획이 그린 화면(to-be)이 들어 있어");
         line(md, "그 위에서 갈라 오면 그것이 **사실인 척** 섞여 들어옵니다.");
         line(md, "");
+    }
+
+    /**
+     * 「돌려보내는 법」 — 빌더가 <b>실제로 읽는 파일</b>의 자리와 회신서 견본.
+     *
+     * <p>⭐ 이 절이 없던 판(2026-09-23 실물 시험)은 「이 문서의 칸을 채워 돌려보내라」만 적었다.
+     * 빌더는 이 문서를 안 읽으므로 그대로 따르면 매번 「회신서가 없다」로 거절된다.
+     *
+     * <p>⛔ <b>경로를 여기서 짓지 마라</b> — 받는 자리({@link ReturnBatch})의 것을 그대로 옮긴다.
+     * 글로 따로 적으면 한쪽만 고쳐지고, 그때 개발은 문서대로 했는데 거절을 받는다.
+     */
+    private static void howToReturn(StringBuilder md, Meta meta, ExpectedBack back) {
+        String label = meta.label();
+        line(md, "## 돌려보내는 법");
+        line(md, "");
+        line(md, "⛔ 빌더는 **이 문서를 읽지 않습니다.** 아래 표의 자리에 놓인 파일만 읽습니다.");
+        line(md, "");
+        line(md, "1. 기획 저장소 기본 브랜치의 기준 커밋 `" + back.base() + "` 에서 `"
+                + back.returnBranch() + "` 브랜치를 땁니다.");
+        line(md, "2. 아래 표의 자리에 파일을 놓고 그 브랜치에 커밋합니다.");
+        line(md, "3. 그 브랜치를 기획 저장소에 올리고 기획에 알려 주십시오. 기획이 「개발 결과 받기」를 누르면");
+        line(md, "   빌더가 판정해 받습니다. 거절되면 사유가 기획 화면에 뜹니다.");
+        line(md, "");
+        line(md, "| 무엇 | 자리 | 언제 |");
+        line(md, "|---|---|---|");
+        for (ExpectedBack.Screen screen : back.screens()) {
+            for (String part : screen.required()) {
+                line(md, "| `" + screen.screenId() + "` " + partName(part) + " | `"
+                        + ReturnBatch.pathOf(screen, part) + "` | 회신서에 `" + part
+                        + "` 를 `changed` 로 적었을 때만 |");
+            }
+        }
+        line(md, "| 회신서 | `" + label + "/" + ReturnBatch.FILE + "` | 늘 — 없으면 통째로 거절합니다 |");
+        line(md, "| 단위테스트 결과 | `" + label + "/" + ReturnBatch.UNIT_TESTS
+                + "` | 3절 표를 채워서 |");
+        line(md, "| 통합테스트 결과 | `" + label + "/" + ReturnBatch.INTEGRATION_TESTS
+                + "` | 4절 표를 채워서 |");
+        line(md, "");
+        line(md, "⚠ 회신서와 테스트 결과는 기본 브랜치에 들어가지 않습니다 — 빌더가 읽어 판정하고, 테스트 결과는");
+        line(md, "빌더에 담습니다. 테스트 결과 표는 **앞의 칸을 고치지 말고** 실제 결과·판정·근거만 채워 주십시오.");
+        line(md, "");
+        line(md, "회신서 견본입니다. `" + PICK + "` 를 칸마다 **하나로 바꿔** 주십시오 —");
+        line(md, "그대로 두면 모르는 값으로 거절합니다. 뜻은 1절에 있습니다.");
+        line(md, "");
+        line(md, "```json");
+        line(md, returnTemplate(label, back));
+        line(md, "```");
+        line(md, "");
+    }
+
+    /**
+     * ⭐ 판정기({@link ReturnBatch#judge})가 읽는 꼴 그대로다 — 칸만 고르면 지난다.
+     * ⚠ 필수 구성요소 목록은 {@link ExpectedBack} 의 것을 그대로 쓴다. 보호 화면이면 화면 md 칸이 없다.
+     */
+    private static String returnTemplate(String label, ExpectedBack back) {
+        List<Map<String, String>> screens = new ArrayList<>();
+        for (ExpectedBack.Screen screen : back.screens()) {
+            Map<String, String> row = new LinkedHashMap<>();
+            row.put("screenId", screen.screenId());
+            screen.required().forEach(part -> row.put(part, PICK));
+            screens.add(row);
+        }
+        Map<String, Object> template = new LinkedHashMap<>();
+        template.put("dr", label);
+        template.put("base", back.base());
+        template.put("screens", screens);
+        try {
+            return JSON.writer(PRETTY).writeValueAsString(template);
+        } catch (JsonProcessingException impossible) {
+            throw new IllegalStateException("회신서 견본을 만들지 못했습니다.", impossible);
+        }
+    }
+
+    private static String partName(String part) {
+        return switch (part) {
+            case ExpectedBack.PAGES -> "화면(html)";
+            case ExpectedBack.SCREEN_MD -> "화면 md";
+            case ExpectedBack.INDEX -> "색인";
+            default -> part;
+        };
     }
 
     private static void screens(StringBuilder md, ExpectedBack back) {

@@ -34,10 +34,6 @@ public class DevRequestReceiveService {
 
     private static final Logger log = LoggerFactory.getLogger(DevRequestReceiveService.class);
 
-    /** ⚠ 개발이 채워 보내는 자리. {@link ExpectedBackDocument} 가 알려 준 경로와 같아야 한다. */
-    private static final String UNIT_TESTS = "return/unit-tests.md";
-    private static final String INTEGRATION_TESTS = "return/integration-tests.md";
-
     private final DevelopmentRequestMapper requests;
     private final DevelopmentRequestService requestService;
     private final DevRequestDeliveryWorkspace workspaces;
@@ -109,8 +105,8 @@ public class DevRequestReceiveService {
             return 0;
         }
         int rows = 0;
-        rows += store(projectId, requestId, returnedHead, label + "/" + UNIT_TESTS, "UNIT");
-        rows += store(projectId, requestId, returnedHead, label + "/" + INTEGRATION_TESTS,
+        rows += store(projectId, requestId, returnedHead, label + "/" + ReturnBatch.UNIT_TESTS, "UNIT");
+        rows += store(projectId, requestId, returnedHead, label + "/" + ReturnBatch.INTEGRATION_TESTS,
                 "INTEGRATION");
         return rows;
     }

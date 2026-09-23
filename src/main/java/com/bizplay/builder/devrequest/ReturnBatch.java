@@ -35,6 +35,14 @@ public final class ReturnBatch {
     /** ⛔ 이 파일 이름을 다른 곳에 다시 적지 마라 — 흩어지면 한쪽만 고쳐진다. */
     public static final String FILE = "return.json";
 
+    /**
+     * 테스트 결과 md 둘의 자리 — 개발요청서 이름 밑이다({@code DR-009/return/unit-tests.md}).
+     * ⛔ 이것도 여기에만 적는다 — {@code expected-back.md} 가 개발에게 알리는 경로와
+     * 받는 자리가 읽는 경로가 같은 글자여야 한다.
+     */
+    public static final String UNIT_TESTS = "return/unit-tests.md";
+    public static final String INTEGRATION_TESTS = "return/integration-tests.md";
+
     private static final String CHANGED = "changed";
     private static final String UNCHANGED = "unchanged";
     private static final ObjectMapper JSON = new ObjectMapper();
@@ -117,7 +125,8 @@ public final class ReturnBatch {
         return new Verdict(accepted, List.copyOf(rejections), accepted ? List.copyOf(take) : List.of());
     }
 
-    private static String pathOf(ExpectedBack.Screen screen, String part) {
+    /** 구성요소가 기획 저장소의 어느 자리에 앉나. ⚠ {@code expected-back.md} 도 이것으로 개발에게 알린다. */
+    public static String pathOf(ExpectedBack.Screen screen, String part) {
         return switch (part) {
             case ExpectedBack.PAGES -> "core/" + screen.systemCode() + "/pages/" + screen.screenId() + ".html";
             case ExpectedBack.SCREEN_MD -> "core/" + screen.systemCode() + "/pages/" + screen.screenId() + ".md";
