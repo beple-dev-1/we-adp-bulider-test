@@ -238,9 +238,8 @@ class DevRequestRoundTripTest {
         assertThat(delivery).as("전달 목록에 DR-009 가 있어야 개발이 찾는다").isNotNull();
         String branch = delivery.path("branch").asText();
         String base = delivery.path("base").asText();
-        // ⭐ 브랜치 이름에 프로젝트가 붙는다 — 한 저장소를 여러 프로젝트가 써도 안 덮인다.
-        assertThat(branch).isEqualTo("dr/" + PROJECT + "/DR-009");
-        assertThat(delivery.path("project").asText()).isEqualTo(PROJECT);
+        // ⭐ 브랜치 이름은 IA 의 시스템으로 가른다 — dr/EXW/DR-009.
+        assertThat(branch).isEqualTo("dr/EXW/DR-009");
 
         run(dev, "fetch", "-q", "origin", branch);
         String contract = run(dev, "show", "FETCH_HEAD:DR-009/expected-back.md").stdout();

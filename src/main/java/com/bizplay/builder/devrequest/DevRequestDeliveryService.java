@@ -32,7 +32,7 @@ import java.util.UUID;
  * <p>정본: {@code docs/superpowers/specs/2026-08-07-handoff-to-dev-design.md} 「줄기 — 칸 넷」.
  *
  * <pre>
- * 전송중 남기기 → 설계서를 워크트리에 커밋 → 꾸러미 쓰기 → dr/<프로젝트>/DR-nnn 로 push → 전송완료
+ * 전송중 남기기 → 설계서를 워크트리에 커밋 → 꾸러미 쓰기 → dr/<시스템>/DR-nnn 로 push → 전송완료
  * </pre>
  *
  * <p>⭐ <b>먼저 남기고 보낸다.</b> 보내기 전에 「전송중」 한 줄을 확정해 둔다 — 그래야 보내는
@@ -125,7 +125,7 @@ public class DevRequestDeliveryService {
             DevelopmentRequestService.View view = requestService.read(projectId, requestId);
             String[] fingerprint = new String[1];
             DevRequestDeliveryWorkspace.Published published = deliveries.publish(
-                    projectId, requestId, sent.label(), projects.cloneMaterials(projectId).defaultBranch(),
+                    projectId, requestId, sent.systemCode(), sent.label(), projects.cloneMaterials(projectId).defaultBranch(),
                     projects.cloneMaterials(projectId).authenticatedUrl(),
                     (worktree, base) -> fingerprint[0] =
                             writePackage(projectId, sent, view, worktree, base));
@@ -168,7 +168,7 @@ public class DevRequestDeliveryService {
                                       DevelopmentRequestService.View view,
                                       DevRequestDeliveryWorkspace.Published published,
                                       String deliveryKey) {
-        DeliveryIndex.Entry entry = new DeliveryIndex.Entry(projectId, sent.label(), published.branch(),
+        DeliveryIndex.Entry entry = new DeliveryIndex.Entry(sent.label(), published.branch(),
                 published.commit(), published.base(), sent.systemCode(),
                 view.content().screens().stream()
                         .map(DevelopmentRequestContent.Screen::deliveryScreenId).toList(),
@@ -235,7 +235,7 @@ public class DevRequestDeliveryService {
          *   manifest.expectedBack · expected-back.md · (나중에) 받는 자리의 검사.
          * ⚠ 보호 화면 목록은 오늘 늘 비어 있다 — 그 표시를 담는 자리가 빌더에 아직 없다.
          */
-        ExpectedBack back = ExpectedBack.of(DeliveryIndex.returnBranch(projectId, request.label()), base,
+        ExpectedBack back = ExpectedBack.of(DeliveryIndex.returnBranch(request.systemCode(), request.label()), base,
                 view.content(), List.of());
         packages.write(frdWorktree, packageRequest(request, view, back), dir);
         try {

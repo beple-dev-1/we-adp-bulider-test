@@ -67,11 +67,11 @@ class DevRequestDeliveryWorkspaceTest {
     void 꾸러미를_전달_전용_브랜치로_올리고_기본_브랜치는_그대로_둔다() throws IOException {
         String remoteMainBefore = run(remote, "rev-parse", "refs/heads/main").stdout().strip();
 
-        var published = deliveries.publish(PROJECT, REQUEST, "DR-009", "main",
+        var published = deliveries.publish(PROJECT, REQUEST, "EXW", "DR-009", "main",
                 remote.toUri().toString(), this::writePackage);
 
-        assertThat(published.branch()).isEqualTo("dr/" + PROJECT + "/DR-009");
-        assertThat(run(remote, "rev-parse", "refs/heads/dr/" + PROJECT + "/DR-009").stdout().strip())
+        assertThat(published.branch()).isEqualTo("dr/EXW/DR-009");
+        assertThat(run(remote, "rev-parse", "refs/heads/dr/EXW/DR-009").stdout().strip())
                 .isEqualTo(published.commit());
         assertThat(run(remote, "rev-parse", "refs/heads/main").stdout().strip())
                 .isEqualTo(remoteMainBefore);
@@ -80,7 +80,7 @@ class DevRequestDeliveryWorkspaceTest {
     /** ⭐ 꾸러미는 <b>저장소 뿌리</b>에 앉는다 (사용자 확정 2026-09-22). */
     @Test
     void 꾸러미는_저장소_뿌리에_앉고_as_is_는_원자리_그대로다() throws IOException {
-        var published = deliveries.publish(PROJECT, REQUEST, "DR-009", "main",
+        var published = deliveries.publish(PROJECT, REQUEST, "EXW", "DR-009", "main",
                 remote.toUri().toString(), this::writePackage);
 
         String tree = run(remote, "ls-tree", "-r", "--name-only", published.commit()).stdout();
@@ -95,13 +95,13 @@ class DevRequestDeliveryWorkspaceTest {
     /** ⚠ <b>다시 구우면 통째로 갈아 낀다.</b> 판이 남으면 어느 것을 보냈는지 알 수 없다. */
     @Test
     void 다시_구우면_앞판이_남지_않는다() throws IOException {
-        deliveries.publish(PROJECT, REQUEST, "DR-009", "main", remote.toUri().toString(),
+        deliveries.publish(PROJECT, REQUEST, "EXW", "DR-009", "main", remote.toUri().toString(),
                 (worktree, base) -> {
                     write(worktree, "DR-009/dev-request.md", "첫 판");
                     write(worktree, "DR-009/버린다.md", "두 번째 판에는 없다");
                 });
 
-        var again = deliveries.publish(PROJECT, REQUEST, "DR-009", "main",
+        var again = deliveries.publish(PROJECT, REQUEST, "EXW", "DR-009", "main",
                 remote.toUri().toString(), this::writePackage);
 
         String tree = run(remote, "ls-tree", "-r", "--name-only", again.commit()).stdout();
@@ -113,7 +113,7 @@ class DevRequestDeliveryWorkspaceTest {
     /** ⛔ 전달 워크트리는 전송이 끝나면 지운다. FRD 워크트리는 남긴다 — 그쪽은 재전송의 재료다. */
     @Test
     void 전달_워크트리는_전송이_끝나면_치운다() throws IOException {
-        deliveries.publish(PROJECT, REQUEST, "DR-009", "main",
+        deliveries.publish(PROJECT, REQUEST, "EXW", "DR-009", "main",
                 remote.toUri().toString(), this::writePackage);
 
         assertThat(paths.devRequestDeliveryWorktree(PROJECT, REQUEST)).doesNotExist();
@@ -123,7 +123,7 @@ class DevRequestDeliveryWorkspaceTest {
     /** ⛔ 실패 메시지가 토큰을 실어 나르지 않는다 — git 은 실패하면 원격 주소를 그대로 되뱉는다. */
     @Test
     void 올리지_못하면_자격을_가리고_알린다() {
-        assertThatThrownBy(() -> deliveries.publish(PROJECT, REQUEST, "DR-009", "main",
+        assertThatThrownBy(() -> deliveries.publish(PROJECT, REQUEST, "EXW", "DR-009", "main",
                 "https://oauth2:비밀토큰1234@localhost:1/planning.git", this::writePackage))
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessageNotContaining("비밀토큰1234");
@@ -148,7 +148,7 @@ class DevRequestDeliveryWorkspaceTest {
         assertThat(run(remote, "ls-tree", "-r", "--name-only", ref).stdout().strip().lines().sorted().toList())
                 .containsExactly(DeliveryIndex.README, DeliveryIndex.PATH);
         assertThat(run(remote, "show", ref + ":" + DeliveryIndex.README).stdout())
-                .contains(DeliveryIndex.deliveryBranch("<project>", "<dr>"));
+                .contains(DeliveryIndex.deliveryBranch("<시스템>", "<dr>"));
         assertThat(run(remote, "rev-list", "--count", ref).stdout().strip()).isEqualTo("1");
     }
 
@@ -183,7 +183,7 @@ class DevRequestDeliveryWorkspaceTest {
     }
 
     private DeliveryIndex.Entry indexEntry(String dr) {
-        return new DeliveryIndex.Entry(PROJECT, dr, DeliveryIndex.deliveryBranch(PROJECT, dr),
+        return new DeliveryIndex.Entry(dr, DeliveryIndex.deliveryBranch("EXW", dr),
                 "commit-" + dr, "base", "EXW",
                 java.util.List.of("EXW-UWV-70-30-10-C"), java.time.Instant.parse("2026-09-22T08:24:58Z"),
                 "key");

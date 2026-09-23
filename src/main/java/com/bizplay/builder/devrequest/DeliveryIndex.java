@@ -16,14 +16,14 @@ import java.util.List;
  * 에 두었더니 넘기기가 목록을 커밋할 때마다 기본 브랜치가 한 판 앞으로 가, 꾸러미가 알린 기준
  * 커밋이 곧바로 낡았다. 역류 설계가 「받을 때 HEAD 와 다르면 거절」이라 문서대로 한 개발이 늘 거절됐다.
  *
- * <p>⭐ <b>이름은 바뀌지만 자리는 고정이다.</b> 전달 브랜치는 {@code dr/0000001/DR-009} ·
- * {@code dr/0000001/DR-010} 으로 DR 마다 바뀐다. 개발이 그 이름을 미리 알 길이 없으므로,
+ * <p>⭐ <b>이름은 바뀌지만 자리는 고정이다.</b> 전달 브랜치는 {@code dr/EXW/DR-009} ·
+ * {@code dr/EXW/DR-010} 으로 DR 마다 바뀐다. 개발이 그 이름을 미리 알 길이 없으므로,
  * <b>한 경로에 목록을 두고 그것만 보게 한다.</b>
  *
- * <p>⭐ <b>브랜치 이름에 프로젝트 ID 를 붙인다</b> (2026-09-23 사용자 확정). DR 번호는 프로젝트마다
- * 1번부터라, 한 기획 저장소를 두 프로젝트가 쓰면 {@code DR-001} 이 둘이 되고 {@code dr/} ·
- * {@code feedback/} · 목록의 줄이 서로 덮인다. ⚠ 플랫폼 코드가 아니라 ID 다 — 플랫폼 코드는 사람이
- * 정해 겹칠 수 있고, 한 저장소를 나눠 쓰는 프로젝트라면 오히려 같은 코드를 쓰기 쉽다.
+ * <p>⭐ <b>브랜치 이름의 가운데 마디는 IA 의 시스템이다</b> (2026-09-23 사용자 확정) — {@code dr/EXW/DR-011}.
+ * 개발은 시스템별로 나뉘어 일하니 그 축으로 모인다. ⛔ <b>작업그룹(프로젝트)을 넣지 마라</b> — 작업그룹은
+ * 기획 저장소가 따로라 한 저장소 안에서 DR 번호만으로 하나다. 한때 프로젝트 ID 를 넣었다가 되돌렸다.
+ * ⚠ 시스템이 없는 요청서(SRT 로 만든 것)는 {@link #NO_SYSTEM} 자리에 간다 — {@code dr/SRT/DR-012}.
  * ⛔ 이름은 {@link #deliveryBranch} · {@link #returnBranch} 로만 짓는다 — README 도 이것으로 그린다.
  *
  * <p>⭐ <b>{@code base} 가 역류의 기준이다.</b> 역류 설계는 「기준이 어긋나면 거절한다」를
@@ -50,33 +50,49 @@ public final class DeliveryIndex {
 
     /**
      * ⚠ 목록 규격의 판. 칸을 바꾸면 이 값을 올리고 개발에 고지한다.
-     * 2 — {@code project} 칸을 더하고 줄을 (project, dr) 로 가른다(2026-09-23).
+     * 2 — 브랜치 이름에 시스템 마디가 붙었다({@code dr/EXW/DR-011}, 2026-09-23).
      */
     private static final int SPEC_VERSION = 2;
+
+    /** 시스템이 없는 요청서(SRT 로 만든 것)가 앉는 자리 (2026-09-23 사용자 확정). IA 시스템 코드와 안 겹친다. */
+    public static final String NO_SYSTEM = "SRT";
 
     private static final ObjectMapper JSON = new ObjectMapper();
 
     private DeliveryIndex() {
     }
 
-    /** 전달 브랜치 — 꾸러미가 사는 자리. */
-    public static String deliveryBranch(String projectId, String label) {
-        return "dr/" + projectId + "/" + label;
+    /** 전달 브랜치 — 꾸러미가 사는 자리. {@code dr/<시스템>/<번호>}. */
+    public static String deliveryBranch(String systemCode, String label) {
+        return "dr/" + systemSegment(systemCode) + "/" + label;
     }
 
-    /** 돌려보낼 브랜치 — 개발이 기본 브랜치에서 따서 미는 자리. */
-    public static String returnBranch(String projectId, String label) {
-        return "feedback/" + projectId + "/" + label;
+    /** 돌려보낼 브랜치 — 개발이 기본 브랜치에서 따서 미는 자리. {@code feedback/<시스템>/<번호>}. */
+    public static String returnBranch(String systemCode, String label) {
+        return "feedback/" + systemSegment(systemCode) + "/" + label;
+    }
+
+    /**
+     * ⛔ 브랜치 이름이 될 수 없는 값은 거절한다 — 조용히 고쳐 쓰면 개발이 그 이름을 못 찾는다.
+     * ⚠ {@code <시스템>} 꼴은 README 에서 자리 표시로만 쓴다.
+     */
+    private static String systemSegment(String systemCode) {
+        if (systemCode == null || systemCode.isBlank()) {
+            return NO_SYSTEM;
+        }
+        if (!systemCode.matches("[A-Za-z0-9_-]+|<[^/\\s]+>")) {
+            throw new IllegalStateException("브랜치 이름이 될 수 없는 시스템 값입니다: " + systemCode);
+        }
+        return systemCode;
     }
 
     /**
      * 목록 한 줄.
      *
-     * @param project 빌더 프로젝트 ID. ⭐ {@code dr} 과 짝으로만 유일하다
      * @param base 이 꾸러미를 구운 기준 커밋 — <b>역류가 이 값 위에서 갈라 와야 한다</b>
      */
-    public record Entry(String project, String dr, String branch, String commit, String base,
-                        String system, List<String> screens, Instant sentAt, String sendKey) {
+    public record Entry(String dr, String branch, String commit, String base, String system,
+                        List<String> screens, Instant sentAt, String sendKey) {
     }
 
     /**
@@ -89,8 +105,8 @@ public final class DeliveryIndex {
      * 넘길 때마다 빌더가 다시 써서 코드와 어긋나지 않는다.
      */
     public static String readme() {
-        String dr = deliveryBranch("<project>", "<dr>");
-        String back = returnBranch("<project>", "<dr>");
+        String dr = deliveryBranch("<시스템>", "<dr>");
+        String back = returnBranch("<시스템>", "<dr>");
         return String.join(NL_JOIN,
                 "# 개발요청 받는 곳",
                 "",
@@ -103,15 +119,15 @@ public final class DeliveryIndex {
                 "",
                 "| 칸 | 뜻 |",
                 "|---|---|",
-                "| `project` | 빌더 프로젝트 ID. 한 기획 저장소를 여러 프로젝트가 쓰면 이것으로 가립니다 |",
-                "| `dr` | 개발요청서 번호. 프로젝트마다 1번부터라 `project` 와 짝으로만 하나입니다 |",
+                "| `dr` | 개발요청서 번호. 이 저장소 안에서 하나뿐입니다 |",
                 "| `branch` | 꾸러미가 든 브랜치 — `" + dr + "` |",
                 "| `commit` | 꾸러미 커밋 |",
                 "| `base` | 기본 브랜치에서 갈라 올 기준 커밋 |",
-                "| `system` · `screens` | 대상 시스템과 화면 |",
+                "| `system` · `screens` | 대상 시스템(IA 기준 — 브랜치 이름의 가운데 마디)과 화면."
+                        + " 화면 없는 요청은 `" + NO_SYSTEM + "` 자리에 갑니다 |",
                 "| `sentAt` · `sendKey` | 보낸 시각과 전송 키. 다시 보내도 키는 같습니다 |",
                 "",
-                "같은 `project` · `dr` 을 다시 보내면 그 줄이 새것으로 바뀝니다.",
+                "같은 `dr` 을 다시 보내면 그 줄이 새것으로 바뀝니다.",
                 "",
                 "## 2. 무엇을 하나",
                 "",
@@ -140,9 +156,7 @@ public final class DeliveryIndex {
         ArrayNode merged = JSON.createArrayNode();
         boolean replaced = false;
         for (JsonNode row : deliveries) {
-            // ⭐ (project, dr) 로 가른다 — 번호만으로 가르면 다른 프로젝트의 같은 번호를 갈아 낀다.
-            if (entry.dr().equals(row.path("dr").asText(null))
-                    && entry.project().equals(row.path("project").asText(null))) {
+            if (entry.dr().equals(row.path("dr").asText(null))) {
                 merged.add(rowOf(entry));
                 replaced = true;
                 continue;
@@ -183,7 +197,6 @@ public final class DeliveryIndex {
 
     private static ObjectNode rowOf(Entry entry) {
         ObjectNode row = JSON.createObjectNode();
-        row.put("project", entry.project());
         row.put("dr", entry.dr());
         row.put("branch", entry.branch());
         row.put("commit", entry.commit());

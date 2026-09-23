@@ -31,9 +31,9 @@ class DeliveryIndexTest {
         JsonNode tree = json.readTree(merged);
         assertThat(tree.get("specVersion").asInt()).isEqualTo(2);
         JsonNode row = tree.get("deliveries").get(0);
-        assertThat(row.get("project").asText()).isEqualTo("0000001");
+        assertThat(row.has("project")).as("작업그룹은 저장소가 따로라 목록에 안 적는다").isFalse();
         assertThat(row.get("dr").asText()).isEqualTo("DR-009");
-        assertThat(row.get("branch").asText()).isEqualTo("dr/0000001/DR-009");
+        assertThat(row.get("branch").asText()).isEqualTo("dr/EXW/DR-009");
         assertThat(row.get("commit").asText()).isEqualTo("9db65709");
         assertThat(row.get("base").asText()).isEqualTo("370cd63");
         assertThat(row.get("system").asText()).isEqualTo("EXW");
@@ -69,29 +69,27 @@ class DeliveryIndexTest {
     }
 
     /**
-     * ⛔ <b>다른 프로젝트의 같은 번호는 서로 안 덮는다</b> (2026-09-23 사용자 확정).
-     * DR 번호는 프로젝트마다 1번부터라, 한 기획 저장소를 두 프로젝트가 쓰면 {@code DR-001} 이 둘이다.
-     * 번호만으로 가르면 뒤에 보낸 쪽이 앞 프로젝트의 줄을 갈아 낀다.
+     * ⭐ <b>브랜치 이름은 IA 의 시스템으로 가른다</b> (2026-09-23 사용자 확정) — {@code dr/EXW/DR-011}.
+     * 작업그룹(프로젝트)은 저장소가 따로라 이름에 안 넣는다.
      */
     @Test
-    void 다른_프로젝트의_같은_번호는_서로_안_덮는다() throws IOException {
-        String first = DeliveryIndex.merge(null, entry("0000001", "DR-001", "aaaaaaa"));
-
-        String merged = DeliveryIndex.merge(first, entry("0000002", "DR-001", "bbbbbbb"));
-
-        JsonNode rows = json.readTree(merged).get("deliveries");
-        assertThat(rows).hasSize(2);
-        assertThat(rows.get(0).get("branch").asText()).isEqualTo("dr/0000001/DR-001");
-        assertThat(rows.get(1).get("branch").asText()).isEqualTo("dr/0000002/DR-001");
+    void 브랜치_이름은_시스템으로_가른다() {
+        assertThat(DeliveryIndex.deliveryBranch("EXW", "DR-011")).isEqualTo("dr/EXW/DR-011");
+        assertThat(DeliveryIndex.returnBranch("EXW", "DR-011")).isEqualTo("feedback/EXW/DR-011");
     }
 
-    /** ⭐ 전달·돌려보낼 브랜치 이름에 프로젝트가 붙는다 — 같은 번호가 둘이어도 브랜치가 갈린다. */
+    /** ⭐ 시스템이 없는 요청서(SRT 로 만든 것)는 {@code SRT} 자리에 간다 (2026-09-23 사용자 확정). */
     @Test
-    void 브랜치_이름에_프로젝트가_붙는다() {
-        assertThat(DeliveryIndex.deliveryBranch("0000001", "DR-009")).isEqualTo("dr/0000001/DR-009");
-        assertThat(DeliveryIndex.returnBranch("0000001", "DR-009")).isEqualTo("feedback/0000001/DR-009");
-        assertThat(DeliveryIndex.deliveryBranch("0000002", "DR-009"))
-                .isNotEqualTo(DeliveryIndex.deliveryBranch("0000001", "DR-009"));
+    void 시스템이_없으면_SRT_자리로_간다() {
+        assertThat(DeliveryIndex.deliveryBranch(null, "DR-012")).isEqualTo("dr/SRT/DR-012");
+        assertThat(DeliveryIndex.returnBranch(" ", "DR-012")).isEqualTo("feedback/SRT/DR-012");
+    }
+
+    /** ⛔ 브랜치 이름이 될 수 없는 시스템 값은 받지 않는다 — 조용히 고쳐 쓰면 개발이 못 찾는다. */
+    @Test
+    void 브랜치_이름이_될_수_없는_시스템은_거절한다() {
+        org.assertj.core.api.Assertions.assertThatThrownBy(() -> DeliveryIndex.deliveryBranch("EX W", "DR-001"))
+                .isInstanceOf(IllegalStateException.class).hasMessageContaining("EX W");
     }
 
     /**
@@ -105,10 +103,11 @@ class DeliveryIndexTest {
 
         assertThat(readme)
                 .contains(DeliveryIndex.BRANCH).contains(DeliveryIndex.PATH)
-                .contains(DeliveryIndex.deliveryBranch("<project>", "<dr>"))
-                .contains(DeliveryIndex.returnBranch("<project>", "<dr>"))
+                .contains(DeliveryIndex.deliveryBranch("<시스템>", "<dr>"))
+                .contains(DeliveryIndex.returnBranch("<시스템>", "<dr>"))
                 .contains("expected-back.md").contains("dev-request.md")
-                .contains("`project`").contains("`dr`").contains("`branch`").contains("`base`")
+                .contains("`dr`").contains("`branch`").contains("`base`").contains("`system`")
+                .doesNotContain("`project`")
                 .doesNotContain("return.json");
     }
 
@@ -139,11 +138,7 @@ class DeliveryIndexTest {
     }
 
     private DeliveryIndex.Entry entry(String dr, String commit) {
-        return entry("0000001", dr, commit);
-    }
-
-    private DeliveryIndex.Entry entry(String project, String dr, String commit) {
-        return new DeliveryIndex.Entry(project, dr, DeliveryIndex.deliveryBranch(project, dr), commit,
+        return new DeliveryIndex.Entry(dr, DeliveryIndex.deliveryBranch("EXW", dr), commit,
                 "370cd63", "EXW", List.of("EXW-UWV-70-30-10-C"), Instant.parse("2026-09-22T08:24:58Z"),
                 "key-" + dr.substring(dr.length() - 3));
     }

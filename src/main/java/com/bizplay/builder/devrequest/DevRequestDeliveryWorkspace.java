@@ -17,7 +17,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 
 /**
- * 꾸러미를 <b>전달 전용 브랜치</b>({@code dr/<프로젝트>/DR-nnn})로 올린다.
+ * 꾸러미를 <b>전달 전용 브랜치</b>({@code dr/<시스템>/DR-nnn})로 올린다.
  *
  * <p>정본: {@code docs/superpowers/specs/2026-08-07-handoff-to-dev-design.md} 「줄기 — 칸 넷」의
  * 칸 3·4. 그 문서는 개발 API 로 보내는 그림이었고, <b>통로가 git 뿐이라 브랜치로 옮겼다</b>
@@ -80,15 +80,17 @@ public class DevRequestDeliveryWorkspace {
      * <p>⚠ <b>다시 구우면 통째로 갈아 낀다</b> — 개발요청서 하나에 꾸러미 하나다. 앞판이 남으면
      * 어느 것을 보냈는지 알 수 없다. 그래서 브랜치를 {@code -B} 로 다시 세우고 워크트리도 새로 판다.
      *
-     * @param label       {@code DR-009} 꼴. 브랜치 이름이 {@code dr/<label>} 이 된다
+     * @param systemCode  IA 의 시스템({@code EXW} 꼴). 없으면 {@code SRT} 자리에 간다
+     * @param label       {@code DR-009} 꼴. 브랜치 이름이 {@code dr/<시스템>/<label>} 이 된다
      * @param writePackage 전달 워크트리 <b>뿌리</b>를 받아 꾸러미를 쓰는 일. 이 클래스는 git 만 한다
      */
-    public synchronized Published publish(String projectId, String requestId, String label,
+    public synchronized Published publish(String projectId, String requestId, String systemCode,
+                                          String label,
                                           String defaultBranch, String authenticatedUrl,
                                           PackageWriter writePackage) {
         Path clone = paths.cloneDir(projectId);
         Path worktree = paths.devRequestDeliveryWorktree(projectId, requestId);
-        String branch = DeliveryIndex.deliveryBranch(projectId, label);
+        String branch = DeliveryIndex.deliveryBranch(systemCode, label);
         try {
             discard(clone, worktree);
             /*
