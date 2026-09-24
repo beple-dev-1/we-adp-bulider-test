@@ -185,16 +185,23 @@ public class ExpectedBackDocument {
         line(md, "필수 구성요소마다 `changed` 또는 `unchanged` 를 **정확히 하나** 적어 주십시오.");
         line(md, "⚠ `unchanged` 는 「보았고 바꿀 것이 없었다」는 뜻입니다 — 안 본 것과 다릅니다.");
         line(md, "");
-        line(md, "| 화면ID | 시스템 | 필수 구성요소 | 채울 칸 |");
-        line(md, "|---|---|---|---|");
+        line(md, "| 화면ID | 시스템 | 필수 구성요소 |");
+        line(md, "|---|---|---|");
         boolean anyGuarded = false;
         for (ExpectedBack.Screen screen : back.screens()) {
             anyGuarded |= !screen.expectsScreenMd();
             String required = join(screen.required(), part -> "`" + part + "`", " · ");
-            String blanks = join(screen.required(), part -> part + " ____", " / ");
-            line(md, "| `" + screen.screenId() + "` | " + nvl(screen.systemCode())
-                    + " | " + required + " | " + blanks + " |");
+            line(md, "| `" + screen.screenId() + "` | " + nvl(screen.systemCode()) + " | " + required + " |");
         }
+        line(md, "");
+        /*
+         * ⭐ 무엇이 바뀌면 changed 인가를 적는다 (2026-09-24 사용자 확정).
+         * ⛔ 빈칸을 두지 않는다 — 빌더는 이 문서를 안 읽어, 채우면 헛일이다. 값은 회신서에만 적는다.
+         */
+        line(md, "값(`changed`·`unchanged`)은 **회신서에만** 적습니다 — 이 표에 적어도 빌더는 읽지 않습니다.");
+        line(md, "- `pages` — 화면 html 을 고쳤으면 `changed`");
+        line(md, "- `screen-md` — 기능정의서를 고쳤으면 `changed`");
+        line(md, "- `index` — 화면 이름·종류·메뉴 위치가 바뀌었으면 `changed` (`index.json` 의 그 화면 줄)");
         line(md, "");
         if (anyGuarded) {
             line(md, "⚠ **`screen-md` 가 빠진 화면은 사람이 손댄 화면입니다.** 그 화면의 화면 md 는 받지");
@@ -217,15 +224,21 @@ public class ExpectedBackDocument {
          * ⭐ 대상이 domains/<도메인>/<모듈>.md 꼴이 아니어도 목록에 남긴다 (설계 2026-08-25 교정).
          *   꼴로 거르면 「배치 서버 설정」 같은 대상이 회신 목록에서 조용히 사라진다.
          */
-        line(md, "| 대상 | 요청한 변경 | 실제 구현 | 판정 | 근거 |");
-        line(md, "|---|---|---|---|---|");
+        line(md, "| 대상 | 요청한 변경 |");
+        line(md, "|---|---|");
         for (var change : content.backendChanges()) {
-            line(md, "| `" + nvl(change.target()) + "` | " + cell(change.changeDetail()) + " |  |  |  |");
+            line(md, "| `" + nvl(change.target()) + "` | " + cell(change.changeDetail()) + " |");
         }
         line(md, "");
-        line(md, "⚠ 도메인 문서(`domains/…`)를 고쳐 보내실 때는 **통째로 갈아 끼우지 마십시오.**");
-        line(md, "그 파일에는 사람이 적은 문장이 섞여 있어 통째 덮기로는 잃습니다 — 병합기를 지난");
-        line(md, "결과만 보내 주십시오.");
+        /*
+         * ⭐ 결과는 3절 단위테스트로 받는다 (2026-09-24 사용자 확정) — 단위 TC 가 화면 외 구현마다
+         *   하나씩 붙어 나가, 그 표의 실제 결과·판정·근거가 곧 「어떻게 구현했고 됐는가」다.
+         * ⚠ 도메인 문서를 받는 자리는 없다 — 조용히 버리지 않고 반영되지 않는다고 알린다.
+         */
+        line(md, "구현한 결과는 **3절 단위테스트** 표에 채워 돌려주십시오 — 단위테스트가 이 항목마다 하나씩 붙어 있습니다.");
+        line(md, "");
+        line(md, "⚠ 도메인 문서(`domains/…`)는 지금 돌려받는 자리가 없어 **보내셔도 반영되지 않습니다.**");
+        line(md, "고친 내용은 단위테스트의 근거 칸에 적어 주십시오.");
         line(md, "");
     }
 

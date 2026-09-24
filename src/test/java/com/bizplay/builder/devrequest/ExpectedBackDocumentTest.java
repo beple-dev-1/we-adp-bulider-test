@@ -38,15 +38,21 @@ class ExpectedBackDocumentTest {
                 .contains("색인(`index.json`)은 `changed` 로 보낼 때만 따집니다");
     }
 
-    /** ⭐ 화면마다 필수 구성요소와 채울 칸을 함께 낸다. */
+    /**
+     * ⭐ 화면마다 필수 구성요소를 내고, <b>무엇이 바뀌면 changed 인가</b>를 적는다 (2026-09-24 사용자 확정).
+     * ⛔ 빈칸(「채울 칸 ____」)을 두지 않는다 — 빌더는 이 문서를 안 읽어 채우면 헛일이다. 값은 회신서에만 적는다.
+     */
     @Test
-    void 화면_회신_대상을_표로_내고_구성요소마다_채울_칸을_둔다() {
+    void 화면_회신_대상을_표로_내고_무엇이_바뀌면_changed_인지_적는다() {
         String md = documents.render(meta(), back(List.of()), content());
         String section = md.substring(md.indexOf("## 1. 화면"), md.indexOf("## 2."));
 
         assertThat(section).contains("EXW-UWV-70-30-10-C")
                 .contains("pages").contains("screen-md").contains("index")
-                .contains("changed").contains("unchanged");
+                .contains("화면 html 을 고쳤으면").contains("기능정의서를 고쳤으면")
+                .contains("화면 이름·종류·메뉴 위치가 바뀌었으면")
+                .contains("회신서")
+                .doesNotContain("____");
     }
 
     /**
@@ -73,6 +79,22 @@ class ExpectedBackDocumentTest {
         assertThat(section).contains("domains/join/prefill.md")
                 .contains("배치 서버 설정")   // 경로 꼴이 아닌 대상
                 .contains("회원정보 조회 응답에 생년월일을 더한다");
+    }
+
+    /**
+     * ⭐ <b>화면 외 구현의 결과는 3절 단위테스트로 받는다</b> (2026-09-24 사용자 확정). 단위 TC 가 화면 외
+     * 구현마다 하나씩 붙어 나가므로, 그 표의 실제 결과·판정·근거가 곧 「어떻게 구현했고 됐는가」다.
+     * ⛔ 2절에 빈칸을 두지 않는다 — 돌려받을 파일 자리가 없어 채우면 헛일이다.
+     * ⚠ 도메인 문서는 받는 자리가 없다 — 보내도 반영되지 않는다고 알린다(조용히 버리지 않는다).
+     */
+    @Test
+    void 화면_외_구현의_결과는_단위테스트로_돌려달라고_한다() {
+        String md = documents.render(meta(), back(List.of()), content());
+        String section = md.substring(md.indexOf("## 2."), md.indexOf("## 3."));
+
+        assertThat(section).contains("3절 단위테스트")
+                .contains("반영되지 않습니다")
+                .doesNotContain("| 실제 구현 |").doesNotContain("|  |  |  |");
     }
 
     /** ⭐ 우리가 먼저 적은 TC 가 실리고, 개발이 채울 칸이 비어 있다. */

@@ -37,7 +37,40 @@ class DevRequestDocumentTest {
         assertThat(md.indexOf("## 3. 개발 범위"))
                 .isLessThan(md.indexOf("## 4. 제외 범위"));
         assertThat(md).contains("## 5. 완료 조건", "## 6. 확인 필요", "## 7. 화면 외 구현",
-                "## 8. 화면별 산출물 목록", "## 9. 전송 정보", "## 10. 첨부 목록");
+                "## 8. 화면별 산출물 목록", "## 9. 전송 정보", "## 10. 첨부 목록",
+                "## 11. 돌려받을 것");
+        assertThat(md.indexOf("## 10. 첨부 목록")).isLessThan(md.indexOf("## 11. 돌려받을 것"));
+    }
+
+    /**
+     * ⭐ <b>11절은 두 계약 파일을 따르라는 안내만 둔다</b> — 설계(꾸러미 설계 「돌려받을 것」)가 그렇게 정했다.
+     * 개발이 먼저 여는 문서에서 돌려보낼 길을 알아야 한다. ⛔ 돌려보내는 법을 여기에 다시 적지 않는다 —
+     * 그 값은 expected-back.md 에 있고 두 곳에 적으면 갈린다.
+     */
+    @Test
+    void 열한째_절은_두_계약_파일을_따르라고만_안내한다() throws IOException {
+        String md = documents.render(meta(), content(), manifest());
+        String section = md.substring(md.indexOf("## 11. 돌려받을 것"));
+
+        assertThat(section).contains("expected-back.md").contains("manifest.json")
+                .doesNotContain("return.json");
+    }
+
+    /**
+     * ⚠ 화면도 화면 외 구현도 없는 요청서가 「화면 외 구현만 담습니다」라고 말하면 7절과 어긋난다
+     * (2026-09-24 DR-012 에서 본 모순).
+     */
+    @Test
+    void 화면이_없으면_화면_외_구현이_있다고_말하지_않는다() throws IOException {
+        Path empty = dir.resolve("empty-srt.json");
+        Files.writeString(empty, """
+                {"specVersion": 2, "request": {"label": "DR-012"}, "screens": [], "expectedBack": {"screens": []}}
+                """, StandardCharsets.UTF_8);
+
+        String md = documents.render(meta(), content(), empty);
+        String section = md.substring(md.indexOf("## 8. 화면별 산출물 목록"), md.indexOf("## 9. 전송 정보"));
+
+        assertThat(section).contains("화면 변경이 없습니다").doesNotContain("화면 외 구현만");
     }
 
     /**

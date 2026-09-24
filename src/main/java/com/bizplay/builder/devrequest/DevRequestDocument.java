@@ -70,6 +70,7 @@ public class DevRequestDocument {
         screens(md, manifest);
         delivery(md, meta);
         attachments(md, meta);
+        returnGuide(md);
         return md.toString();
     }
 
@@ -201,7 +202,8 @@ public class DevRequestDocument {
         md.append("## 8. 화면별 산출물 목록\n\n");
         JsonNode screens = manifest.get("screens");
         if (screens == null || screens.isEmpty()) {
-            md.append("화면 변경이 없습니다 — 이 요청은 화면 외 구현만 담습니다.\n\n");
+            // ⚠ 화면 외 구현도 없을 수 있다(SRT) — 「화면 외 구현만 담는다」고 말하면 7절과 어긋난다.
+            md.append("화면 변경이 없습니다.\n\n");
             return;
         }
         for (JsonNode screen : screens) {
@@ -241,6 +243,18 @@ public class DevRequestDocument {
             md.append(" — ").append(meta.attachmentSize() / 1024).append("KB");
         }
         md.append('\n');
+    }
+
+    /**
+     * 11절 — 돌려받을 것. ⭐ <b>두 계약 파일을 따르라는 안내만 둔다</b>(꾸러미 설계 「돌려받을 것」).
+     * ⛔ 돌려보내는 법을 여기에 다시 적지 않는다 — 그 요청의 값은 {@code expected-back.md} 에 있고,
+     * 두 곳에 적으면 갈린다.
+     */
+    private static void returnGuide(StringBuilder md) {
+        md.append("## 11. 돌려받을 것\n\n");
+        md.append("개발이 끝나면 같은 폴더의 `expected-back.md` 를 따라 돌려보내 주십시오 — 무엇을 어디에"
+                + " 어떤 모양으로 돌려주는지가 이 요청의 값으로 적혀 있습니다.\n");
+        md.append("기계가 읽는 목록(파일·해시·커밋)은 `manifest.json` 에 있습니다.\n");
     }
 
     private static Map<String, String> fileMeanings() {
