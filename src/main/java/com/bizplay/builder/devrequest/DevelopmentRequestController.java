@@ -179,6 +179,8 @@ public class DevelopmentRequestController {
         model.addAttribute("listSystem", listSystem);
         model.addAttribute("listPage", listPage);
         model.addAttribute("listPageSize", listPageSize);
+        model.addAttribute("sourceFiles", deliveries == null ? List.of()
+                : deliveries.sourceFilesOf(view.request().frdId()));
         return "artifacts/dev-request";
     }
 
@@ -203,8 +205,19 @@ public class DevelopmentRequestController {
      */
     @PostMapping("/{requestId}/deliver")
     public String deliver(@PathVariable String projectId, @PathVariable String requestId,
+                          @RequestParam(required = false)
+                          @org.springframework.format.annotation.DateTimeFormat(iso = org.springframework.format.annotation.DateTimeFormat.ISO.DATE)
+                          java.time.LocalDate developmentCompletedOn,
+                          @RequestParam(required = false)
+                          @org.springframework.format.annotation.DateTimeFormat(iso = org.springframework.format.annotation.DateTimeFormat.ISO.DATE)
+                          java.time.LocalDate deploymentOn,
+                          @RequestParam(required = false) String plannerComment,
+                          @RequestParam(required = false) org.springframework.web.multipart.MultipartFile attachment,
                           @AuthenticationPrincipal BuilderUser me, RedirectAttributes flash) {
         try {
+            // ⭐ 「개발에 넘기기」 레이어에서 고른 것을 먼저 적는다 (목업 06b) — 모두 선택이다.
+            requests.saveSendDetails(projectId, requestId, developmentCompletedOn, deploymentOn,
+                    plannerComment, attachment);
             var published = deliveries.deliver(projectId, requestId, me == null ? null : me.accountId());
             flash.addFlashAttribute("message",
                     "개발에 넘겼습니다. 기획 저장소의 %s 브랜치에 꾸러미를 올렸습니다.".formatted(published.branch()));

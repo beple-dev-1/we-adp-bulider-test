@@ -66,6 +66,7 @@ public class DevRequestDeliveryService {
     private final ProjectService projects;
     private final ProjectPaths paths;
     private final IdSequence ids;
+    private final List<DevRequestSourceFiles> sourceFiles;
 
     public DevRequestDeliveryService(DevelopmentRequestMapper requests,
                                      DevelopmentRequestService requestService,
@@ -75,6 +76,21 @@ public class DevRequestDeliveryService {
                                      DevRequestPackage packages, DevRequestDocument documents,
                                      ExpectedBackDocument expectedBacks,
                                      ProjectService projects, ProjectPaths paths, IdSequence ids) {
+        this(requests, requestService, frds, screens, histories, workspaces, deliveries, packages, documents,
+                expectedBacks, projects, paths, ids, List.of());
+    }
+
+    @org.springframework.beans.factory.annotation.Autowired
+    public DevRequestDeliveryService(DevelopmentRequestMapper requests,
+                                     DevelopmentRequestService requestService,
+                                     FrdMapper frds, FrdScreenMapper screens,
+                                     FrdScreenHistoryMapper histories, FrdWorkspace workspaces,
+                                     DevRequestDeliveryWorkspace deliveries,
+                                     DevRequestPackage packages, DevRequestDocument documents,
+                                     ExpectedBackDocument expectedBacks,
+                                     ProjectService projects, ProjectPaths paths, IdSequence ids,
+                                     List<DevRequestSourceFiles> sourceFiles) {
+        this.sourceFiles = sourceFiles == null ? List.of() : List.copyOf(sourceFiles);
         this.requests = requests;
         this.requestService = requestService;
         this.frds = frds;
@@ -248,6 +264,7 @@ public class DevRequestDeliveryService {
                     request.workspaceBaseSha(), request.workspaceHeadSha()), dir);
         }
         try {
+            copyAttachment(request, dir);
             Path manifest = dir.resolve("manifest.json");
             Files.writeString(dir.resolve("dev-request.md"),
                     documents.render(meta(request, view), view.content(), manifest),
@@ -281,7 +298,26 @@ public class DevRequestDeliveryService {
                 view.ownerName(), request.createdAt() == null ? null
                         : request.createdAt().atZone(java.time.ZoneId.systemDefault()).toLocalDate(),
                 request.developmentCompletedOn(), request.deploymentOn(), request.plannerComment(),
-                request.attachmentName(), request.attachmentSize());
+                request.attachmentName(), request.attachmentSize(), sourceFilesOf(request.frdId()));
+    }
+
+    /** 출처(플로우 원문)의 첨부 목록 — 「개발에 넘기기」 레이어와 10절이 같은 것을 쓴다. */
+    public List<DevRequestSourceFiles.SourceFile> sourceFilesOf(String frdId) {
+        List<DevRequestSourceFiles.SourceFile> files = new ArrayList<>();
+        sourceFiles.forEach(source -> files.addAll(source.of(frdId)));
+        return files;
+    }
+
+    /** 기획자가 올린 파일을 꾸러미의 {@code attachments/} 에 그대로 둔다. 파일이 사라졌으면 넘기지 않는다. */
+    private static void copyAttachment(DevelopmentRequest request, Path dir) throws IOException {
+        if (request.attachmentName() == null || request.attachmentName().isBlank()) return;
+        Path source = request.attachmentPath() == null ? null : Path.of(request.attachmentPath());
+        if (source == null || !Files.isRegularFile(source)) {
+            throw new IllegalStateException("첨부파일을 찾지 못했습니다. 첨부파일을 다시 올려 주세요.");
+        }
+        Path target = dir.resolve(DevRequestDocument.ATTACHMENTS_DIR).resolve(request.attachmentName());
+        Files.createDirectories(target.getParent());
+        Files.copy(source, target, java.nio.file.StandardCopyOption.REPLACE_EXISTING);
     }
 
     private static String sha256(byte[] bytes) {

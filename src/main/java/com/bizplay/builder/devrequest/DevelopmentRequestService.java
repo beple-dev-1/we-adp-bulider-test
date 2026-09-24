@@ -655,6 +655,55 @@ public class DevelopmentRequestService {
         }
     }
 
+    /**
+     * 「개발에 넘기기」 레이어에서 고른 것을 적는다 (목업 06b) — 개발 완료일 · 배포일 · 전달사항 · 첨부.
+     *
+     * <p>⭐ 모두 선택이다. 날짜는 기본값을 두지 않고 비우면 개발요청서 9절에 「미정」으로 나간다
+     * (2026-09-24 사용자 확정). 첨부는 한 개 — 새로 올리면 앞의 것을 갈아 끼운다. 안 올리면 앞의 것을 둔다.
+     *
+     * @param file 올린 파일. 없거나 비었으면 {@code null}
+     */
+    @Transactional
+    public void saveSendDetails(String projectId, String requestId, java.time.LocalDate completedOn,
+                                java.time.LocalDate deployOn, String comment,
+                                org.springframework.web.multipart.MultipartFile file) {
+        DevelopmentRequest request = read(projectId, requestId).request();
+        if (completedOn != null && deployOn != null && deployOn.isBefore(completedOn)) {
+            throw new IllegalArgumentException("배포일은 개발 완료일과 같거나 그 뒤여야 합니다.");
+        }
+        String normalizedComment = comment == null || comment.isBlank() ? null : comment.strip();
+        if (normalizedComment != null && normalizedComment.length() > 4000) {
+            throw new IllegalArgumentException("개발팀 전달사항은 4000자까지 입력할 수 있습니다.");
+        }
+        String name = request.attachmentName();
+        String path = request.attachmentPath();
+        Long size = request.attachmentSize();
+        if (file != null && !file.isEmpty()) {
+            name = attachmentFileName(file.getOriginalFilename());
+            Path dir = paths.devRequestAttachmentDir(projectId).resolve(requestId);
+            Path target = dir.resolve(name);
+            try {
+                Files.createDirectories(dir);
+                deleteAttachmentQuietly(request);
+                file.transferTo(target);
+            } catch (IOException failed) {
+                throw new IllegalStateException("첨부파일을 저장하지 못했습니다. 다시 시도해 주세요.", failed);
+            }
+            path = target.toString();
+            size = file.getSize();
+        }
+        requests.updateSendDetails(requestId, completedOn, deployOn, normalizedComment, name, path, size);
+    }
+
+    /** 올린 파일 이름에서 경로를 떼고, 꾸러미 폴더 이름으로 쓸 수 없는 글자를 바꾼다. */
+    static String attachmentFileName(String original) {
+        String name = original == null ? "" : original.replace('\\', '/');
+        name = name.substring(name.lastIndexOf('/') + 1).strip();
+        name = name.replaceAll("[\\p{Cntrl}:*?\"<>|]", "_");
+        if (name.isBlank() || name.equals(".") || name.equals("..")) name = "attachment";
+        return name.length() > 200 ? name.substring(name.length() - 200) : name;
+    }
+
     /** 상세 화면이 가볍게 묻는 진행 상태 — 둘 다 거짓이 되는 순간 화면이 스스로 다시 읽는다 (2026-08-25). */
     public record Progress(boolean generating, boolean checking) {
         public boolean pending() {

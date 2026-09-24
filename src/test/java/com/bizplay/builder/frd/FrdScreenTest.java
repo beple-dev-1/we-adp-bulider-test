@@ -2764,8 +2764,8 @@ class FrdScreenTest extends AbstractDbTest {
                 .contains("담당자")
                 .contains("이영희")
                 .contains("FRD 작업 재개")
-                // ⛔ 2026-09-06(003) — 첨부파일은 전송 레이어 안에 있었고 함께 없어졌다.
-                .doesNotContain("첨부파일")
+                // ⭐ 2026-09-24 되살렸다 — 첨부파일은 「개발에 넘기기」 레이어 안에 있다 (목업 06b).
+                .contains("id=\"dev-delivery-dialog\"").contains("첨부파일")
                 .doesNotContain("기준 FRD 보기")
                 .doesNotContain("변경 예정 기능정의서 만들기")
                 .doesNotContain("확인 필요 1건</span>");

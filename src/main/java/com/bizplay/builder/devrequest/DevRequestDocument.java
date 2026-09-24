@@ -53,8 +53,24 @@ public class DevRequestDocument {
     public record Meta(String label, String title, String systemCode, List<String> facets,
                        String frdLabel, String ownerName, LocalDate createdOn,
                        LocalDate completedOn, LocalDate deployOn, String plannerComment,
-                       String attachmentName, Long attachmentSize) {
+                       String attachmentName, Long attachmentSize,
+                       List<DevRequestSourceFiles.SourceFile> sourceFiles) {
+
+        public Meta {
+            sourceFiles = sourceFiles == null ? List.of() : List.copyOf(sourceFiles);
+        }
+
+        public Meta(String label, String title, String systemCode, List<String> facets,
+                    String frdLabel, String ownerName, LocalDate createdOn,
+                    LocalDate completedOn, LocalDate deployOn, String plannerComment,
+                    String attachmentName, Long attachmentSize) {
+            this(label, title, systemCode, facets, frdLabel, ownerName, createdOn, completedOn, deployOn,
+                    plannerComment, attachmentName, attachmentSize, List.of());
+        }
     }
+
+    /** 꾸러미 안에서 첨부가 앉는 폴더 — 올린 파일은 그대로, 플로우 첨부는 목록만. */
+    public static final String ATTACHMENTS_DIR = "attachments";
 
     public String render(Meta meta, DevelopmentRequestContent content, Path manifestJson)
             throws IOException {
@@ -245,17 +261,38 @@ public class DevRequestDocument {
         md.append('\n');
     }
 
+    /**
+     * 10절 — 첨부. 기획자가 올린 파일은 {@code attachments/} 에 그대로 있고, 플로우 원문의 첨부는
+     * 파일을 옮기지 않고 이름 · 주소 · 크기만 적는다 (2026-09-24 사용자 확정 · 목업 06b).
+     */
     private static void attachments(StringBuilder md, Meta meta) {
         md.append("## 10. 첨부 목록\n\n");
-        if (meta.attachmentName() == null || meta.attachmentName().isBlank()) {
+        boolean uploaded = meta.attachmentName() != null && !meta.attachmentName().isBlank();
+        if (!uploaded && meta.sourceFiles().isEmpty()) {
             md.append("첨부가 없습니다.\n");
             return;
         }
-        md.append("- `").append(meta.attachmentName()).append('`');
-        if (meta.attachmentSize() != null) {
-            md.append(" — ").append(meta.attachmentSize() / 1024).append("KB");
+        if (uploaded) {
+            md.append("- `").append(ATTACHMENTS_DIR).append('/').append(meta.attachmentName()).append('`');
+            if (meta.attachmentSize() != null) {
+                md.append(" — ").append(kilobytes(meta.attachmentSize()));
+            }
+            md.append('\n');
         }
-        md.append('\n');
+        if (!meta.sourceFiles().isEmpty()) {
+            if (uploaded) md.append('\n');
+            md.append("플로우 원문 첨부 — 파일은 옮기지 않았습니다. 주소에서 받으십시오.\n\n");
+            for (var file : meta.sourceFiles()) {
+                md.append("- ").append(nvl(file.name()));
+                if (file.url() != null && !file.url().isBlank()) md.append(" — ").append(file.url());
+                if (file.size() != null) md.append(" — ").append(kilobytes(file.size()));
+                md.append('\n');
+            }
+        }
+    }
+
+    private static String kilobytes(long bytes) {
+        return Math.max(1, bytes / 1024) + "KB";
     }
 
     /**

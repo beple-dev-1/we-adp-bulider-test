@@ -155,6 +155,26 @@ class DevRequestDocumentTest {
         assertThat(section).contains("화면 변경이 없습니다");
     }
 
+    /**
+     * ⭐ 올린 파일은 꾸러미의 {@code attachments/} 에 그대로 있고, 플로우 첨부는 옮기지 않고 목록만 적는다
+     * (2026-09-24 사용자 확정 · 목업 06b).
+     */
+    @Test
+    void 첨부는_올린_파일의_자리와_플로우_첨부_목록을_함께_적는다() throws IOException {
+        DevRequestDocument.Meta base = meta();
+        DevRequestDocument.Meta meta = new DevRequestDocument.Meta(base.label(), base.title(), base.systemCode(),
+                base.facets(), base.frdLabel(), base.ownerName(), base.createdOn(), base.completedOn(),
+                base.deployOn(), base.plannerComment(), base.attachmentName(), base.attachmentSize(),
+                List.of(new DevRequestSourceFiles.SourceFile("이름입력_검증.png", "https://flow.example/f/1", 320_000L)));
+
+        String md = documents.render(meta, content(), manifest());
+        String section = md.substring(md.indexOf("## 10. 첨부 목록"), md.indexOf("## 11. 돌려받을 것"));
+
+        assertThat(section).contains("- `attachments/화면흐름.pdf` — 242KB")
+                .contains("파일은 옮기지 않았습니다")
+                .contains("- 이름입력_검증.png — https://flow.example/f/1 — 312KB");
+    }
+
     private DevRequestDocument.Meta meta() {
         return new DevRequestDocument.Meta("DR-009", "에이블리 회원가입 프리필", "EXW",
                 List.of("에이블리"), "FRD-002", "이영희",

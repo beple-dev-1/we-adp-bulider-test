@@ -67,6 +67,18 @@
          order by number desc
     </select>
 
+    <update id="updateSendDetails">
+        update builder.adk_builder_dev_request
+           set development_completed_on = #{completedOn,jdbcType=DATE},
+               deployment_on = #{deployOn,jdbcType=DATE},
+               planner_comment = #{comment,jdbcType=VARCHAR},
+               attachment_name = #{attachmentName,jdbcType=VARCHAR},
+               attachment_path = #{attachmentPath,jdbcType=VARCHAR},
+               attachment_size = #{attachmentSize,jdbcType=BIGINT},
+               updated_at = now()
+         where id = #{id} and delivery_state in ('NOT_SENT', 'SENT')
+    </update>
+
     <update id="markPreparing" parameterType="java.lang.String">
         update builder.adk_builder_dev_request
            set prepared_at = null, updated_at = now()

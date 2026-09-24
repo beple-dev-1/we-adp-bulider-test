@@ -529,6 +529,11 @@ public class SrtService {
         return resolved;
     }
 
+    /** 플로우 원문에 달린 첨부 — 직접 입력이면 없다. */
+    public List<SourceAttachment> attachmentsOf(Srt srt) {
+        return sourceOf(srt).attachments();
+    }
+
     private Source sourceOf(Srt srt) {
         if (srt.sourceKind() != Srt.SourceKind.FLOW || srt.sourceJson() == null) return Source.empty();
         try {
