@@ -115,6 +115,31 @@ class ScreenPickTest extends AbstractDbTest {
                 });
     }
 
+    /**
+     * ⭐ <b>화면의 시스템은 AI 가 아니라 색인이 정한다</b> — 처음 분석과 인터뷰 뒤 분석이 모두 지나는
+     * {@link ScreenPickService#savePick} 에서 덮는다. 2026-09-23 FRD-006: 인터뷰 뒤 분석이 옛 규격 예시를
+     * 적어 초안이 「화면을 만들 pages 폴더가 없습니다」로 떨어졌다.
+     */
+    @Test
+    void 저장할_때_화면의_시스템을_색인_값으로_덮는다() throws IOException {
+        Project p = readyProjectWithClone("시스템-덮기");
+        Files.writeString(paths.cloneDir(p.getId()).resolve("index.json"), """
+                {"screens": {"wv-appr-write": {"system": "webview", "ia": {"종류": "화면"}}}}
+                """);
+        String frdId = seedFrd(p, "임시저장");
+        ScreenPickReader.Pick pick = new ScreenPickReader.Pick("임시저장", List.of(
+                new ScreenPickReader.Item("임시저장을 지원한다", ScreenPickReader.Nature.DEVELOP,
+                        ScreenPickReader.Verdict.SCREEN, List.of("wv-appr-write"), "작성 화면")),
+                List.of(new ScreenPickReader.Picked("wv-appr-write", "지어낸-시스템", "결재 문서 작성",
+                        "상단에 임시저장 버튼을 더한다")), null);
+
+        picks.savePick(frdId, pick);
+
+        assertThat(screens.selectByFrdId(frdId)).singleElement()
+                .extracting(FrdScreen::systemCode).isEqualTo("webview");
+        assertThat(frds.selectById(frdId).systemCode()).isEqualTo("webview");
+    }
+
     @Test
     void 분석에서_확인한_시스템과_화면별_변경_내용을_신규_화면에도_반영한다() {
         Project p = readyProjectWithClone("탐나는전");

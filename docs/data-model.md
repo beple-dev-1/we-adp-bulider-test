@@ -211,7 +211,7 @@ BRD 의 잠금과 워크트리 배정 · 개발 전송 상태 셋이 어디 사�
 > 정본은 `src/main/resources/db/migration/*.sql` 이고 스크립트가 그것을 재생한다.
 > 다시 그리기: `python docs/tools/erd_from_migrations.py`
 >
-> 지금 기준 — 마이그레이션 **V78** · 표 **47개** · 열 **490개** (그중 **251개**에 한글 `COMMENT` 가 있다).
+> 지금 기준 — 마이그레이션 **V79** · 표 **47개** · 열 **490개** (그중 **251개**에 한글 `COMMENT` 가 있다).
 > 열 뒤의 `"..."` 는 DB 의 `COMMENT` 를 그대로 옮긴 것이다. 빈 것은 DB 에 뜻이 안 적힌 열이다.
 > **PK** 기본키 · **FK** 외래키 · **UK** 유니크.
 > 관계선 — `||--|{` 여럿(필수) · `||--o{` 여럿(널 허용) · `||--||` 하나(필수) · `||--o|` 하나(널 허용).
@@ -451,7 +451,7 @@ erDiagram
         text failure "널 허용"
         timestamptz generated_at "널 허용"
         timestamptz created_at
-        varchar system_code "널 허용 · 이 화면이 사는 시스템(webview·backoffice·online-pg). ⛔ FRD 하나가 한 시스템이라고 보지 마라 —…"
+        varchar system_code "널 허용 · 이 화면이 사는 시스템 — 기획 저장소 manifest.json 의 systems[].id 그대로다. 기존 화면은 index.…"
         text memo "널 허용 · V32 단일 메모 호환 열. 댓글형 메모는 adk_builder_frd_screen_memo_comment에 저장하며 새 코드…"
         varchar screen_type "널 허용 · 신규 화면의 유형 — 목록·상세·등록·수정·안내. 사람이 「화면 추가」에서 고른다. ⚠ 기존 화면은 비어 있다(색인이 안다).…"
         text scope_change "널 허용 · 요구사항 때문에 이 화면에 필요한 신규·수정 내용. 분석 결과와 개발 범위 확인에서 화면별로 표시하며 선택 출처인 pick_r…"

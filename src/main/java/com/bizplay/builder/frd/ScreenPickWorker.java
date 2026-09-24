@@ -727,7 +727,7 @@ public class ScreenPickWorker {
                        "items":{"type":"object",
                          "properties":{
                            "screenId":{"type":"string","description":"기존 화면은 index.json의 화면ID. 사용자가 미리 정한 신규 화면은 분석 조건의 TMP ID, 인터뷰에서 발견한 신규 화면은 의미를 알 수 있는 임시 후보 ID"},
-                           "system":{"type":"string","description":"webview·backoffice·online-pg"},
+                           "system":{"type":"string","description":"기존 화면은 index.json 의 그 화면 system 값 그대로. 신규 화면은 manifest.json 의 systems[].id 중 하나"},
                            "screenName":{"type":"string","description":"화면 md 의 화면명"},
                            "newScreen":{"type":"boolean","description":"기존 화면 수정이면 false, 인터뷰에서 새로 만들기로 확정한 화면이면 true"},
                            "screenType":{"type":["string","null"],"enum":["목록","상세","등록","수정","안내",null],"description":"신규 화면 유형. 기존 화면은 null"},
@@ -948,7 +948,7 @@ public class ScreenPickWorker {
                    ⭐ **가르는 질문은 하나다 — 「그 일을 할 기능이 이미 있나」.**
                    - `OPERATE` — **기능이 이미 있다.** 운영자가 그 화면에서 자료·콘텐츠·설정을
                      바꾸면 끝난다. **개발이 필요 없다.** 예: 게시물 삭제, 공지 등록, 설정값 변경
-                   - `OUTSIDE` — 이 저장소가 다루는 시스템(webview·backoffice·online-pg) 밖의 일이다.
+                   - `OUTSIDE` — 이 저장소가 다루는 시스템(`manifest.json` 의 `systems[].id`) 밖의 일이다.
                      어느 시스템 일로 보이는지 `note` 에 적어라
                    - `DEVELOP` — 그 일을 할 기능이 **없다.** 만들거나 고쳐야 한다
                      (화면·로직·배치·API)
@@ -1005,7 +1005,7 @@ public class ScreenPickWorker {
                  "items":[{"requirement":"요구사항 항목을 원문 그대로",
                            "nature":"DEVELOP | OPERATE | OUTSIDE",
                            "verdict":"SCREEN | NO_SCREEN | NOT_INDEXED",
-                           "screens":[{"screenId":"화면ID","system":"webview",
+                           "screens":[{"screenId":"화면ID","system":"index.json 의 그 화면 system",
                                        "screenName":"화면명","newScreen":false,"screenType":null,
                                        "reason":"이 화면에 신규·수정할 구체적인 내용"}],
                            "note":"왜 그렇게 봤나 한 문장"}],
