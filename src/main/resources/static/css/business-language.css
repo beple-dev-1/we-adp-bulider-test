@@ -30,8 +30,8 @@
 .policy-content h2:first-child { margin-top: 0; }
 .policy-content h3 { margin: 22px 0 8px; font-size: .9375rem; }
 .policy-content p { margin: 0 0 10px; color: #403f3c; }
-.policy-content--editing { min-height: 420px; padding: var(--space-6); margin: var(--space-6) calc(var(--space-6) * -1) 0; border: 1px solid #c9b9e8; border-radius: var(--radius-control); outline: none; background: #fdfcff; }
-.policy-content--editing:focus { border-color: var(--color-action-primary); box-shadow: 0 0 0 3px rgb(98 81 125 / 12%); }
+.policy-content--editing { min-height: 420px; padding: var(--space-6); margin: var(--space-6) calc(var(--space-6) * -1) 0; border: 1px solid #b9d0e8; border-radius: var(--radius-control); outline: none; background: #fcfeff; }
+.policy-content--editing:focus { border-color: var(--color-action-primary); box-shadow: 0 0 0 3px rgb(81 103 125 / 12%); }
 .terms-view { min-width: 0; display: grid; gap: var(--space-4); }
 .terms-filter { margin-bottom: 0; grid-template-columns: minmax(0, 1fr); }
 .terms-list-actions { display: flex; align-items: center; justify-content: space-between; gap: var(--space-4); }
@@ -45,7 +45,7 @@
 .terms-table th:last-child { width: 112px; }
 .terms-table td { vertical-align: middle; }
 .terms-table td:nth-child(4), .terms-table td:nth-child(5) { color: var(--color-muted); font-size: .72rem; white-space: nowrap; }
-.terms-table__editing { background: #faf8fd; }
+.terms-table__editing { background: var(--color-action-primary-soft); }
 .terms-table__editing td { padding-top: var(--space-3); padding-bottom: var(--space-3); }
 .terms-table__editing .field__control { min-width: 0; width: 100%; }
 .terms-table__pending { color: var(--color-muted); font-size: .72rem; text-align: center; }
@@ -59,7 +59,7 @@
 .revision-list h2 { margin: 0 0 var(--space-2); font-size: .875rem; }
 .revision-list__item { padding: var(--space-3); display: grid; gap: 5px; border: 1px solid transparent; border-radius: var(--radius-control); color: var(--color-muted); font-size: .72rem; text-decoration: none; }
 .revision-list__item:hover { background: var(--color-action-primary-soft); }
-.revision-list__item[aria-current="true"] { border-color: #c9b9e8; color: var(--color-ink); background: #f8f5fd; }
+.revision-list__item[aria-current="true"] { border-color: #b9d0e8; color: var(--color-ink); background: #f5f9fd; }
 .revision-list__title { display: flex; align-items: center; justify-content: space-between; gap: var(--space-2); color: var(--color-ink); font-size: .8125rem; }
 .revision-current { padding: 2px 7px; border-radius: 999px; color: var(--color-action-primary); background: var(--color-action-primary-soft); font-size: .65rem; font-weight: 700; }
 .revision-detail { min-width: 0; padding: clamp(20px, 4vw, 36px); border: 1px solid var(--color-line); border-radius: var(--radius-message); background: var(--color-canvas); }
