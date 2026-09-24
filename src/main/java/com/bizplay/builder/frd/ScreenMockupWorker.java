@@ -68,6 +68,20 @@ public class ScreenMockupWorker {
     private static final String INPUT_OUTPUT_FAILURE =
             "화면 초안에 필요한 자료를 처리하지 못했습니다. 다시 시도해 주세요.";
 
+    /**
+     * 템플릿(styleguide)에 없는 스타일이라 화면을 고치지 못했을 때.
+     *
+     * <p>⭐ <b>IA · 디자인가이드 · 솔루션 템플릿의 변경은 기획이 먼저 반영하고, FRD 는 그 틀 안에서만 간다</b>
+     * (2026-09-24 사용자 확정). head 되돌리기는 의도한 막음이다 — 기획은 to-be 를 보여 줘야 하고 head 는
+     * 템플릿을 부르는 자리다. ⛔ 그래서 빌더가 템플릿을 고치지 않는다 — 기획이 빌더 밖에서 반영하고 다시 추출한다.
+     */
+    static final String TEMPLATE_STYLE_FAILURE =
+            "템플릿(styleguide)에 없는 스타일이라 화면에 반영하지 못했습니다. "
+                    + "템플릿을 먼저 반영하고 기획 저장소를 다시 추출한 뒤 진행해 주세요.";
+
+    /** AI 가 템플릿에 없는 스타일을 만나 고치지 않았을 때 changes 에 붙이는 머리말. ⚠ 지시문과 판정이 같은 글자를 쓴다. */
+    static final String TEMPLATE_GAP = "템플릿에 없는 스타일";
+
     /** 지시문에 실을 같은 유형 화면 예시의 수. ⚠ 늘리면 지시문이 커지고 초안 품질이 흔들린다. */
     private static final int EXAMPLE_LIMIT = 2;
 
@@ -345,6 +359,20 @@ public class ScreenMockupWorker {
                     String editedHtml = Files.readString(targetFile, StandardCharsets.UTF_8);
                     ScreenMockupReader.Mockup mockup = reader.readEdited(result.body(), editedHtml, beforeHtml);
                     boolean changed = !editedHtml.equals(beforeHtml);
+                    /*
+                     * ⛔ 템플릿 밖 스타일은 성공으로 두지 않는다 — 두 꼴이다.
+                     *   AI 가 규칙대로 고치지 않고 알렸거나, head 에 넣었다가 안전벨트가 되돌려 화면이 그대로다.
+                     *   성공으로 두면 FRD 완료가 까닭 없이 잠긴다(2026-09-23 FRD-004·005).
+                     *   ⚠ 다른 모델로 다시 돌지 않는다 — 템플릿이 바뀌기 전에는 같은 답이다.
+                     */
+                    boolean templateGap = mockup.changes().stream().anyMatch(line -> line.startsWith(TEMPLATE_GAP));
+                    boolean wipedByHeadGuard = changed && mockup.html().equals(beforeHtml);
+                    if (templateGap || wipedByHeadGuard) {
+                        log.info("템플릿 밖 스타일이라 초안을 실패로 닫는다 frdScreenId={} 알림={} head되돌림={}",
+                                frdScreenId, templateGap, wipedByHeadGuard);
+                        mockups.markFailed(frdScreenId, TEMPLATE_STYLE_FAILURE);
+                        return;
+                    }
                     if (!changed && !mockup.changes().isEmpty()) {
                         throw new IOException("변경 내용을 응답했지만 대상 화면 파일은 바뀌지 않았습니다.");
                     }
@@ -451,6 +479,16 @@ public class ScreenMockupWorker {
                 pickReason, screenType, sameTypeExamples);
     }
 
+    /**
+     * 대상 화면과 같은 시스템의 템플릿 목록 — {@code core/<시스템>/pages/x.html} → {@code core/<시스템>/styleguide.md}.
+     * ⛔ 시스템 이름을 여기에 적지 않는다 — 대상 경로에서 읽는다.
+     */
+    static String styleguideOf(String targetFile) {
+        String normalized = targetFile == null ? "" : targetFile.replace('\\', '/');
+        int pages = normalized.lastIndexOf("/pages/");
+        return pages < 0 ? "styleguide.md" : normalized.substring(0, pages) + "/styleguide.md";
+    }
+
     static String progressKey(String frdScreenId) {
         return "frd-mockup:" + frdScreenId;
     }
@@ -506,11 +544,16 @@ public class ScreenMockupWorker {
                    이미 요구사항을 충족해 고칠 곳이 없으면 파일을 건드리지 말고 changes를 빈 배열로 반환하라.
                 ⚠ 바깥 뼈대(`<html>`·`<head>`)와 css 참조 경로는 **그대로 두어라** —
                   미리보기가 그 경로로 스타일을 찾는다.
+                ⛔ `%s` 에 실제로 있는 CSS 클래스만 써라. 색·크기·간격 같은 스타일을 지어내지 마라 —
+                   `style` 속성이나 `<style>` 을 새로 넣지 마라. 템플릿은 기획이 먼저 바꾸는 것이다.
+                   요구가 템플릿에 없는 스타일이면 그 부분은 고치지 말고 changes 에
+                   「%s — 무엇을 바꾸려 했나」로 적어라.
 
                 결과는 **JSON 하나만** 출력하라. 다른 말을 붙이지 마라.
 
                 {"changes":["무엇을 왜 고쳤나", "..."]}
-                """.formatted(sourceFile, contextReference, targetFile, screenId, screenName, pickReason);
+                """.formatted(sourceFile, contextReference, targetFile, screenId, screenName, pickReason,
+                        styleguideOf(targetFile), TEMPLATE_GAP);
     }
 
     /**

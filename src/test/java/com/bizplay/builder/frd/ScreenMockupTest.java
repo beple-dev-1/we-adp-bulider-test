@@ -811,4 +811,58 @@ class ScreenMockupTest extends AbstractDbTest {
                 .contains("Edit 도구로 직접 수정")
                 .doesNotContain("아직 없는 화면을 새로 만든다");
     }
+
+    /**
+     * ⭐ <b>고칠 때도 템플릿 안에서만 고친다</b> (2026-09-24 사용자 확정 — IA·디자인가이드·솔루션 템플릿 변경은
+     * 기획이 먼저 반영하고 FRD 는 그 틀 안에서만 간다). 새 화면 지시문에는 이미 있던 규칙이 고치기에 빠져 있어,
+     * AI 가 템플릿에 없는 스타일을 지어냈다(FRD-004·005 는 head 에, DR-011 은 요소의 style 에).
+     */
+    @Test
+    void 고칠_때도_템플릿에_있는_클래스만_쓰고_스타일을_지어내지_말라고_시킨다() {
+        String prompt = ScreenMockupWorker.instruction("/실행자리/요구사항.md",
+                "core/webview/pages/wv-appr-write.html", "wv-appr-write", "결재 작성", "—",
+                null, null);
+
+        assertThat(prompt)
+                .contains("core/webview/styleguide.md")
+                .contains("실제로 있는 CSS 클래스만 써라")
+                .contains("`style` 속성이나 `<style>` 을 새로 넣지 마라")
+                .contains(ScreenMockupWorker.TEMPLATE_GAP);
+    }
+
+    /**
+     * ⛔ <b>head 만 바뀌어 안전벨트가 되돌리면 화면은 그대로다 — 성공이 아니라 실패로 알린다.</b>
+     * head 되돌리기는 의도한 막음이다(기획은 to-be 를 보여 줘야 하고 head 는 템플릿을 부르는 자리다).
+     * 그대로 성공으로 두면 FRD 완료가 까닭 없이 잠긴다(2026-09-23 FRD-004·005).
+     */
+    @Test
+    void head_만_바뀌어_화면이_그대로면_템플릿_밖_스타일로_실패한다() {
+        String original = "<html><head><title>T</title></head><body><article>ORIGINAL</article></body></html>";
+        seedCloneScreen(project, "webview", "wv-appr-write", original);
+        answers.add(success("""
+                {"html":"<html><head><title>T</title><style>.x{font-size:21px}</style></head><body><article>ORIGINAL</article></body></html>","changes":["글씨를 크게"]}"""));
+
+        worker.generate(screenRowId);
+
+        FrdScreen after = screens.selectById(screenRowId);
+        assertThat(after.state()).isEqualTo(FrdScreen.State.FAILED);
+        assertThat(after.failure()).contains("템플릿").contains("다시 추출");
+        assertThat(worktreeScreenFile(project, "webview", "wv-appr-write")).content().isEqualTo(original);
+        assertThat(runner.modelHistory).containsExactly("sonnet");
+    }
+
+    /** ⭐ AI 가 규칙대로 고치지 않고 「템플릿에 없는 스타일」이라고 알리면 같은 실패로 닫는다 — 다른 모델로 다시 돌지 않는다. */
+    @Test
+    void 템플릿에_없는_스타일이라고_알리면_실패로_닫는다() {
+        String original = "<html><head></head><body><article>ORIGINAL</article></body></html>";
+        seedCloneScreen(project, "webview", "wv-appr-write", original);
+        answers.add(success("{\"changes\":[\"" + ScreenMockupWorker.TEMPLATE_GAP + " — 입력 칸 글씨 5포인트 확대\"]}"));
+
+        worker.generate(screenRowId);
+
+        FrdScreen after = screens.selectById(screenRowId);
+        assertThat(after.state()).isEqualTo(FrdScreen.State.FAILED);
+        assertThat(after.failure()).contains("템플릿");
+        assertThat(runner.modelHistory).containsExactly("sonnet");
+    }
 }
