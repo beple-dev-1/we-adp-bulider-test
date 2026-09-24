@@ -42,6 +42,8 @@ public class SrtCompletionService {
         if (target.devRequestId() != null && !target.devRequestId().isBlank()) {
             return Status.complete(target.devRequestId());
         }
+        // ⭐ 확인은 생성 전에 끝난다 — 사람이 풀 막음은 요청 자리에서 까닭과 함께 돌려준다.
+        srts.requireConfirmed(projectId, srtId);
         Status running = new Status(State.ANALYZING, "AI가 SRT 원문을 분석하고 있습니다.", null);
         progress.put(srtId, running);
         try {
@@ -78,6 +80,11 @@ public class SrtCompletionService {
             }
             frdCompletion.prepareDevelopmentRequest(projectId, prepared.devRequestId());
             progress.put(target.id(), Status.complete(prepared.devRequestId()));
+        } catch (SrtService.ConfirmationRequired rejected) {
+            // ⭐ 사람이 풀 수 있는 까닭(고칠 화면을 안 골랐다)만 그대로 보여 준다. 내부 까닭은 아래에서 감춘다.
+            log.info("SRT 개발요청서를 만들지 않았다 projectId={} srtId={} {}", projectId, target.id(),
+                    rejected.getMessage());
+            progress.put(target.id(), new Status(State.FAILED, rejected.getMessage(), null));
         } catch (RuntimeException failure) {
             log.warn("SRT 개발요청서 준비가 실패했다 projectId={} srtId={}", projectId, target.id(), failure);
             progress.put(target.id(), new Status(State.FAILED,

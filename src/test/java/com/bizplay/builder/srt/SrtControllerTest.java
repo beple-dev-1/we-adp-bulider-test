@@ -75,7 +75,7 @@ class SrtControllerTest {
                         "AI가 분석하고 있습니다.", null));
         RedirectAttributesModelMap flash = new RedirectAttributesModelMap();
 
-        String redirect = controller.createDevelopmentRequest("project-1", "srt-1", flash);
+        String redirect = controller.createDevelopmentRequest("project-1", "srt-1", java.util.Map.of(), flash);
 
         verify(completion).request("project-1", "srt-1");
         assertThat(redirect).isEqualTo("redirect:/projects/project-1/artifacts/srts?selected=srt-1");
@@ -88,7 +88,7 @@ class SrtControllerTest {
                         "AI 작업을 시작하지 못했습니다.", null));
         RedirectAttributesModelMap flash = new RedirectAttributesModelMap();
 
-        String redirect = controller.createDevelopmentRequest("project-1", "srt-1", flash);
+        String redirect = controller.createDevelopmentRequest("project-1", "srt-1", java.util.Map.of(), flash);
 
         assertThat(redirect).isEqualTo("redirect:/projects/project-1/artifacts/srts?selected=srt-1");
         assertThat(flash.getFlashAttributes().get("error"))

@@ -237,7 +237,13 @@ public class DevRequestDeliveryService {
          */
         ExpectedBack back = ExpectedBack.of(DeliveryIndex.returnBranch(request.systemCode(), request.label()), base,
                 view.content(), List.of());
-        packages.write(frdWorktree, packageRequest(request, view, back), dir);
+        if (view.asIsOnly()) {
+            // ⭐ SRT — 작업 자리가 없다. as-is 는 이 전달이 딛고 선 기준판에서 뽑고 to-be 는 싣지 않는다.
+            packages.write(deliveryWorktree, packageRequest(request, view, back, base, null), dir);
+        } else {
+            packages.write(frdWorktree, packageRequest(request, view, back,
+                    request.workspaceBaseSha(), request.workspaceHeadSha()), dir);
+        }
         try {
             Path manifest = dir.resolve("manifest.json");
             Files.writeString(dir.resolve("dev-request.md"),
@@ -255,13 +261,13 @@ public class DevRequestDeliveryService {
 
     private static DevRequestPackage.Request packageRequest(DevelopmentRequest request,
                                                             DevelopmentRequestService.View view,
-                                                            ExpectedBack back) {
+                                                            ExpectedBack back,
+                                                            String asIsCommit, String toBeCommit) {
         List<DevRequestPackage.Screen> screens = view.content().screens().stream()
                 .map(screen -> new DevRequestPackage.Screen(screen.systemCode(),
                         screen.deliveryScreenId(), screen.displayName(), screen.changes()))
                 .toList();
-        return new DevRequestPackage.Request(request.label(),
-                request.workspaceBaseSha(), request.workspaceHeadSha(), screens, back);
+        return new DevRequestPackage.Request(request.label(), asIsCommit, toBeCommit, screens, back);
     }
 
     private DevRequestDocument.Meta meta(DevelopmentRequest request,

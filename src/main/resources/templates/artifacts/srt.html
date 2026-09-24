@@ -133,6 +133,43 @@
               <section><h4>정리된 요구사항 <span th:text="${detail.analysis.requirements.size()}">2</span></h4><ul><li th:each="requirement : ${detail.analysis.requirements}" th:text="${requirement}">요구사항</li></ul></section>
               <section><h4>완료 조건 <span th:text="${detail.analysis.acceptanceCriteria.size()}">2</span></h4><ul><li th:each="criterion : ${detail.analysis.acceptanceCriteria}" th:text="${criterion}">완료 조건</li></ul></section>
             </div>
+
+            <!--/* ⭐ AI 가 채우고 사람은 생성 전에 확인만 한다 (2026-09-24 사용자 확정 · 목업 13) */-->
+            <section class="fi-scope-section" aria-labelledby="srt-screen-title" th:if="${detail.analysis.screenChange}">
+              <div class="fi-scope-section-head"><h3 id="srt-screen-title">고칠 화면</h3><span th:text="${#lists.isEmpty(detail.screens) ? '없음' : #lists.size(detail.screens) + '개'}">1개</span></div>
+              <ul class="fi-screen-list" th:if="${!#lists.isEmpty(detail.screens)}">
+                <li class="fi-screen-row" th:each="screen : ${detail.screens}"><div class="fi-screen-row__content">
+                  <div class="fi-screen-row__top"><strong th:text="${screen.screenName()}">화면명</strong>
+                    <button class="button button--small button--text" type="button" data-srt-screen-open th:if="${detail.request == null}"
+                            th:attr="data-replace=${screen.id()}">다른 화면으로 바꾸기</button></div>
+                  <div class="fi-screen-row__badges"><span class="badge badge--outline">기존 화면</span>
+                    <span class="badge fi-selection-source fi-selection-source--ai" th:if="${screen.pickReason() != T(com.bizplay.builder.srt.SrtService).PICKED_BY_PLANNER}">AI 선택</span>
+                    <span class="badge fi-selection-source fi-selection-source--user" th:if="${screen.pickReason() == T(com.bizplay.builder.srt.SrtService).PICKED_BY_PLANNER}">사용자 선택</span></div>
+                  <small class="num" th:text="${screen.systemCode() + ' · ' + screen.screenId()}">시스템 · 화면ID</small>
+                  <p th:if="${screen.pickReason() != null and screen.pickReason() != T(com.bizplay.builder.srt.SrtService).PICKED_BY_PLANNER}" th:text="${screen.pickReason()}">바꿀 것</p>
+                </div></li>
+              </ul>
+              <div th:if="${detail.screenMissing()}">
+                <p class="fi-scope-empty">화면을 바꿔야 하는 요청인데 AI가 고칠 화면을 찾지 못했습니다. 현재 운영 화면에서 골라 주세요.</p>
+                <button class="button button--primary button--small" type="button" data-srt-screen-open th:if="${detail.request == null}">고칠 화면 고르기</button>
+              </div>
+            </section>
+
+            <section class="fi-scope-section" aria-labelledby="srt-decisions-title" th:if="${!#lists.isEmpty(detail.decisions)}">
+              <div class="fi-scope-section-head"><h3 id="srt-decisions-title">확인 필요</h3><span th:text="${#lists.size(detail.decisions) + '개'}">1개</span></div>
+              <ol class="issue-answer-list">
+                <li class="issue-answer" th:each="note, noteStat : ${detail.decisions}" th:with="decision=${note.decision()}">
+                  <strong th:text="${decision.question()}">정해야 할 것</strong>
+                  <label class="issue-answer__label" th:for="${'srt-answer-' + noteStat.count}">답
+                    <span class="badge fi-selection-source" th:if="${decision.recommended()}">AI 권장안</span>
+                    <span class="badge fi-selection-source fi-selection-source--user" th:unless="${decision.recommended()}">기획자 답</span></label>
+                  <textarea class="field__control" rows="2" required form="srt-create-request-form"
+                            th:id="${'srt-answer-' + noteStat.count}" th:name="${'answer.' + noteStat.count}"
+                            th:readonly="${detail.request != null}" th:text="${decision.answer()}">답</textarea>
+                </li>
+              </ol>
+              <p class="fi-scope-empty" th:if="${detail.request == null}">AI가 권장안으로 답을 채웠습니다. 다르면 고쳐 주세요.</p>
+            </section>
           </div>
         </section>
       </article>
@@ -150,7 +187,8 @@
     <button class="button" type="button" data-srt-edit-open data-srt-idle-action th:if="${detail.request == null and srtAnalysisStatus.state.name() != 'ANALYZING' and detail.srt.sourceKind.name() == 'DIRECT'}" th:hidden="${analysisStatus.state.name() == 'ANALYZING'}">수정</button>
     <form id="srt-create-request-form" method="post" data-page-loading="false"
           th:if="${detail.request == null}" th:action="@{/projects/{p}/artifacts/srts/{s}/dev-request(p=${projectId},s=${detail.srt.id})}"></form>
-    <button class="button button--primary" type="submit" form="srt-create-request-form" data-srt-idle-action data-submit-loading="개발요청서 생성 요청 중" th:if="${detail.request == null and srtAnalysisStatus.state.name() == 'COMPLETE'}" th:hidden="${analysisStatus.state.name() == 'ANALYZING'}">개발요청서 생성</button>
+    <button class="button button--primary" type="submit" form="srt-create-request-form" data-srt-idle-action data-submit-loading="개발요청서 생성 요청 중" th:if="${detail.request == null and srtAnalysisStatus.state.name() == 'COMPLETE'}" th:hidden="${analysisStatus.state.name() == 'ANALYZING'}"
+            th:disabled="${detail.screenMissing()}" th:title="${detail.screenMissing() ? '고칠 화면을 먼저 골라 주세요.' : null}">개발요청서 생성</button>
     <button class="button button--primary is-submit-loading" type="button" disabled data-srt-analyzing-action data-submit-loading="개발요청서 준비 중" aria-label="개발요청서 준비 중" th:if="${detail.request == null}" th:hidden="${analysisStatus.state.name() != 'ANALYZING'}">개발요청서 준비 중</button>
     <button class="button" type="button" data-srt-detail-close th:if="${detail.request != null}">닫기</button>
   </div>
@@ -177,6 +215,38 @@
               data-submit-loading="SRT 삭제 중" data-submit-loading-tone="dark">SRT 삭제</button>
     </div>
   </form>
+</dialog>
+<!--/* 고칠 화면 고르기 — FRD 「화면 추가」의 현재 운영 화면 선택을 빌려 쓴다. 신규 화면 탭은 두지 않는다 (목업 13) */-->
+<dialog class="dialog dialog--layer fi-screen-dialog" id="srt-screen-dialog" aria-modal="true"
+        aria-labelledby="srt-screen-dialog-title" th:if="${detail.request == null and !#lists.isEmpty(detail.candidates)}">
+  <header class="dialog__header"><div class="dialog__header-copy">
+    <span class="dialog__kicker num" th:text="${detail.srt.label}">SRT-001</span>
+    <h2 class="dialog__title" id="srt-screen-dialog-title">고칠 화면 고르기</h2>
+    <p class="dialog__description">이 요청이 바꿀 현재 운영 화면을 골라 주세요.</p>
+  </div><button class="dialog__close" type="button" data-srt-screen-close aria-label="고칠 화면 고르기 레이어 닫기"></button></header>
+  <div class="dialog__body">
+    <section class="fi-screen-add-panel" aria-labelledby="srt-screen-panel-title">
+      <header class="fi-screen-add-panel__head"><h3 id="srt-screen-panel-title">현재 운영 화면 선택</h3><p>화면명이나 화면 ID로 찾을 수 있습니다.</p></header>
+      <div class="fi-existing-screen-tools">
+        <label class="sr-only" for="srt-screen-search">화면 검색</label>
+        <input class="field__control" id="srt-screen-search" type="search" placeholder="화면명 또는 화면 ID 검색" data-srt-screen-search>
+      </div>
+      <ul class="fi-existing-screen-list">
+        <li class="fi-existing-screen-item" th:each="candidate : ${detail.candidates}"
+            th:attr="data-screen-search=${#strings.toLowerCase(candidate.screenName() + ' ' + candidate.screenId())}">
+          <div class="fi-existing-screen-copy"><div><strong th:text="${candidate.screenName()}">화면명</strong><span class="badge badge--outline" th:text="${candidate.system()}">시스템</span></div>
+            <small class="num" th:text="${candidate.screenId()}">화면ID</small>
+            <p th:text="${candidate.menuPath() == null or candidate.menuPath().isBlank() ? '현재 운영 화면' : candidate.menuPath()}">메뉴 경로</p></div>
+          <form method="post" th:action="@{/projects/{p}/artifacts/srts/{s}/screen(p=${projectId},s=${detail.srt.id})}">
+            <input type="hidden" name="screenId" th:value="${candidate.screenId()}">
+            <input type="hidden" name="replace" value="" data-srt-screen-replace>
+            <button class="button" type="submit">이 화면 고르기</button>
+          </form>
+        </li>
+      </ul>
+    </section>
+  </div>
+  <div class="dialog__actions"><p class="dialog__action-note">고른 화면의 현재 운영 화면이 개발요청서에 함께 전달됩니다.</p><button class="button" type="button" data-srt-screen-close>닫기</button></div>
 </dialog>
 </div>
 </body>

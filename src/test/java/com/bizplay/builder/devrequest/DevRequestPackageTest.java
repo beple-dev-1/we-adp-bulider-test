@@ -178,6 +178,23 @@ class DevRequestPackageTest {
         assertThat(out.resolve("screens")).doesNotExist();
     }
 
+    /** ⭐ SRT 는 작업대가 없다 — to-be 판이 없으면 as-is 만 싣고 신규 화면으로 오해하지 않는다 (2026-09-24). */
+    @Test
+    void to_be_판이_없으면_as_is_만_싣는다() throws IOException {
+        Path out = root.resolve("DR-014");
+
+        packages.write(worktree, new DevRequestPackage.Request("DR-014", toBeSha, null,
+                List.of(new DevRequestPackage.Screen("EXW", "EXW-UWV-70-30-10-C", "에이블리 회원가입",
+                        List.of("이름 칸에 한글만 받는다")))), out);
+
+        Path screen = out.resolve("screens/EXW/EXW-UWV-70-30-10-C");
+        assertThat(screen.resolve("as-is.html")).exists();
+        assertThat(screen.resolve("as-is.md")).exists();
+        assertThat(screen.resolve("to-be.html")).doesNotExist();
+        assertThat(screen.resolve("to-be.md")).doesNotExist();
+        assertThat(Files.readString(out.resolve("manifest.json"))).contains("\"newScreen\": false");
+    }
+
     private DevRequestPackage.Request request() {
         return new DevRequestPackage.Request("DR-009", asIsSha, toBeSha,
                 List.of(new DevRequestPackage.Screen("EXW", "EXW-UWV-70-30-10-C", "에이블리 회원가입",

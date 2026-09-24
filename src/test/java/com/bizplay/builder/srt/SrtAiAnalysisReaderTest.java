@@ -24,6 +24,37 @@ class SrtAiAnalysisReaderTest {
         assertThat(result.acceptanceCriteria()).containsExactly("화면에 등록 버튼이 표시된다.");
     }
 
+    /** ⭐ AI 가 고칠 화면과 정한 것(권장안)까지 채운다 — 사람은 생성 전에 확인만 한다 (2026-09-24). */
+    @Test
+    void 고칠_화면과_권장안으로_정한_것을_읽는다() throws Exception {
+        SrtAiAnalysis result = reader.read("""
+                {"eligible":true,"analysisComment":"이름 입력 검증을 더합니다.",
+                 "requirements":["이름 칸에 한글만 받는다."],"acceptanceCriteria":["영문을 넣으면 안내가 뜬다."],
+                 "screenChange":true,
+                 "screens":[{"screenId":"EXW-UWV-70-30-10-C","reason":"이름 칸에 검증을 더한다"}],
+                 "decisions":[{"question":"띄어쓰기를 허용할지","answer":"허용하지 않는다"}]}
+                """);
+
+        assertThat(result.screenChange()).isTrue();
+        assertThat(result.screens()).extracting(SrtAiAnalysis.Target::screenId).containsExactly("EXW-UWV-70-30-10-C");
+        assertThat(result.decisions()).singleElement().satisfies(decision -> {
+            assertThat(decision.question()).isEqualTo("띄어쓰기를 허용할지");
+            assertThat(decision.answer()).isEqualTo("허용하지 않는다");
+            assertThat(decision.recommended()).isTrue();
+        });
+    }
+
+    /** ⛔ 권장안이 빈 것은 확인 필요를 남긴 것이다 — 받지 않는다. */
+    @Test
+    void 권장안이_빈_정한_것은_거절한다() {
+        assertThatThrownBy(() -> reader.read("""
+                {"eligible":true,"analysisComment":"요청입니다.","requirements":["바꾼다."],
+                 "acceptanceCriteria":["바뀐다."],"screenChange":false,"screens":[],
+                 "decisions":[{"question":"언제 바꿀지","answer":""}]}
+                """))
+                .isInstanceOf(java.io.IOException.class).hasMessageContaining("권장안");
+    }
+
     @Test
     void 개발과_무관하면_거절_사유를_읽고_정의는_비운다() throws Exception {
         SrtAiAnalysis result = reader.read("""

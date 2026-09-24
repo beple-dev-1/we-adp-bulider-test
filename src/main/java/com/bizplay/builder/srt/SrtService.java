@@ -13,6 +13,10 @@ import com.bizplay.builder.frd.FrdFacetMapper;
 import com.bizplay.builder.frd.FrdItem;
 import com.bizplay.builder.frd.FrdItemMapper;
 import com.bizplay.builder.frd.FrdMapper;
+import com.bizplay.builder.frd.FrdScreen;
+import com.bizplay.builder.frd.FrdScreenMapper;
+import com.bizplay.builder.solution.SolutionScreen;
+import com.bizplay.builder.solution.SolutionScreenReader;
 import com.bizplay.builder.id.IdSequence;
 import com.bizplay.builder.intake.FlowPost;
 import com.bizplay.builder.intake.FlowPostGateway;
@@ -26,6 +30,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -37,6 +42,8 @@ import java.util.Set;
 @Service
 public class SrtService {
     private static final String ALL_FACETS = "__ALL__";
+    /** 사람이 고른 화면의 선택 근거 — 화면이 「AI 선택」과 「사용자 선택」을 가른다. */
+    public static final String PICKED_BY_PLANNER = "기획자가 고른 화면";
 
     private final SrtMapper srts;
     private final FrdMapper frds;
@@ -50,13 +57,17 @@ public class SrtService {
     private final ObjectMapper json;
     private final ProjectFacetMapper projectFacets;
     private final FrdFacetMapper frdFacets;
+    /** ⚠ 없으면(단위 시험) 고칠 화면을 다루지 않는다. */
+    private final FrdScreenMapper screens;
+    private final SolutionScreenReader solutionScreens;
 
     @Autowired
     public SrtService(SrtMapper srts, FrdMapper frds, FrdItemMapper items,
                       FrdAnalysisNoteMapper notes, DevelopmentRequestMapper requests,
                       DevelopmentRequestService developmentRequests, FlowPostGateway flow,
                       AccountMapper accounts, IdSequence ids, ObjectMapper json,
-                      ProjectFacetMapper projectFacets, FrdFacetMapper frdFacets) {
+                      ProjectFacetMapper projectFacets, FrdFacetMapper frdFacets,
+                      FrdScreenMapper screens, SolutionScreenReader solutionScreens) {
         this.srts = srts;
         this.frds = frds;
         this.items = items;
@@ -69,6 +80,17 @@ public class SrtService {
         this.json = json;
         this.projectFacets = projectFacets;
         this.frdFacets = frdFacets;
+        this.screens = screens;
+        this.solutionScreens = solutionScreens;
+    }
+
+    public SrtService(SrtMapper srts, FrdMapper frds, FrdItemMapper items,
+                      FrdAnalysisNoteMapper notes, DevelopmentRequestMapper requests,
+                      DevelopmentRequestService developmentRequests, FlowPostGateway flow,
+                      AccountMapper accounts, IdSequence ids, ObjectMapper json,
+                      ProjectFacetMapper projectFacets, FrdFacetMapper frdFacets) {
+        this(srts, frds, items, notes, requests, developmentRequests, flow, accounts, ids, json,
+                projectFacets, frdFacets, null, null);
     }
 
     /** 기존 단위 테스트와 적용 구분 기능 이전 호출자를 위한 호환 생성자다. */
@@ -77,7 +99,7 @@ public class SrtService {
                       DevelopmentRequestService developmentRequests, FlowPostGateway flow,
                       AccountMapper accounts, IdSequence ids, ObjectMapper json) {
         this(srts, frds, items, notes, requests, developmentRequests, flow, accounts, ids, json,
-                null, null);
+                null, null, null, null);
     }
 
     @Transactional(readOnly = true)
@@ -107,7 +129,15 @@ public class SrtService {
         Source source = sourceOf(srt);
         SrtAiAnalysis analysis = srt.analysisState() == Srt.AnalysisState.COMPLETE
                 ? storedAnalysisOf(srt) : null;
-        return new Detail(srt, author, request, source.attachments(), analysis);
+        List<FrdScreen> targets = analysis == null || screens == null
+                ? List.of() : screens.selectByFrdId(srt.bridgeFrdId());
+        List<FrdAnalysisNote> decisionNotes = analysis == null ? List.of()
+                : notes.selectByFrdId(srt.bridgeFrdId()).stream()
+                        .filter(note -> note.kind().decision()).toList();
+        List<SolutionScreen> candidates = analysis == null || request != null || solutionScreens == null
+                ? List.of() : solutionScreens.read(projectId);
+        return new Detail(srt, author, request, source.attachments(), analysis,
+                targets, decisionNotes, candidates);
     }
 
     @Transactional
@@ -229,7 +259,7 @@ public class SrtService {
                 || analysis.requirements().isEmpty() || analysis.acceptanceCriteria().isEmpty()) {
             throw new IllegalStateException("유효한 AI 분석 결과를 확인하지 못했습니다.");
         }
-        writeAnalysis(srt.bridgeFrdId(), analysis);
+        writeAnalysis(srt.projectId(), srt.bridgeFrdId(), analysis);
         if (srts.updateAnalysisState(srtId, Srt.AnalysisState.COMPLETE, analysis.analysisComment()) != 1) {
             throw new IllegalStateException("SRT 분석 결과를 저장하지 못했습니다.");
         }
@@ -270,7 +300,86 @@ public class SrtService {
             comment = "AI가 개발 변경 요청으로 확인하고 요구사항 %d건과 완료 조건 %d건으로 정리했습니다."
                     .formatted(requirements.size(), criteria.size());
         }
-        return new SrtAiAnalysis(true, null, comment, requirements, criteria);
+        boolean screenChange = items.selectByFrdId(srt.bridgeFrdId()).stream()
+                .anyMatch(item -> item.verdict() != FrdItem.Verdict.NO_SCREEN);
+        List<SrtAiAnalysis.Target> targets = screens == null ? List.of()
+                : screens.selectByFrdId(srt.bridgeFrdId()).stream()
+                        .map(screen -> new SrtAiAnalysis.Target(screen.screenId(), screen.pickReason())).toList();
+        List<FrdAnalysisNote.Decision> decisions = notes.selectByFrdId(srt.bridgeFrdId()).stream()
+                .map(FrdAnalysisNote::decision).filter(Objects::nonNull).toList();
+        return new SrtAiAnalysis(true, null, comment, requirements, criteria,
+                screenChange, targets, decisions);
+    }
+
+    /**
+     * 생성 전에 사람이 확인해야 할 것이 남았나 — 비동기 준비를 걸기 전에 요청 스레드에서 잰다.
+     * 까닭을 화면에 그대로 보이려고 따로 둔다({@link ConfirmationRequired}).
+     */
+    @Transactional(readOnly = true)
+    public void requireConfirmed(String projectId, String srtId) {
+        Srt srt = analysisTarget(projectId, srtId);
+        if (srt.devRequestId() != null || srt.analysisState() != Srt.AnalysisState.COMPLETE || screens == null) return;
+        SrtAiAnalysis analysis = storedAnalysisOf(srt);
+        if (analysis.screenChange() && analysis.screens().isEmpty()) {
+            throw new ConfirmationRequired("고칠 화면을 골라야 개발요청서를 생성할 수 있습니다.");
+        }
+    }
+
+    /**
+     * 사람이 고칠 화면을 고르거나 AI 가 고른 것을 바꾼다 — 개발요청서 생성 전에만.
+     *
+     * @param replaceFrdScreenId 바꿀 화면 행. {@code null} 이면 더한다(AI 가 못 짚었을 때)
+     */
+    @Transactional
+    public void pickScreen(String projectId, String srtId, String replaceFrdScreenId, String screenId) {
+        Srt srt = editable(projectId, srtId);
+        if (screens == null || solutionScreens == null) {
+            throw new IllegalStateException("고칠 화면을 고를 수 없습니다.");
+        }
+        if (solutionScreens.read(projectId).stream().noneMatch(screen -> screen.screenId().equals(screenId))) {
+            throw new IllegalArgumentException("현재 운영 화면 목록에 없는 화면입니다: " + screenId);
+        }
+        SrtAiAnalysis analysis = storedAnalysisOf(srt);
+        Map<String, String> rowIdOf = new LinkedHashMap<>();
+        screens.selectByFrdId(srt.bridgeFrdId()).forEach(row -> rowIdOf.put(row.screenId(), row.id()));
+        List<SrtAiAnalysis.Target> targets = new ArrayList<>();
+        String reason = PICKED_BY_PLANNER;
+        for (SrtAiAnalysis.Target target : analysis.screens()) {
+            if (Objects.equals(rowIdOf.get(target.screenId()), replaceFrdScreenId)) {
+                if (target.reason() != null) reason = target.reason();
+                continue;
+            }
+            if (!target.screenId().equals(screenId)) targets.add(target);
+        }
+        targets.add(new SrtAiAnalysis.Target(screenId, reason));
+        writeAnalysis(projectId, srt.bridgeFrdId(), new SrtAiAnalysis(true, null, analysis.analysisComment(),
+                analysis.requirements(), analysis.acceptanceCriteria(), true, targets, analysis.decisions()));
+    }
+
+    /**
+     * 정한 것의 답을 사람이 확인한 대로 적는다. 권장안에서 바뀐 답은 사람이 정한 것으로 옮긴다.
+     *
+     * @param answers 정한 것의 차례(1부터)마다 답. 없는 칸은 그대로 둔다
+     */
+    @Transactional
+    public void confirmDecisions(String projectId, String srtId, Map<Integer, String> answers) {
+        Srt srt = editable(projectId, srtId);
+        SrtAiAnalysis analysis = storedAnalysisOf(srt);
+        List<FrdAnalysisNote.Decision> confirmed = new ArrayList<>();
+        int seq = 0;
+        for (FrdAnalysisNote.Decision decision : analysis.decisions()) {
+            String answer = answers == null ? null : answers.get(++seq);
+            if (answer == null || answer.strip().equals(decision.answer())) {
+                confirmed.add(decision);
+            } else if (answer.isBlank()) {
+                throw new IllegalArgumentException("정한 것의 답을 비울 수 없습니다: " + decision.question());
+            } else {
+                confirmed.add(new FrdAnalysisNote.Decision(decision.question(), answer.strip(), false));
+            }
+        }
+        writeAnalysis(projectId, srt.bridgeFrdId(), new SrtAiAnalysis(true, null, analysis.analysisComment(),
+                analysis.requirements(), analysis.acceptanceCriteria(), analysis.screenChange(),
+                analysis.screens(), confirmed));
     }
 
     /** 개발요청서가 아직 없는 SRT와 내부 호환 행을 함께 삭제한다. */
@@ -307,7 +416,11 @@ public class SrtService {
                 || analysis.requirements().isEmpty() || analysis.acceptanceCriteria().isEmpty()) {
             throw new IllegalStateException("유효한 AI 분석 결과가 있어야 개발요청서를 생성할 수 있습니다.");
         }
-        writeAnalysis(srt.bridgeFrdId(), analysis);
+        // ⭐ 확인은 생성 전에 끝난다 (2026-09-24 사용자 확정) — 화면을 고쳐야 하는데 못 짚었으면 여기서 막는다.
+        if (analysis.screenChange() && analysis.screens().isEmpty() && screens != null) {
+            throw new ConfirmationRequired("고칠 화면을 골라야 개발요청서를 생성할 수 있습니다.");
+        }
+        writeAnalysis(projectId, srt.bridgeFrdId(), analysis);
         DevelopmentRequest request = developmentRequests.createFromConfirmedScope(
                 projectId, srt.bridgeFrdId(), analysis.analysisComment());
         if (srts.connectRequest(srtId, request.id()) != 1) {
@@ -354,14 +467,24 @@ public class SrtService {
                 List.of(), null));
     }
 
-    /** 원문 한 건을 AI가 정리한 요구사항과 완료 조건으로 교체한다. */
-    private void writeAnalysis(String frdId, SrtAiAnalysis analysis) {
+    /**
+     * 원문 한 건을 AI가 정리한 요구사항 · 완료 조건 · 정한 것 · 고칠 화면으로 교체한다.
+     *
+     * <p>⭐ 「화면을 고쳐야 하나」는 요구사항 항목의 판정 칸에 둔다 — 짚었으면 {@code SCREEN},
+     * 고쳐야 하는데 색인에서 못 짚었으면 {@code NOT_INDEXED}, 화면과 상관없으면 {@code NO_SCREEN}.
+     * ⛔ 화면의 시스템은 AI 가 아니라 색인이 정한다 — 색인에 없는 화면ID 는 버린다.
+     */
+    private void writeAnalysis(String projectId, String frdId, SrtAiAnalysis analysis) {
+        List<FrdScreen> resolved = screens == null ? List.of() : resolveScreens(projectId, frdId, analysis.screens());
+        List<String> screenIds = resolved.stream().map(FrdScreen::screenId).toList();
+        FrdItem.Verdict verdict = !analysis.screenChange() ? FrdItem.Verdict.NO_SCREEN
+                : resolved.isEmpty() ? FrdItem.Verdict.NOT_INDEXED : FrdItem.Verdict.SCREEN;
         items.deleteByFrdId(frdId);
         int seq = 0;
         for (String requirement : analysis.requirements()) {
             items.insert(FrdItem.of(ids.next(IdSequence.Kind.FRD_ITEM), frdId, ++seq,
-                    requirement, FrdItem.Nature.DEVELOP, FrdItem.Verdict.NO_SCREEN,
-                    List.of(), null));
+                    requirement, FrdItem.Nature.DEVELOP, verdict,
+                    verdict == FrdItem.Verdict.SCREEN ? screenIds : List.of(), null));
         }
         notes.deleteByFrdId(frdId);
         seq = 0;
@@ -371,6 +494,39 @@ public class SrtService {
                     FrdAnalysisNote.Kind.ACCEPTANCE_CRITERION,
                     criterion, null));
         }
+        seq = 0;
+        for (FrdAnalysisNote.Decision decision : analysis.decisions()) {
+            notes.insert(new FrdAnalysisNote(ids.next(IdSequence.Kind.FRD_ANALYSIS_NOTE), frdId, ++seq,
+                    decision.kind(), decision.content(), null));
+        }
+        if (screens != null) {
+            screens.selectByFrdId(frdId).forEach(screen -> screens.deleteById(screen.id()));
+            resolved.forEach(screens::insert);
+        }
+    }
+
+    /** 짚은 화면ID 를 색인의 화면으로 바꾼다. 색인을 못 읽으면 이미 앉은 행의 값을 쓴다. */
+    private List<FrdScreen> resolveScreens(String projectId, String frdId, List<SrtAiAnalysis.Target> targets) {
+        Map<String, SolutionScreen> index = new LinkedHashMap<>();
+        if (solutionScreens != null) {
+            for (SolutionScreen screen : solutionScreens.read(projectId)) index.put(screen.screenId(), screen);
+        }
+        Map<String, FrdScreen> existing = new LinkedHashMap<>();
+        for (FrdScreen screen : screens.selectByFrdId(frdId)) existing.put(screen.screenId(), screen);
+        List<FrdScreen> resolved = new ArrayList<>();
+        Set<String> seen = new LinkedHashSet<>();
+        for (SrtAiAnalysis.Target target : targets) {
+            if (target.screenId() == null || !seen.add(target.screenId())) continue;
+            SolutionScreen known = index.get(target.screenId());
+            FrdScreen before = existing.get(target.screenId());
+            String system = known != null ? known.system() : before == null ? null : before.systemCode();
+            String name = known != null ? known.screenName() : before == null ? null : before.screenName();
+            if (system == null || system.isBlank()) continue;
+            resolved.add(FrdScreen.pickedIn(ids.next(IdSequence.Kind.FRD_SCREEN), frdId, target.screenId(),
+                    name == null || name.isBlank() ? target.screenId() : name, target.screenId(), null,
+                    target.reason(), system));
+        }
+        return resolved;
     }
 
     private Source sourceOf(Srt srt) {
@@ -423,10 +579,35 @@ public class SrtService {
             };
         }
     }
+    /** 사람이 생성 전에 확인해 풀 수 있는 막음 — 까닭을 화면에 그대로 보인다. */
+    public static class ConfirmationRequired extends IllegalStateException {
+        public ConfirmationRequired(String message) {
+            super(message);
+        }
+    }
+
     public record Detail(Srt srt, String authorName, DevelopmentRequest request,
-                         List<SourceAttachment> attachments, SrtAiAnalysis analysis) {
+                         List<SourceAttachment> attachments, SrtAiAnalysis analysis,
+                         List<FrdScreen> screens, List<FrdAnalysisNote> decisions,
+                         List<SolutionScreen> candidates) {
+        public Detail {
+            screens = screens == null ? List.of() : List.copyOf(screens);
+            decisions = decisions == null ? List.of() : List.copyOf(decisions);
+            candidates = candidates == null ? List.of() : List.copyOf(candidates);
+        }
+
+        public Detail(Srt srt, String authorName, DevelopmentRequest request,
+                      List<SourceAttachment> attachments, SrtAiAnalysis analysis) {
+            this(srt, authorName, request, attachments, analysis, List.of(), List.of(), List.of());
+        }
+
         public boolean canSend() {
             return request == null || request.deliveryState() != DevelopmentRequest.DeliveryState.SENT;
+        }
+
+        /** 화면을 고쳐야 하는데 고칠 화면이 없다 — 사람이 골라야 생성할 수 있다. */
+        public boolean screenMissing() {
+            return analysis != null && analysis.screenChange() && screens.isEmpty();
         }
     }
     private record Source(List<SourceAttachment> attachments) {

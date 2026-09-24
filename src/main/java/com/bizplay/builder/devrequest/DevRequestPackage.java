@@ -74,6 +74,16 @@ public class DevRequestPackage {
         public Request(String label, String asIsCommit, String toBeCommit, List<Screen> screens) {
             this(label, asIsCommit, toBeCommit, screens, null);
         }
+
+        /** 뒷판이 있나 — 없으면(SRT) as-is 만 싣는다. */
+        public boolean hasToBe() {
+            return toBeCommit != null && !toBeCommit.isBlank();
+        }
+
+        /** 자산을 뜨는 판 — 뒷판이 없으면 앞판. */
+        String assetCommit() {
+            return hasToBe() ? toBeCommit : asIsCommit;
+        }
     }
 
     /**
@@ -126,7 +136,7 @@ public class DevRequestPackage {
             String from = "core/" + system + "/assets";
             Path zip = outDir.resolve("_assets-" + system + ".zip");
             GitResult archived = git.run(worktree, timeout, "archive", "--format=zip",
-                    "-o", zip.toString(), request.toBeCommit(), from);
+                    "-o", zip.toString(), request.assetCommit(), from);
             if (!archived.succeeded()) {
                 // ⚠ 자산이 없는 시스템도 있다 — 빈 폴더를 만들지 않고 manifest 에도 적지 않는다.
                 Files.deleteIfExists(zip);
@@ -171,10 +181,13 @@ public class DevRequestPackage {
                 dir, relative, "as-is.html", "as-is-html", files);
         copyBlob(worktree, request.asIsCommit(), pages + ".md",
                 dir, relative, "as-is.md", "as-is-md", files);
-        copyBlob(worktree, request.toBeCommit(), pages + ".html",
-                dir, relative, "to-be.html", "to-be-html", files);
-        copyBlob(worktree, request.toBeCommit(), pages + ".md",
-                dir, relative, "to-be.md", "to-be-md", files);
+        // ⚠ to-be 가 없는 요청서(SRT)는 as-is 만 싣는다 — 개발이 바꾼 화면을 돌려보낸다.
+        if (request.hasToBe()) {
+            copyBlob(worktree, request.toBeCommit(), pages + ".html",
+                    dir, relative, "to-be.html", "to-be-html", files);
+            copyBlob(worktree, request.toBeCommit(), pages + ".md",
+                    dir, relative, "to-be.md", "to-be-md", files);
+        }
 
         Path changes = dir.resolve("changes.md");
         Files.writeString(changes, changesBody(screen), StandardCharsets.UTF_8);

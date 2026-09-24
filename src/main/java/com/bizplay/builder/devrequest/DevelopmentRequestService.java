@@ -947,6 +947,16 @@ public class DevelopmentRequestService {
                     iaPlacementLabelsByScreenId, generating, null);
         }
 
+        /**
+         * 작업대 없이 만든 요청서 — 화면이 있으면 <b>as-is 만</b> 싣는다.
+         *
+         * <p>⭐ SRT 가 그렇다 (2026-09-24 사용자 확정 · 설계 「SRT 는 작업대를 만들지 않는다」). 고칠 화면은 짚지만
+         * to-be 목업과 기능정의서는 없고, 개발이 바꾼 화면을 돌려보낸다.
+         */
+        public boolean asIsOnly() {
+            return source != null && source.sourceKind() == Frd.SourceKind.SRT;
+        }
+
         /** 상세 기본 정보에 표시할 기준 FRD 담당자 이름. */
         public String ownerLabel() {
             return ownerName == null || ownerName.isBlank() ? "—" : ownerName;

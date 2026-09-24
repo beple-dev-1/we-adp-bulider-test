@@ -1,5 +1,6 @@
 package com.bizplay.builder.srt;
 
+import com.bizplay.builder.frd.FrdAnalysisNote;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.stereotype.Component;
@@ -40,7 +41,45 @@ public class SrtAiAnalysisReader {
         if (requirements.isEmpty() || criteria.isEmpty()) {
             throw new IOException("유효한 SRT에는 요구사항과 완료 조건이 각각 한 건 이상 있어야 합니다.");
         }
-        return new SrtAiAnalysis(true, null, cut(comment), requirements, criteria);
+        boolean screenChange = root.path("screenChange").asBoolean(false);
+        return new SrtAiAnalysis(true, null, cut(comment), requirements, criteria,
+                screenChange, screenChange ? targets(root.path("screens")) : List.of(),
+                decisions(root.path("decisions")));
+    }
+
+    private List<SrtAiAnalysis.Target> targets(JsonNode node) throws IOException {
+        if (node.isMissingNode() || node.isNull()) return List.of();
+        if (!node.isArray()) throw new IOException("고칠 화면(screens) 목록이 배열이 아닙니다.");
+        List<SrtAiAnalysis.Target> targets = new ArrayList<>();
+        for (JsonNode screen : node) {
+            String screenId = text(screen, "screenId");
+            if (screenId == null) continue;
+            String reason = text(screen, "reason");
+            targets.add(new SrtAiAnalysis.Target(screenId, reason == null ? null : cut(reason)));
+            if (targets.size() > MAX_ITEMS) {
+                throw new IOException("고칠 화면이 " + MAX_ITEMS + "건을 넘습니다.");
+            }
+        }
+        return List.copyOf(targets);
+    }
+
+    /** ⭐ 답이 빈 것은 받지 않는다 — 권장안을 답으로 채우는 것이 계약이다. */
+    private List<FrdAnalysisNote.Decision> decisions(JsonNode node) throws IOException {
+        if (node.isMissingNode() || node.isNull()) return List.of();
+        if (!node.isArray()) throw new IOException("정한 것(decisions) 목록이 배열이 아닙니다.");
+        List<FrdAnalysisNote.Decision> decisions = new ArrayList<>();
+        for (JsonNode decision : node) {
+            String question = text(decision, "question");
+            String answer = text(decision, "answer");
+            if (question == null || answer == null) {
+                throw new IOException("정한 것의 질문(question) 또는 권장안(answer)이 비었습니다.");
+            }
+            decisions.add(new FrdAnalysisNote.Decision(cut(question), cut(answer), true));
+            if (decisions.size() > MAX_ITEMS) {
+                throw new IOException("정한 것이 " + MAX_ITEMS + "건을 넘습니다.");
+            }
+        }
+        return List.copyOf(decisions);
     }
 
     private List<String> strings(JsonNode node, String label) throws IOException {

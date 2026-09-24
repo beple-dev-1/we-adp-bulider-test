@@ -269,6 +269,11 @@ public class DevRequestPrecheck {
                     "진입 화면과 클릭 요소를 연결하거나 메뉴 진입 위치를 적어 주세요."));
         }
 
+        if (view.asIsOnly()) {
+            // ⭐ SRT — to-be 목업과 기능정의서를 만들지 않는다. as-is 만 실어 보내고 개발이 바꾼 것을 돌려받는다.
+            checkMenuAndAsIs(request, screen, subject, blocking, warnings);
+            return;
+        }
         FrdScreen row = screens.selectById(screen.frdScreenId());
         if (row == null || row.html() == null || row.html().isBlank()) {
             blocking.add(new Item(subject, "수정한 화면이 아직 없습니다.",
@@ -299,6 +304,25 @@ public class DevRequestPrecheck {
         Path asIs = paths.cloneDir(request.projectId()).resolve("core")
                 .resolve(system(screen)).resolve("pages").resolve(screen.screenId() + ".md");
         if (row != null && !row.isNewScreen() && !Files.isRegularFile(asIs)) {
+            warnings.add(new Item(subject, "현재 기능정의서가 저장소에 없습니다.",
+                    "기존 화면의 기능정의서가 빠졌는지 기획 저장소를 확인해 주세요."));
+        }
+    }
+
+    /** as-is 만 싣는 요청서(SRT)의 화면 — 실을 현재 운영 화면이 저장소에 있어야 한다. */
+    private void checkMenuAndAsIs(DevelopmentRequest request, DevelopmentRequestContent.Screen screen,
+                                  String subject, List<Item> blocking, List<Item> warnings) {
+        if (screen.menuPath() == null || screen.menuPath().isBlank()) {
+            warnings.add(new Item(subject, "정식 메뉴 위치가 아직 연결되지 않았습니다.",
+                    "개발요청은 진행할 수 있으며 관리자가 메뉴구조도에서 나중에 연결할 수 있습니다."));
+        }
+        Path pages = paths.cloneDir(request.projectId()).resolve("core")
+                .resolve(system(screen)).resolve("pages");
+        if (!Files.isRegularFile(pages.resolve(screen.screenId() + ".html"))) {
+            blocking.add(new Item(subject, "현재 운영 화면이 저장소에 없습니다.",
+                    "화면 ID 가 기획 저장소에서 바뀌었는지 확인해 주세요."));
+        }
+        if (!Files.isRegularFile(pages.resolve(screen.screenId() + ".md"))) {
             warnings.add(new Item(subject, "현재 기능정의서가 저장소에 없습니다.",
                     "기존 화면의 기능정의서가 빠졌는지 기획 저장소를 확인해 주세요."));
         }

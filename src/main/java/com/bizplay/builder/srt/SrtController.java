@@ -18,6 +18,8 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
+import java.util.TreeMap;
 import java.util.Objects;
 import java.util.stream.IntStream;
 
@@ -133,11 +135,49 @@ public class SrtController {
         }
     }
 
+    /** 고칠 화면을 고르거나 AI 가 고른 것을 바꾼다 — 개발요청서 생성 전에만 (목업 13). */
+    @PostMapping("/{srtId}/screen")
+    public String pickScreen(@PathVariable String projectId, @PathVariable String srtId,
+                             @RequestParam String screenId,
+                             @RequestParam(required = false) String replace,
+                             RedirectAttributes flash) {
+        try {
+            srts.pickScreen(projectId, srtId, replace == null || replace.isBlank() ? null : replace, screenId);
+            flash.addFlashAttribute("message", "고칠 화면을 정했습니다.");
+        } catch (IllegalArgumentException | IllegalStateException rejected) {
+            flash.addFlashAttribute("error", rejected.getMessage());
+        }
+        return "redirect:/projects/%s/artifacts/srts?selected=%s".formatted(projectId, srtId);
+    }
+
+    /** 폼의 {@code answer.1} · {@code answer.2} … — 정한 것의 차례마다 확인한 답. */
+    static Map<Integer, String> answers(Map<String, String> params) {
+        Map<Integer, String> answers = new TreeMap<>();
+        params.forEach((name, value) -> {
+            if (!name.startsWith(ANSWER_PREFIX)) return;
+            try {
+                answers.put(Integer.parseInt(name.substring(ANSWER_PREFIX.length())), value);
+            } catch (NumberFormatException ignored) {
+                // 모르는 칸은 버린다
+            }
+        });
+        return answers;
+    }
+
+    static final String ANSWER_PREFIX = "answer.";
+
+    private void confirmAnswers(String projectId, String srtId, Map<String, String> params) {
+        Map<Integer, String> answers = answers(params);
+        if (!answers.isEmpty()) srts.confirmDecisions(projectId, srtId, answers);
+    }
+
     @PostMapping(value = "/{srtId}/dev-request", headers = "Accept!=application/json")
     public String createDevelopmentRequest(@PathVariable String projectId,
                                            @PathVariable String srtId,
+                                           @RequestParam Map<String, String> params,
                                            RedirectAttributes flash) {
         try {
+            confirmAnswers(projectId, srtId, params);
             SrtCompletionService.Status status = completion.request(projectId, srtId);
             if (status.state() == SrtCompletionService.State.COMPLETE) {
                 return "redirect:/projects/%s/artifacts/dev-requests/%s"
@@ -155,8 +195,10 @@ public class SrtController {
     @PostMapping(value = "/{srtId}/dev-request", headers = "Accept=application/json")
     @ResponseBody
     public ResponseEntity<CompletionStatus> createDevelopmentRequestAsync(@PathVariable String projectId,
-                                                                           @PathVariable String srtId) {
+                                                                           @PathVariable String srtId,
+                                                                           @RequestParam Map<String, String> params) {
         try {
+            confirmAnswers(projectId, srtId, params);
             return ResponseEntity.ok(completionStatus(projectId, completion.request(projectId, srtId)));
         } catch (IllegalArgumentException | IllegalStateException rejected) {
             return ResponseEntity.badRequest()

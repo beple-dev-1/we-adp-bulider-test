@@ -287,4 +287,27 @@
       || detailDialog?.dataset.srtAnalysisState === "READY") {
     window.setTimeout(pollSrtAnalysisInDetail, 600);
   }
+
+  // 고칠 화면 고르기 — 「다른 화면으로 바꾸기」는 바꿀 행을, 「고칠 화면 고르기」는 빈 값을 넘긴다.
+  const screenDialog = document.getElementById("srt-screen-dialog");
+  if (screenDialog) {
+    document.querySelectorAll("[data-srt-screen-open]").forEach((button) => {
+      button.addEventListener("click", () => {
+        screenDialog.querySelectorAll("[data-srt-screen-replace]").forEach((input) => {
+          input.value = button.dataset.replace || "";
+        });
+        screenDialog.showModal();
+      });
+    });
+    screenDialog.querySelectorAll("[data-srt-screen-close]").forEach((button) => {
+      button.addEventListener("click", () => screenDialog.close());
+    });
+    const search = screenDialog.querySelector("[data-srt-screen-search]");
+    search?.addEventListener("input", () => {
+      const query = search.value.trim().toLowerCase();
+      screenDialog.querySelectorAll("[data-screen-search]").forEach((item) => {
+        item.hidden = query !== "" && !item.dataset.screenSearch.includes(query);
+      });
+    });
+  }
 })();
