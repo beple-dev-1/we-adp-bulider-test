@@ -32,6 +32,38 @@ class DevelopmentRequestControllerTest {
     private final DevelopmentRequestController controller =
             new DevelopmentRequestController(requests, deliveries, receives, projectFacets, projectSystems);
 
+    /** ⭐ 「개발에 넘기기」 레이어에서 고른 것을 먼저 적고 넘긴다 (목업 06b) — 적다가 막히면 넘기지 않는다. */
+    @Test
+    void 넘기기_레이어에서_고른_일정과_전달사항을_적은_뒤_넘긴다() {
+        var published = new DevRequestDeliveryWorkspace.Published("dr/EXW/DR-001", "abc", "base");
+        given(deliveries.deliver("0000001", "0000009", null)).willReturn(published);
+        RedirectAttributesModelMap flash = new RedirectAttributesModelMap();
+
+        controller.deliver("0000001", "0000009", java.time.LocalDate.of(2026, 10, 10), null,
+                "우선 반영", null, null, flash);
+
+        var order = org.mockito.Mockito.inOrder(requests, deliveries);
+        order.verify(requests).saveSendDetails("0000001", "0000009", java.time.LocalDate.of(2026, 10, 10),
+                null, "우선 반영", null);
+        order.verify(deliveries).deliver("0000001", "0000009", null);
+    }
+
+    @Test
+    void 배포일이_개발_완료일보다_앞이면_넘기지_않는다() {
+        willThrow(new IllegalArgumentException("배포일은 개발 완료일과 같거나 그 뒤여야 합니다."))
+                .given(requests).saveSendDetails("0000001", "0000009", java.time.LocalDate.of(2026, 10, 10),
+                        java.time.LocalDate.of(2026, 10, 1), null, null);
+        RedirectAttributesModelMap flash = new RedirectAttributesModelMap();
+
+        controller.deliver("0000001", "0000009", java.time.LocalDate.of(2026, 10, 10),
+                java.time.LocalDate.of(2026, 10, 1), null, null, null, flash);
+
+        org.mockito.Mockito.verify(deliveries, org.mockito.Mockito.never())
+                .deliver(org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any(),
+                        org.mockito.ArgumentMatchers.any());
+        assertThat(flash.getFlashAttributes().get("error")).isEqualTo("배포일은 개발 완료일과 같거나 그 뒤여야 합니다.");
+    }
+
     @Test
     void 개발요청서_목록은_요청한_페이지와_목록_크기만_내린다() {
         given(requests.list("project-1"))

@@ -67,6 +67,16 @@
          where id = #{id} and dev_request_id is null
     </update>
 
+    <select id="selectByBridgeFrdId" parameterType="java.lang.String" resultMap="srt">
+        select <include refid="columns"/> from builder.adk_builder_srt where bridge_frd_id = #{bridgeFrdId}
+    </select>
+
+    <update id="disconnectRequest" parameterType="java.lang.String">
+        update builder.adk_builder_srt
+           set dev_request_id = null, updated_at = now()
+         where dev_request_id = #{devRequestId}
+    </update>
+
     <update id="updateAnalysisState">
         update builder.adk_builder_srt
            set analysis_state = #{state}, analysis_message = #{message,jdbcType=VARCHAR}, updated_at = now()

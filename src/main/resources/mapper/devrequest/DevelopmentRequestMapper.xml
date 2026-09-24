@@ -63,7 +63,43 @@
         select <include refid="columns"/>
           from builder.adk_builder_dev_request
          where project_id = #{projectId}
+           and prepared_at is not null
          order by number desc
+    </select>
+
+    <update id="updateSendDetails">
+        update builder.adk_builder_dev_request
+           set development_completed_on = #{completedOn,jdbcType=DATE},
+               deployment_on = #{deployOn,jdbcType=DATE},
+               planner_comment = #{comment,jdbcType=VARCHAR},
+               attachment_name = #{attachmentName,jdbcType=VARCHAR},
+               attachment_path = #{attachmentPath,jdbcType=VARCHAR},
+               attachment_size = #{attachmentSize,jdbcType=BIGINT},
+               updated_at = now()
+         where id = #{id} and delivery_state in ('NOT_SENT', 'SENT')
+    </update>
+
+    <update id="markPreparing" parameterType="java.lang.String">
+        update builder.adk_builder_dev_request
+           set prepared_at = null, updated_at = now()
+         where id = #{id} and delivery_state = 'NOT_SENT'
+    </update>
+
+    <update id="markPrepared" parameterType="java.lang.String">
+        update builder.adk_builder_dev_request
+           set prepared_at = now(), updated_at = now()
+         where id = #{id} and prepared_at is null
+    </update>
+
+    <select id="isPreparing" parameterType="java.lang.String" resultType="_boolean">
+        select exists (select 1 from builder.adk_builder_dev_request
+                        where id = #{id} and prepared_at is null)
+    </select>
+
+    <select id="selectPreparingIds" resultType="java.lang.String">
+        select id from builder.adk_builder_dev_request
+         where prepared_at is null and delivery_state = 'NOT_SENT'
+         order by created_at
     </select>
 
     <select id="selectById" parameterType="java.lang.String" resultMap="developmentRequest">

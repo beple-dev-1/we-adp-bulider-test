@@ -167,6 +167,31 @@ class DevRequestDeliveryWorkspaceTest {
         assertThat(run(remote, "rev-list", "--count", ref).stdout().strip()).isEqualTo("2");
     }
 
+    /**
+     * ⭐ 사람이 둔 {@code TESTING.md}(시험용 회신 만드는 법)를 넘길 때 지우지 않는다 — 빌더는 목록과 README 만 갈아 끼운다.
+     * README 는 그 파일을 가리킨다 (2026-09-24 사용자 지시).
+     */
+    @Test
+    void 사람이_둔_시험_안내는_목록을_다시_올려도_남는다() throws IOException {
+        deliveries.updateIndexBranch(PROJECT, REQUEST, remote.toUri().toString(),
+                existing -> DeliveryIndex.merge(existing, indexEntry("DR-009")), "docs: DR-009");
+        Path tester = dataRoot.resolve("tester");
+        run(dataRoot, "clone", "-q", "-b", DeliveryIndex.BRANCH, remote.toUri().toString(), tester.toString());
+        run(tester, "config", "user.email", "t@example.com");
+        run(tester, "config", "user.name", "시험");
+        write(tester, DeliveryIndex.TESTING, "# 시험용 회신 만드는 법\n");
+        run(tester, "add", ".");
+        run(tester, "commit", "-q", "-m", "docs: 시험 안내");
+        run(tester, "push", "-q", "origin", DeliveryIndex.BRANCH);
+
+        deliveries.updateIndexBranch(PROJECT, "0000010", remote.toUri().toString(),
+                existing -> DeliveryIndex.merge(existing, indexEntry("DR-010")), "docs: DR-010");
+
+        String ref = "refs/heads/" + DeliveryIndex.BRANCH;
+        assertThat(run(remote, "show", ref + ":" + DeliveryIndex.TESTING).stdout()).contains("시험용 회신");
+        assertThat(run(remote, "show", ref + ":" + DeliveryIndex.README).stdout()).contains(DeliveryIndex.TESTING);
+    }
+
     /** ⚠ 바뀐 것이 없으면 빈 커밋을 만들지 않는다. */
     @Test
     void 바뀐_것이_없으면_커밋하지_않는다() {

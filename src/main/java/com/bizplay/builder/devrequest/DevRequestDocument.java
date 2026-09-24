@@ -6,6 +6,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -52,8 +53,24 @@ public class DevRequestDocument {
     public record Meta(String label, String title, String systemCode, List<String> facets,
                        String frdLabel, String ownerName, LocalDate createdOn,
                        LocalDate completedOn, LocalDate deployOn, String plannerComment,
-                       String attachmentName, Long attachmentSize) {
+                       String attachmentName, Long attachmentSize,
+                       List<DevRequestSourceFiles.SourceFile> sourceFiles) {
+
+        public Meta {
+            sourceFiles = sourceFiles == null ? List.of() : List.copyOf(sourceFiles);
+        }
+
+        public Meta(String label, String title, String systemCode, List<String> facets,
+                    String frdLabel, String ownerName, LocalDate createdOn,
+                    LocalDate completedOn, LocalDate deployOn, String plannerComment,
+                    String attachmentName, Long attachmentSize) {
+            this(label, title, systemCode, facets, frdLabel, ownerName, createdOn, completedOn, deployOn,
+                    plannerComment, attachmentName, attachmentSize, List.of());
+        }
     }
+
+    /** 꾸러미 안에서 첨부가 앉는 폴더 — 올린 파일은 그대로, 플로우 첨부는 목록만. */
+    public static final String ATTACHMENTS_DIR = "attachments";
 
     public String render(Meta meta, DevelopmentRequestContent content, Path manifestJson)
             throws IOException {
@@ -70,6 +87,7 @@ public class DevRequestDocument {
         screens(md, manifest);
         delivery(md, meta);
         attachments(md, meta);
+        returnGuide(md);
         return md.toString();
     }
 
@@ -159,10 +177,22 @@ public class DevRequestDocument {
                 .map(note -> nvl(note.content())).toList(), "완료 조건이 아직 없습니다.");
     }
 
+    /**
+     * 6절 — 정한 것. ⭐ 인터뷰가 확인 필요를 남기지 않으므로 개발은 「질문 → 답」만 받는다 (2026-09-24 사용자 확정).
+     * 옛 요청서의 확인 필요는 뒤에 그대로 붙인다.
+     */
     private static void openIssues(StringBuilder md, DevelopmentRequestContent content) {
-        md.append("## 6. 확인 필요\n\n");
-        list(md, content.openIssues().stream()
-                .map(note -> nvl(note.content())).toList(), "확인할 것이 없습니다.");
+        md.append("## 6. 정한 것\n\n");
+        List<String> lines = new ArrayList<>();
+        for (var decision : content.decisions()) {
+            String line = decision.question().isEmpty()
+                    ? decision.answer() : decision.question() + " → " + decision.answer();
+            lines.add(decision.recommended() ? line + " (AI 권장안)" : line);
+        }
+        for (var note : content.openIssues()) {
+            lines.add("확인 필요: " + nvl(note.content()));
+        }
+        list(md, lines, "따로 정한 것이 없습니다.");
     }
 
     private static void backendChanges(StringBuilder md, DevelopmentRequestContent content) {
@@ -201,7 +231,8 @@ public class DevRequestDocument {
         md.append("## 8. 화면별 산출물 목록\n\n");
         JsonNode screens = manifest.get("screens");
         if (screens == null || screens.isEmpty()) {
-            md.append("화면 변경이 없습니다 — 이 요청은 화면 외 구현만 담습니다.\n\n");
+            // ⚠ 화면 외 구현도 없을 수 있다(SRT) — 「화면 외 구현만 담는다」고 말하면 7절과 어긋난다.
+            md.append("화면 변경이 없습니다.\n\n");
             return;
         }
         for (JsonNode screen : screens) {
@@ -230,17 +261,50 @@ public class DevRequestDocument {
         md.append('\n');
     }
 
+    /**
+     * 10절 — 첨부. 기획자가 올린 파일은 {@code attachments/} 에 그대로 있고, 플로우 원문의 첨부는
+     * 파일을 옮기지 않고 이름 · 주소 · 크기만 적는다 (2026-09-24 사용자 확정 · 목업 06b).
+     */
     private static void attachments(StringBuilder md, Meta meta) {
         md.append("## 10. 첨부 목록\n\n");
-        if (meta.attachmentName() == null || meta.attachmentName().isBlank()) {
+        boolean uploaded = meta.attachmentName() != null && !meta.attachmentName().isBlank();
+        if (!uploaded && meta.sourceFiles().isEmpty()) {
             md.append("첨부가 없습니다.\n");
             return;
         }
-        md.append("- `").append(meta.attachmentName()).append('`');
-        if (meta.attachmentSize() != null) {
-            md.append(" — ").append(meta.attachmentSize() / 1024).append("KB");
+        if (uploaded) {
+            md.append("- `").append(ATTACHMENTS_DIR).append('/').append(meta.attachmentName()).append('`');
+            if (meta.attachmentSize() != null) {
+                md.append(" — ").append(kilobytes(meta.attachmentSize()));
+            }
+            md.append('\n');
         }
-        md.append('\n');
+        if (!meta.sourceFiles().isEmpty()) {
+            if (uploaded) md.append('\n');
+            md.append("플로우 원문 첨부 — 파일은 옮기지 않았습니다. 주소에서 받으십시오.\n\n");
+            for (var file : meta.sourceFiles()) {
+                md.append("- ").append(nvl(file.name()));
+                if (file.url() != null && !file.url().isBlank()) md.append(" — ").append(file.url());
+                if (file.size() != null) md.append(" — ").append(kilobytes(file.size()));
+                md.append('\n');
+            }
+        }
+    }
+
+    private static String kilobytes(long bytes) {
+        return Math.max(1, bytes / 1024) + "KB";
+    }
+
+    /**
+     * 11절 — 돌려받을 것. ⭐ <b>두 계약 파일을 따르라는 안내만 둔다</b>(꾸러미 설계 「돌려받을 것」).
+     * ⛔ 돌려보내는 법을 여기에 다시 적지 않는다 — 그 요청의 값은 {@code expected-back.md} 에 있고,
+     * 두 곳에 적으면 갈린다.
+     */
+    private static void returnGuide(StringBuilder md) {
+        md.append("## 11. 돌려받을 것\n\n");
+        md.append("개발이 끝나면 같은 폴더의 `expected-back.md` 를 따라 돌려보내 주십시오 — 무엇을 어디에"
+                + " 어떤 모양으로 돌려주는지가 이 요청의 값으로 적혀 있습니다.\n");
+        md.append("기계가 읽는 목록(파일·해시·커밋)은 `manifest.json` 에 있습니다.\n");
     }
 
     private static Map<String, String> fileMeanings() {

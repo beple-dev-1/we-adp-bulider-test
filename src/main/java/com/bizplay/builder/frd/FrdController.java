@@ -457,10 +457,10 @@ public class FrdController {
         }
         if (!hasScreens) {
             try {
-                String requestId = completion.completeWithoutScreenWork(projectId, frdId);
+                completion.completeWithoutScreenWork(projectId, frdId);
                 flash.addFlashAttribute("message",
-                    "FRD 작업을 완료하고 개발요청서를 만들었습니다. 변경 예정 기능정의서는 AI 가 만들고 있어 몇 분 걸립니다.");
-                return "redirect:/projects/%s/artifacts/dev-requests/%s".formatted(projectId, requestId);
+                    "FRD 작업을 완료했습니다. 개발요청서를 준비하고 있습니다.");
+                return FrdPreparationController.preparingUrl(projectId, frdId);
             } catch (IllegalStateException rejected) {
                 flash.addFlashAttribute("error", rejected.getMessage());
                 return "redirect:/projects/%s/artifacts/dev-requests".formatted(projectId);
@@ -474,9 +474,9 @@ public class FrdController {
     public String fastTrack(@PathVariable String projectId, @PathVariable String frdId,
                             RedirectAttributes flash) {
         try {
-            String requestId = completion.completeFastTrack(projectId, frdId);
-            flash.addFlashAttribute("message", "분석 결과로 개발요청서를 만들었습니다.");
-            return "redirect:/projects/%s/artifacts/dev-requests/%s".formatted(projectId, requestId);
+            completion.completeFastTrack(projectId, frdId);
+            flash.addFlashAttribute("message", "분석 결과로 개발요청서를 준비하고 있습니다.");
+            return FrdPreparationController.preparingUrl(projectId, frdId);
         } catch (IllegalStateException rejected) {
             flash.addFlashAttribute("error", rejected.getMessage());
             return "redirect:/projects/%s/artifacts/frds/%s/pick".formatted(projectId, frdId);
@@ -509,9 +509,9 @@ public class FrdController {
                                    RedirectAttributes flash) {
         requireAssignedUser(frds.of(projectId, frdId));
         try {
-            String requestId = completion.complete(projectId, frdId, confirmedCloneHead);
-            flash.addFlashAttribute("message", "FRD 작업을 완료하고 개발요청서를 만들었습니다.");
-            return "redirect:/projects/%s/artifacts/dev-requests/%s".formatted(projectId, requestId);
+            completion.complete(projectId, frdId, confirmedCloneHead);
+            flash.addFlashAttribute("message", "FRD 작업을 완료했습니다. 개발요청서를 준비하고 있습니다.");
+            return FrdPreparationController.preparingUrl(projectId, frdId);
         } catch (FrdCompletionService.LatestReviewRequired review) {
             flash.addFlashAttribute("message", review.getMessage());
             return "redirect:/projects/%s/artifacts/frds/%s/canvas?comparisonScreenRowId=%s&confirmedCloneHead=%s"

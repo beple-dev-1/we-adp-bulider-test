@@ -157,6 +157,24 @@ class ScreenTobeDocumentTest extends AbstractDbTest {
                 .hasMessageContaining("넘습니다");
     }
 
+    /**
+     * ⭐ <b>바뀐 항목의 해설은 AI 가 확정된 내용대로 적는다</b> (2026-09-24 사용자 확정). 바뀌는 내용은 사람이
+     * 요구사항을 적고 인터뷰로 확정한 것이라 AI 는 옮겨 적을 뿐이다. 정의서 끝의 추출기 규칙 「해설은 사람이
+     * 채운다 — 기계는 비워 둔다」를 따라 AI 가 해설을 비워 둬, 동작만 바뀐 화면(DR-011 의 거래승인번호 재설정)에서
+     * 변경이 정의서에 안 들어갔다.
+     */
+    @Test
+    void 바뀐_항목의_해설은_확정된_내용대로_적으라고_시킨다() {
+        String prompt = ScreenTobeDocumentWorker.instruction(java.nio.file.Path.of("as-is.md"),
+                java.nio.file.Path.of("to-be.html"), java.nio.file.Path.of("changes.md"),
+                "EXW-UWV-70-30-50-C", "거래승인번호 재설정", null);
+
+        assertThat(prompt)
+                .contains("이번에 바뀐 항목의 해설")
+                .contains("인터뷰로 확정")
+                .contains("안 바뀐 항목의 해설");
+    }
+
     @Test
     void 기능정의서_AI_응답은_JSON_스키마로_강제한다() {
         assertThat(ScreenTobeDocumentWorker.claudeArgs(java.nio.file.Path.of("input")))

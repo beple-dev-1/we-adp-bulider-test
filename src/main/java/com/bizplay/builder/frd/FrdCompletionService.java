@@ -1,5 +1,6 @@
 package com.bizplay.builder.frd;
 
+import com.bizplay.builder.devrequest.DevRequestPreparation;
 import com.bizplay.builder.devrequest.DevelopmentRequest;
 import com.bizplay.builder.devrequest.DevelopmentRequestService;
 import com.bizplay.builder.project.PlanningRepositoryUpdater;
@@ -23,13 +24,17 @@ public class FrdCompletionService {
     private final FrdWorkspace workspaces;
     private final DevelopmentRequestService developmentRequests;
     private final PlanningRepositoryUpdater repositoryUpdater;
+    /** ⚠ 없으면(단위 시험) 준비를 기다리지 않고 만들기만 건다 — 종전 동작. */
+    private final DevRequestPreparation preparation;
 
+    @org.springframework.beans.factory.annotation.Autowired
     public FrdCompletionService(FrdService frds, FrdScreenMapper screens,
                                 FrdScreenChatService screenChats, FrdAnalysisNoteMapper notes,
                                 FrdScreenIaMaterializer iaMaterializer,
                                 FrdWorkspace workspaces,
                                 DevelopmentRequestService developmentRequests,
-                                PlanningRepositoryUpdater repositoryUpdater) {
+                                PlanningRepositoryUpdater repositoryUpdater,
+                                DevRequestPreparation preparation) {
         this.frds = frds;
         this.screens = screens;
         this.screenChats = screenChats;
@@ -38,6 +43,17 @@ public class FrdCompletionService {
         this.workspaces = workspaces;
         this.developmentRequests = developmentRequests;
         this.repositoryUpdater = repositoryUpdater;
+        this.preparation = preparation;
+    }
+
+    public FrdCompletionService(FrdService frds, FrdScreenMapper screens,
+                                FrdScreenChatService screenChats, FrdAnalysisNoteMapper notes,
+                                FrdScreenIaMaterializer iaMaterializer,
+                                FrdWorkspace workspaces,
+                                DevelopmentRequestService developmentRequests,
+                                PlanningRepositoryUpdater repositoryUpdater) {
+        this(frds, screens, screenChats, notes, iaMaterializer, workspaces, developmentRequests,
+                repositoryUpdater, null);
     }
 
 
@@ -180,6 +196,11 @@ public class FrdCompletionService {
      * 화면이 없으면 기능정의서는 0건이고, 나머지 준비 작업은 같은 규칙으로 실행한다.
      */
     public void prepareDevelopmentRequest(String projectId, String requestId) {
+        // ⭐ 완료는 준비까지 기다린다 (2026-09-24 사용자 확정) — 준비가 끝나야 목록에 보이고, 못 마치면 거둔다.
+        if (preparation != null) {
+            preparation.start(projectId, requestId);
+            return;
+        }
         requestTobeDocuments(projectId, requestId);
         requestTestScenarios(projectId, requestId);
     }

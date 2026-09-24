@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <link rel="stylesheet" href="../../src/main/resources/static/css/tokens.css">
+  <link rel="stylesheet" href="../../src/main/resources/static/css/reset.css">
+  <link rel="stylesheet" href="../../src/main/resources/static/css/typography.css">
+  <link rel="stylesheet" href="../../src/main/resources/static/css/components.css">
+  <link rel="stylesheet" href="../../src/main/resources/static/css/shell.css">
+  <link rel="stylesheet" href="_mock.css">
+  <link rel="stylesheet" href="../../src/main/resources/static/css/screens.css">
+  <link rel="stylesheet" href="../../src/main/resources/static/css/srt.css">
+  <title>SRT 상세 — 개발요청서 생성 전 확인</title>
+</head>
+<body>
+<!--
+  SRT AI 분석이 끝나 사람이 개발요청서 생성 전에 확인하는 한 시점 (2026-09-24 사용자 확정).
+  - AI 가 고칠 화면을 짚고, 확인 필요에는 권장안을 답으로 미리 채운다. 사람은 확인하고 다르면 바꾼다.
+  - 고칠 화면은 「다른 화면으로 바꾸기」로 현재 운영 화면 목록에서 다시 고른다(FRD 화면 추가 레이어의 현재 운영 화면 선택을 빌려 쓴다).
+    화면과 상관없는 요청(배치·서버)은 고칠 화면 없이 간다.
+  - 화면을 고쳐야 하는데 AI 가 못 짚었거나 답이 빈 질문이 있으면 「개발요청서 생성」을 누를 수 없다.
+  - 생성은 테스트 시나리오까지 만든 뒤 끝난다. 실패하면 이 레이어에서 다시 누른다.
+-->
+<template id="본문">
+  <div class="page-head list-page-head">
+    <div><h1 class="page-head__title">SRT</h1><p class="page-intro">직접 입력하거나 플로우에서 가져온 요청을 개발요청서로 처리합니다.</p></div>
+    <button class="button button--primary" type="button">SRT 등록</button>
+  </div>
+
+  <dialog class="dialog dialog--layer srt-detail-dialog" id="srt-detail-dialog" aria-modal="true" aria-labelledby="srt-detail-title" aria-describedby="srt-detail-description">
+    <header class="dialog__header"><div class="dialog__header-copy">
+      <span class="dialog__kicker num">SRT-004</span>
+      <h2 class="dialog__title" id="srt-detail-title">이름입력시 한글만</h2>
+      <p class="dialog__description" id="srt-detail-description">직접 입력 · 이영희 · 2026-09-24 11:02</p>
+    </div><button class="dialog__close" type="button" aria-label="SRT 상세 레이어 닫기"></button></header>
+    <div class="dialog__body">
+      <div class="srt-detail-view">
+        <article class="srt-board">
+          <section class="srt-board__source">
+            <div class="srt-board__section-head"><h3>요청 내용</h3><span>직접 입력</span></div>
+            <p class="srt-board__request">회원정보의 이름은 한글만 가능하도록 수정</p>
+          </section>
+          <section class="srt-analysis">
+            <div class="srt-board__section-head"><h3>AI 분석</h3><span>요청 정리 완료</span></div>
+            <div class="srt-analysis__body">
+              <p class="srt-analysis__comment">회원가입의 이름 입력 칸에 한글만 받도록 입력 검증을 더하는 요청입니다. 화면의 입력 칸과 서버의 저장 검증을 함께 바꿉니다.</p>
+              <div class="srt-analysis__definitions">
+                <section><h4>정리된 요구사항 <span>2</span></h4><ul><li>이름 입력 칸에 한글만 입력할 수 있게 합니다.</li><li>서버에서도 한글이 아닌 이름은 저장하지 않습니다.</li></ul></section>
+                <section><h4>완료 조건 <span>2</span></h4><ul><li>영문·숫자를 넣으면 입력 칸 아래에 안내가 뜹니다.</li><li>한글 이름은 그대로 저장됩니다.</li></ul></section>
+              </div>
+
+              <section class="fi-scope-section" aria-labelledby="srt-screen-title">
+                <div class="fi-scope-section-head"><h3 id="srt-screen-title">고칠 화면</h3><span>1개</span></div>
+                <ul class="fi-screen-list">
+                  <li class="fi-screen-row"><div class="fi-screen-thumbnail"><div class="fi-screen-thumbnail__sample" aria-hidden="true"><i></i><b></b><b></b><b></b></div><span>현재 화면</span></div><div class="fi-screen-row__content"><div class="fi-screen-row__top"><strong>에이블리 회원가입</strong><button class="button button--small button--text" type="button">다른 화면으로 바꾸기</button></div><div class="fi-screen-row__badges"><span class="badge badge--outline">기존 화면</span><span class="badge fi-selection-source fi-selection-source--ai">AI 선택</span></div><small class="num">외부제공 웹뷰 · EXW-UWV-70-30-10-C</small><p>본인인증 단계의 이름 입력 칸에 한글만 받도록 검증을 더합니다.</p></div></li>
+                </ul>
+              </section>
+
+              <section class="fi-scope-section" aria-labelledby="srt-issues-title">
+                <div class="fi-scope-section-head"><h3 id="srt-issues-title">확인 필요</h3><span>1개</span></div>
+                <ol class="issue-answer-list">
+                  <li class="issue-answer"><strong>이름 사이의 띄어쓰기를 허용할지 정해야 합니다.</strong><label class="issue-answer__label" for="srt-issue-answer-1">답 <span class="badge fi-selection-source">AI 권장안</span></label><textarea class="field__control" id="srt-issue-answer-1" name="answer" rows="2" required form="srt-create-request-form">띄어쓰기는 허용하지 않습니다.</textarea></li>
+                </ol>
+                <p class="fi-scope-empty">AI가 권장안으로 답을 채웠습니다. 다르면 고쳐 주세요.</p>
+              </section>
+            </div>
+          </section>
+        </article>
+      </div>
+    </div>
+    <form id="srt-create-request-form" action="06a-dev-request-detail.html"></form>
+    <div class="dialog__actions">
+      <p class="dialog__action-note">고칠 화면과 확인 필요의 답을 확인한 뒤 생성해 주세요. 테스트 시나리오까지 만들어 몇 분 걸립니다.</p>
+      <button class="button button--danger-outline" type="button">삭제</button>
+      <button class="button button--primary" type="submit" form="srt-create-request-form">개발요청서 생성</button>
+    </div>
+  </dialog>
+</template>
+<script src="_shell.js"></script>
+<script>틀({제목:'SRT',모양:'산출물',지금:'srts',프로젝트이름:'G2C',프로젝트번호:1,프로젝트들:['G2C','서울페이'],사람:'이영희',안읽은알림:2});document.getElementById('srt-detail-dialog').showModal();document.activeElement?.blur();</script>
+</body>
+</html>

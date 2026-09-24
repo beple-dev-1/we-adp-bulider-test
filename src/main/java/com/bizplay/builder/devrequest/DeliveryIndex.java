@@ -124,7 +124,7 @@ public final class DeliveryIndex {
                 "| `commit` | 꾸러미 커밋 |",
                 "| `base` | 기본 브랜치에서 갈라 올 기준 커밋 |",
                 "| `system` · `screens` | 대상 시스템(IA 기준 — 브랜치 이름의 가운데 마디)과 화면."
-                        + " 화면 없는 요청은 `" + NO_SYSTEM + "` 자리에 갑니다 |",
+                        + " 시스템이 없는 요청(SRT 로 만든 것)은 `" + deliveryBranch(null, "<dr>") + "` 로 갑니다 |",
                 "| `sentAt` · `sendKey` | 보낸 시각과 전송 키. 다시 보내도 키는 같습니다 |",
                 "",
                 "같은 `dr` 을 다시 보내면 그 줄이 새것으로 바뀝니다.",
@@ -136,8 +136,31 @@ public final class DeliveryIndex {
                 "2. 돌려보내는 법은 `expected-back.md` 의 「돌려보내는 법」에 **그 요청의 값으로** 적혀 있습니다."
                         + " 이 문서가 아니라 그쪽을 따르십시오.",
                 "3. 돌려보낼 브랜치는 `" + back + "` 꼴입니다.",
+                "",
+                "## 3. 받아졌는지 확인하는 법",
+                "",
+                "기획이 「개발 결과 받기」를 누르면 빌더가 판정합니다.",
+                "",
+                "- **받아졌으면** 기본 브랜치에 작성자 `" + DevRequestDeliveryWorkspace.RECEIVER_NAME
+                        + "` 커밋이 하나 생기고, 그 끝에 `" + DevRequestDeliveryWorkspace.RETURNED_HEAD_TRAILER
+                        + " <보낸 커밋>` 이 적힙니다. 돌려준 화면 파일이 없는 요청(테스트 결과만)은 커밋이 생기지 않습니다.",
+                "- **거절됐으면** 기본 브랜치에 아무것도 안 들어갑니다. 거절 사유는 기획 화면에 뜨니 기획에 물어 주십시오."
+                        + " 고쳐서 같은 브랜치에 다시 올리면 됩니다.",
+                "",
+                "## 4. 시험할 때 — 개발 대신 회신을 만들어 보는 사람",
+                "",
+                "시험 환경에서 개발 역할로 회신을 만들어 「개발 결과 받기」를 시험하려면 같은 브랜치의 `"
+                        + TESTING + "` 를 따르십시오. FRD 와 SRT 로 만든 요청서마다 만드는 법이 다릅니다."
+                        + " 그 파일이 없으면 시험 환경이 아닙니다 — 실제 개발은 위 2절만 따르면 됩니다.",
                 "");
     }
+
+    /**
+     * 시험용 회신 만드는 법 — 이 브랜치에 사람이 둔다. ⚠ 빌더는 이 파일을 쓰지도 지우지도 않는다
+     * (앞 판을 읽고 {@link #PATH} · {@link #README} 둘만 갈아 끼운다). 정본은 빌더 저장소
+     * {@code docs/testing/dev-return-sample.md} 이고 이것은 사본이다.
+     */
+    public static final String TESTING = "TESTING.md";
 
     /** ⚠ 줄바꿈을 못 박는다 — 운영체제에 따라 README 가 섞이지 않게. */
     private static final String NL_JOIN = "\n";

@@ -13,6 +13,24 @@ public interface DevelopmentRequestMapper {
     DevelopmentRequest selectById(String id);
     DevelopmentRequest selectByFrdId(String frdId);
 
+    /** 「개발에 넘기기」 레이어에서 고른 일정 · 전달사항 · 첨부 (목업 06b). 비운 칸은 「미정」·「없음」으로 나간다. */
+    int updateSendDetails(@Param("id") String id, @Param("completedOn") java.time.LocalDate completedOn,
+                          @Param("deployOn") java.time.LocalDate deployOn, @Param("comment") String comment,
+                          @Param("attachmentName") String attachmentName,
+                          @Param("attachmentPath") String attachmentPath,
+                          @Param("attachmentSize") Long attachmentSize);
+
+    /** 완료가 만든 직후 — 준비가 끝날 때까지 목록에 안 보인다. */
+    int markPreparing(String id);
+
+    /** 준비(기능정의서 · TC)가 끝났다 — 이제 목록에 보인다. */
+    int markPrepared(String id);
+
+    boolean isPreparing(String id);
+
+    /** 서버가 준비 도중에 멈췄던 요청서 — 기동할 때 거둔다. */
+    List<String> selectPreparingIds();
+
 
 
     /**

@@ -36,8 +36,41 @@ class DevRequestDocumentTest {
                 .isLessThan(md.indexOf("## 2. 요구사항 전체"));
         assertThat(md.indexOf("## 3. 개발 범위"))
                 .isLessThan(md.indexOf("## 4. 제외 범위"));
-        assertThat(md).contains("## 5. 완료 조건", "## 6. 확인 필요", "## 7. 화면 외 구현",
-                "## 8. 화면별 산출물 목록", "## 9. 전송 정보", "## 10. 첨부 목록");
+        assertThat(md).contains("## 5. 완료 조건", "## 6. 정한 것", "## 7. 화면 외 구현",
+                "## 8. 화면별 산출물 목록", "## 9. 전송 정보", "## 10. 첨부 목록",
+                "## 11. 돌려받을 것");
+        assertThat(md.indexOf("## 10. 첨부 목록")).isLessThan(md.indexOf("## 11. 돌려받을 것"));
+    }
+
+    /**
+     * ⭐ <b>11절은 두 계약 파일을 따르라는 안내만 둔다</b> — 설계(꾸러미 설계 「돌려받을 것」)가 그렇게 정했다.
+     * 개발이 먼저 여는 문서에서 돌려보낼 길을 알아야 한다. ⛔ 돌려보내는 법을 여기에 다시 적지 않는다 —
+     * 그 값은 expected-back.md 에 있고 두 곳에 적으면 갈린다.
+     */
+    @Test
+    void 열한째_절은_두_계약_파일을_따르라고만_안내한다() throws IOException {
+        String md = documents.render(meta(), content(), manifest());
+        String section = md.substring(md.indexOf("## 11. 돌려받을 것"));
+
+        assertThat(section).contains("expected-back.md").contains("manifest.json")
+                .doesNotContain("return.json");
+    }
+
+    /**
+     * ⚠ 화면도 화면 외 구현도 없는 요청서가 「화면 외 구현만 담습니다」라고 말하면 7절과 어긋난다
+     * (2026-09-24 DR-012 에서 본 모순).
+     */
+    @Test
+    void 화면이_없으면_화면_외_구현이_있다고_말하지_않는다() throws IOException {
+        Path empty = dir.resolve("empty-srt.json");
+        Files.writeString(empty, """
+                {"specVersion": 2, "request": {"label": "DR-012"}, "screens": [], "expectedBack": {"screens": []}}
+                """, StandardCharsets.UTF_8);
+
+        String md = documents.render(meta(), content(), empty);
+        String section = md.substring(md.indexOf("## 8. 화면별 산출물 목록"), md.indexOf("## 9. 전송 정보"));
+
+        assertThat(section).contains("화면 변경이 없습니다").doesNotContain("화면 외 구현만");
     }
 
     /**
@@ -46,13 +79,17 @@ class DevRequestDocumentTest {
      * {@code ACCEPTANCE} 로 적어 놓고도 초록이었다.
      */
     @Test
-    void 완료_조건과_확인_필요는_제목만_아니라_속이_찬다() throws IOException {
+    void 완료_조건과_정한_것은_제목만_아니라_속이_찬다() throws IOException {
         String md = documents.render(meta(), content(), manifest());
-        String acceptance = md.substring(md.indexOf("## 5. 완료 조건"), md.indexOf("## 6. 확인 필요"));
-        String issues = md.substring(md.indexOf("## 6. 확인 필요"), md.indexOf("## 7. 화면 외 구현"));
+        String acceptance = md.substring(md.indexOf("## 5. 완료 조건"), md.indexOf("## 6. 정한 것"));
+        String decided = md.substring(md.indexOf("## 6. 정한 것"), md.indexOf("## 7. 화면 외 구현"));
 
         assertThat(acceptance).contains("프리필된 값으로 가입이 끝난다");
-        assertThat(issues).contains("생년월일이 없는 회원은 어떻게 하나");
+        // ⭐ 개발은 「질문 → 답」을 받는다 — 권장안으로 정한 것은 그렇다고 적는다 (2026-09-24 사용자 확정).
+        assertThat(decided)
+                .contains("- 생년월일이 없는 회원은 어떻게 하나 → 빈칸으로 두고 가입을 막지 않는다")
+                .contains("- 동의 문구를 바꿀지 → 바꾸지 않는다 (AI 권장안)")
+                .contains("확인 필요: 옛 결과의 확인 필요");
     }
 
     @Test
@@ -118,6 +155,26 @@ class DevRequestDocumentTest {
         assertThat(section).contains("화면 변경이 없습니다");
     }
 
+    /**
+     * ⭐ 올린 파일은 꾸러미의 {@code attachments/} 에 그대로 있고, 플로우 첨부는 옮기지 않고 목록만 적는다
+     * (2026-09-24 사용자 확정 · 목업 06b).
+     */
+    @Test
+    void 첨부는_올린_파일의_자리와_플로우_첨부_목록을_함께_적는다() throws IOException {
+        DevRequestDocument.Meta base = meta();
+        DevRequestDocument.Meta meta = new DevRequestDocument.Meta(base.label(), base.title(), base.systemCode(),
+                base.facets(), base.frdLabel(), base.ownerName(), base.createdOn(), base.completedOn(),
+                base.deployOn(), base.plannerComment(), base.attachmentName(), base.attachmentSize(),
+                List.of(new DevRequestSourceFiles.SourceFile("이름입력_검증.png", "https://flow.example/f/1", 320_000L)));
+
+        String md = documents.render(meta, content(), manifest());
+        String section = md.substring(md.indexOf("## 10. 첨부 목록"), md.indexOf("## 11. 돌려받을 것"));
+
+        assertThat(section).contains("- `attachments/화면흐름.pdf` — 242KB")
+                .contains("파일은 옮기지 않았습니다")
+                .contains("- 이름입력_검증.png — https://flow.example/f/1 — 312KB");
+    }
+
     private DevRequestDocument.Meta meta() {
         return new DevRequestDocument.Meta("DR-009", "에이블리 회원가입 프리필", "EXW",
                 List.of("에이블리"), "FRD-002", "이영희",
@@ -141,7 +198,10 @@ class DevRequestDocumentTest {
                         "domains/join/prefill.md", "회원정보 조회 응답에 생년월일을 더한다",
                         1, "민원 2026-09-14", "응답 스키마에 필드가 있는지 본다", true)),
                 List.of(new DevelopmentRequestContent.Note("ACCEPTANCE_CRITERION", "프리필된 값으로 가입이 끝난다"),
-                        new DevelopmentRequestContent.Note("OPEN_ISSUE", "생년월일이 없는 회원은 어떻게 하나")));
+                        new DevelopmentRequestContent.Note("DECISION_INTERVIEW",
+                                "생년월일이 없는 회원은 어떻게 하나\n빈칸으로 두고 가입을 막지 않는다"),
+                        new DevelopmentRequestContent.Note("DECISION_RECOMMENDED", "동의 문구를 바꿀지\n바꾸지 않는다"),
+                        new DevelopmentRequestContent.Note("OPEN_ISSUE", "옛 결과의 확인 필요")));
     }
 
     private Path manifest() throws IOException {

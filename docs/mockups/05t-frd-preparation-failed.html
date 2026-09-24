@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <link rel="stylesheet" href="../../src/main/resources/static/css/tokens.css">
+  <link rel="stylesheet" href="../../src/main/resources/static/css/reset.css">
+  <link rel="stylesheet" href="../../src/main/resources/static/css/typography.css">
+  <link rel="stylesheet" href="../../src/main/resources/static/css/components.css">
+  <link rel="stylesheet" href="../../src/main/resources/static/css/shell.css">
+  <link rel="stylesheet" href="_mock.css">
+  <link rel="stylesheet" href="../../src/main/resources/static/css/screens.css">
+  <title>FRD 작업 완료 — 개발요청서 준비를 못 마침</title>
+</head>
+<body>
+<!--
+  개발요청서 준비를 못 마친 한 시점 (2026-09-24 사용자 확정). 개발요청서는 거뒀고 FRD 는 완료 전으로 돌아갔다.
+  기획자는 까닭을 보고 FRD 로 돌아가 다시 완료한다. 작업물은 그대로 남아 있다.
+-->
+<template id="본문">
+  <div class="artifact-generation-layout">
+    <header class="rq-head">
+      <div class="rq-head__copy"><span class="rq-kicker num">FRD-009</span><h1>에이블리 회원가입 성별 선택 추가</h1><p>개발요청서 준비를 마치지 못해 FRD 작업을 완료 전으로 되돌렸습니다.</p></div>
+    </header>
+    <div class="state-panel state-panel--error" role="alert">
+      <strong>개발요청서를 준비하지 못했습니다.</strong>
+      <p>테스트 시나리오를 만들지 못했습니다. 다시 완료해 주세요.</p>
+    </div>
+    <p><a class="button button--primary" href="05a-frd-workbench.html">FRD 작업으로 돌아가기</a></p>
+  </div>
+</template>
+<script src="_shell.js"></script>
+<script>틀({제목:'FRD 작업',모양:'산출물',지금:'frds',프로젝트이름:'G2C',프로젝트번호:1,프로젝트들:['G2C','서울페이'],사람:'이영희',안읽은알림:2});</script>
+</body>
+</html>

@@ -7,6 +7,11 @@ import com.bizplay.builder.claude.FakeClaudeAuthGateway;
 import com.bizplay.builder.devrequest.DevelopmentRequestService;
 import com.bizplay.builder.frd.FrdService;
 import com.bizplay.builder.frd.FrdFacetMapper;
+import com.bizplay.builder.frd.FrdAnalysisNote;
+import com.bizplay.builder.frd.FrdScreen;
+import com.bizplay.builder.frd.FrdScreenMapper;
+import com.bizplay.builder.solution.SolutionScreen;
+import com.bizplay.builder.solution.SolutionScreenReader;
 import com.bizplay.builder.id.IdSequence;
 import com.bizplay.builder.intake.ProjectFacet;
 import com.bizplay.builder.intake.ProjectFacetMapper;
@@ -52,6 +57,8 @@ class SrtFlowTest extends AbstractDbTest {
     @Autowired SecretSealer sealer;
     @Autowired IdSequence ids;
     @MockitoBean SrtAiAnalyzer analyzer;
+    @MockitoBean SolutionScreenReader solutionScreens;
+    @Autowired FrdScreenMapper frdScreens;
     @MockitoBean(name = "aiExecutor") TaskExecutor aiExecutor;
 
     @BeforeEach
@@ -202,6 +209,111 @@ class SrtFlowTest extends AbstractDbTest {
                 .andExpect(status().is3xxRedirection());
         assertThat(srts.selectById(srt.id())).isNull();
         assertThat(frds.list(project.getId())).isEmpty();
+    }
+
+    private static SolutionScreen indexed(String screenId, String screenName) {
+        return new SolutionScreen(screenId, screenName, "EXW", "화면", null, null, "회원 > 가입", null,
+                null, null, java.util.List.of(), java.util.List.of(), null, java.util.List.of(), false, null);
+    }
+
+    private Srt registered(Project project, BuilderUser planner, SrtAiAnalysis analysis) throws Exception {
+        org.mockito.BDDMockito.given(analyzer.analyze(any(Srt.class))).willReturn(analysis);
+        mvc.perform(post("/projects/" + project.getId() + "/artifacts/srts")
+                        .param("source", "direct").param("title", "이름입력시 한글만")
+                        .param("content", "회원정보의 이름은 한글만 가능하도록 수정")
+                        .with(user(planner)).with(csrf()))
+                .andExpect(status().is3xxRedirection());
+        Srt srt = srts.selectByProjectId(project.getId()).get(0);
+        waitForAnalysis(srt.id());
+        return srts.selectById(srt.id());
+    }
+
+    private String detailHtml(Project project, BuilderUser planner, Srt srt) throws Exception {
+        return mvc.perform(get("/projects/" + project.getId() + "/artifacts/srts")
+                        .param("selected", srt.id()).with(user(planner)))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString(StandardCharsets.UTF_8);
+    }
+
+    /**
+     * ⭐ <b>AI 가 채우고 사람은 생성 전에 확인만 한다</b> (2026-09-24 사용자 확정 · 목업 13).
+     * 고칠 화면의 시스템은 색인이 정하고, 사람이 바꾼 답은 권장안이 아니라 기획자 답으로 나간다.
+     * 화면은 작업대 없이 as-is 만 싣는다 — to-be 목업·기능정의서를 막는 항목이 없다.
+     */
+    @Test
+    void AI가_짚은_고칠_화면과_권장안을_확인하고_바꾼_답은_기획자_답으로_개발요청서에_싣는다() throws Exception {
+        Project project = readyProject("SRT 화면 시험");
+        BuilderUser planner = planner();
+        org.mockito.BDDMockito.given(solutionScreens.read(project.getId())).willReturn(java.util.List.of(
+                indexed("EXW-UWV-70-30-10-C", "에이블리 회원가입"),
+                indexed("EXW-UWV-70-30-20-C", "에이블리 회원정보 수정")));
+        Srt srt = registered(project, planner, new SrtAiAnalysis(true, null, "이름 입력 검증을 더하는 요청입니다.",
+                java.util.List.of("이름 입력 칸에 한글만 받는다."), java.util.List.of("영문을 넣으면 안내가 뜬다."),
+                true, java.util.List.of(new SrtAiAnalysis.Target("EXW-UWV-70-30-10-C", "이름 칸에 검증을 더한다"),
+                        new SrtAiAnalysis.Target("NOT-IN-INDEX", "지어낸 화면")),
+                java.util.List.of(new FrdAnalysisNote.Decision("띄어쓰기를 허용할지", "허용하지 않는다", true))));
+
+        java.util.List<FrdScreen> picked = frdScreens.selectByFrdId(srt.bridgeFrdId());
+        assertThat(picked).singleElement().satisfies(screen -> {
+            assertThat(screen.screenId()).isEqualTo("EXW-UWV-70-30-10-C");
+            assertThat(screen.systemCode()).isEqualTo("EXW");
+        });
+        assertThat(detailHtml(project, planner, srt)).contains("고칠 화면", "에이블리 회원가입", "AI 선택",
+                "다른 화면으로 바꾸기", "고칠 화면 고르기", "확인 필요", "띄어쓰기를 허용할지", "AI 권장안",
+                "name=\"answer.1\"", "허용하지 않는다");
+
+        mvc.perform(post("/projects/" + project.getId() + "/artifacts/srts/" + srt.id() + "/screen")
+                        .param("screenId", "EXW-UWV-70-30-20-C").param("replace", picked.get(0).id())
+                        .with(user(planner)).with(csrf()))
+                .andExpect(status().is3xxRedirection());
+        mvc.perform(post("/projects/" + project.getId() + "/artifacts/srts/" + srt.id() + "/dev-request")
+                        .param("answer.1", "앞뒤 공백만 지우고 가운데 띄어쓰기는 허용한다")
+                        .with(user(planner)).with(csrf()))
+                .andExpect(status().is3xxRedirection());
+
+        Srt completed = srts.selectById(srt.id());
+        assertThat(completed.devRequestId()).isNotNull();
+        var view = requests.read(project.getId(), completed.devRequestId());
+        assertThat(view.content().screens()).singleElement().satisfies(screen -> {
+            assertThat(screen.screenId()).isEqualTo("EXW-UWV-70-30-20-C");
+            assertThat(screen.systemCode()).isEqualTo("EXW");
+        });
+        assertThat(view.content().decisions()).singleElement().satisfies(decision -> {
+            assertThat(decision.answer()).isEqualTo("앞뒤 공백만 지우고 가운데 띄어쓰기는 허용한다");
+            assertThat(decision.recommended()).isFalse();
+        });
+        assertThat(view.asIsOnly()).isTrue();
+        assertThat(requests.precheck(project.getId(), completed.devRequestId()).blocking())
+                .extracting(com.bizplay.builder.devrequest.DevRequestPrecheck.Item::message)
+                .doesNotContain("수정한 화면이 아직 없습니다.", "변경 예정 기능정의서를 만들어야 합니다.");
+    }
+
+    /** ⭐ 화면을 고쳐야 하는데 AI 가 못 짚었으면 생성을 막고, 사람이 고르면 풀린다. */
+    @Test
+    void 화면을_고쳐야_하는데_못_짚으면_생성을_막고_고르면_풀린다() throws Exception {
+        Project project = readyProject("SRT 화면 못 짚음");
+        BuilderUser planner = planner();
+        org.mockito.BDDMockito.given(solutionScreens.read(project.getId())).willReturn(java.util.List.of(
+                indexed("EXW-UWV-70-30-10-C", "에이블리 회원가입")));
+        Srt srt = registered(project, planner, new SrtAiAnalysis(true, null, "이름 입력 검증을 더하는 요청입니다.",
+                java.util.List.of("이름 입력 칸에 한글만 받는다."), java.util.List.of("영문을 넣으면 안내가 뜬다."),
+                true, java.util.List.of(), java.util.List.of()));
+
+        assertThat(detailHtml(project, planner, srt)).contains("AI가 고칠 화면을 찾지 못했습니다", "고칠 화면을 먼저 골라 주세요.");
+        var refused = mvc.perform(post("/projects/" + project.getId() + "/artifacts/srts/" + srt.id() + "/dev-request")
+                        .with(user(planner)).with(csrf()))
+                .andExpect(status().is3xxRedirection()).andReturn();
+        assertThat(srts.selectById(srt.id()).devRequestId()).isNull();
+        assertThat(refused.getFlashMap().get("error")).isEqualTo("고칠 화면을 골라야 개발요청서를 생성할 수 있습니다.");
+
+        mvc.perform(post("/projects/" + project.getId() + "/artifacts/srts/" + srt.id() + "/screen")
+                        .param("screenId", "EXW-UWV-70-30-10-C")
+                        .with(user(planner)).with(csrf()))
+                .andExpect(status().is3xxRedirection());
+        mvc.perform(post("/projects/" + project.getId() + "/artifacts/srts/" + srt.id() + "/dev-request")
+                        .with(user(planner)).with(csrf()))
+                .andExpect(status().is3xxRedirection());
+        assertThat(srts.selectById(srt.id()).devRequestId()).isNotNull();
     }
 
     private Project readyProject(String name) {

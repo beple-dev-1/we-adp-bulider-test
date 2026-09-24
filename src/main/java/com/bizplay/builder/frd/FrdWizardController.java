@@ -272,6 +272,11 @@ public class FrdWizardController {
                 .filter(note -> note.kind() == FrdAnalysisNote.Kind.ACCEPTANCE_CRITERION).toList());
         model.addAttribute("openIssues", analysisNotes.stream()
                 .filter(note -> note.kind() == FrdAnalysisNote.Kind.OPEN_ISSUE).toList());
+        List<FrdAnalysisNote.Decision> decisions = analysisNotes.stream()
+                .map(FrdAnalysisNote::decision).filter(java.util.Objects::nonNull).toList();
+        model.addAttribute("decisions", decisions);
+        model.addAttribute("hasRecommendedDecision",
+                decisions.stream().anyMatch(FrdAnalysisNote.Decision::recommended));
         FrdAnalysisNote workMode = analysisNotes.stream()
                 .filter(note -> note.kind() == FrdAnalysisNote.Kind.WORK_MODE_FAST_TRACK
                         || note.kind() == FrdAnalysisNote.Kind.WORK_MODE_FRD)

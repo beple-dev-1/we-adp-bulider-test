@@ -32,17 +32,30 @@ public class DevelopmentRequestController {
     private final DevRequestReceiveService receives;
     private final ProjectFacetMapper projectFacets;
     private final ProjectSystemService projectSystems;
+    /** ⚠ 없으면(단위 시험) 준비 중인 요청서를 재지 않는다. */
+    private final DevRequestPreparation preparation;
+
+    @org.springframework.beans.factory.annotation.Autowired
+    public DevelopmentRequestController(DevelopmentRequestService requests,
+                                        DevRequestDeliveryService deliveries,
+                                        DevRequestReceiveService receives,
+                                        ProjectFacetMapper projectFacets,
+                                        ProjectSystemService projectSystems,
+                                        DevRequestPreparation preparation) {
+        this.deliveries = deliveries;
+        this.receives = receives;
+        this.requests = requests;
+        this.projectFacets = projectFacets;
+        this.projectSystems = projectSystems;
+        this.preparation = preparation;
+    }
 
     public DevelopmentRequestController(DevelopmentRequestService requests,
                                         DevRequestDeliveryService deliveries,
                                         DevRequestReceiveService receives,
                                         ProjectFacetMapper projectFacets,
                                         ProjectSystemService projectSystems) {
-        this.deliveries = deliveries;
-        this.receives = receives;
-        this.requests = requests;
-        this.projectFacets = projectFacets;
-        this.projectSystems = projectSystems;
+        this(requests, deliveries, receives, projectFacets, projectSystems, null);
     }
 
     @GetMapping
@@ -54,6 +67,8 @@ public class DevelopmentRequestController {
                        @RequestParam(defaultValue = "1") int page,
                        @RequestParam(defaultValue = "10") int pageSize,
                        Model model) {
+        // ⭐ 준비 중인 요청서는 목록에 안 보인다 — 끝난 것은 올리고 못 마친 것은 거둔 뒤에 그린다.
+        if (preparation != null) preparation.settleProject(projectId);
         List<DevelopmentRequestService.Row> all = requests.list(projectId);
         var systemLabels = projectSystems.labels(projectId);
         List<DevelopmentRequestService.Row> matched = all.stream()
@@ -164,6 +179,8 @@ public class DevelopmentRequestController {
         model.addAttribute("listSystem", listSystem);
         model.addAttribute("listPage", listPage);
         model.addAttribute("listPageSize", listPageSize);
+        model.addAttribute("sourceFiles", deliveries == null ? List.of()
+                : deliveries.sourceFilesOf(view.request().frdId()));
         return "artifacts/dev-request";
     }
 
@@ -188,8 +205,19 @@ public class DevelopmentRequestController {
      */
     @PostMapping("/{requestId}/deliver")
     public String deliver(@PathVariable String projectId, @PathVariable String requestId,
+                          @RequestParam(required = false)
+                          @org.springframework.format.annotation.DateTimeFormat(iso = org.springframework.format.annotation.DateTimeFormat.ISO.DATE)
+                          java.time.LocalDate developmentCompletedOn,
+                          @RequestParam(required = false)
+                          @org.springframework.format.annotation.DateTimeFormat(iso = org.springframework.format.annotation.DateTimeFormat.ISO.DATE)
+                          java.time.LocalDate deploymentOn,
+                          @RequestParam(required = false) String plannerComment,
+                          @RequestParam(required = false) org.springframework.web.multipart.MultipartFile attachment,
                           @AuthenticationPrincipal BuilderUser me, RedirectAttributes flash) {
         try {
+            // ⭐ 「개발에 넘기기」 레이어에서 고른 것을 먼저 적는다 (목업 06b) — 모두 선택이다.
+            requests.saveSendDetails(projectId, requestId, developmentCompletedOn, deploymentOn,
+                    plannerComment, attachment);
             var published = deliveries.deliver(projectId, requestId, me == null ? null : me.accountId());
             flash.addFlashAttribute("message",
                     "개발에 넘겼습니다. 기획 저장소의 %s 브랜치에 꾸러미를 올렸습니다.".formatted(published.branch()));

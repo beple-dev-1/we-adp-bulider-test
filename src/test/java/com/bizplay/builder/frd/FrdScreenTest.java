@@ -1189,8 +1189,9 @@ class FrdScreenTest extends AbstractDbTest {
                 .andReturn();
         DevelopmentRequest request = developmentRequests.selectByFrdId(frdId);
         assertThat(request).isNotNull();
+        // ⭐ 완료는 준비까지 기다린다 — 기획자는 FRD 의 대기 화면에서 기다린다 (2026-09-24).
         assertThat(result.getResponse().getRedirectedUrl()).isEqualTo(
-                "/projects/" + p.getId() + "/artifacts/dev-requests/" + request.id());
+                "/projects/" + p.getId() + "/artifacts/frds/" + frdId + "/preparing");
         assertThat(frds.selectById(frdId).state()).isEqualTo(Frd.State.REVIEW);
         verify(workspaces, never()).ensure(p.getId(), frdId);
     }
@@ -1258,7 +1259,7 @@ class FrdScreenTest extends AbstractDbTest {
     }
 
     @Test
-    void 확인할_내용이_남은_작업은_빠른_진행을_허용하지_않는다() throws Exception {
+    void 옛_결과의_확인_필요가_남은_작업은_빠른_진행을_허용하지_않는다() throws Exception {
         Project p = readyProject("탐나는전");
         String frdId = seedFrd(p, "배치 실행 시간 변경");
         FrdInterviewReader.Result result = (FrdInterviewReader.Result) interviewReader.read("""
@@ -1268,11 +1269,14 @@ class FrdScreenTest extends AbstractDbTest {
                    "verdict":"NO_SCREEN","screens":[],"note":"배치 설정 변경"}],
                  "backendChanges":[{"category":"BATCH","target":"정산 배치","changeDetail":"실행 시간 변경",
                    "evidence":"요구사항","required":true}],
-                 "acceptanceCriteria":[],"openIssues":["적용할 실행 시간을 확인해야 합니다."],
+                 "acceptanceCriteria":[],"decisions":[],
                  "workMode":"FAST_TRACK","workModeReason":"화면 작업이 없습니다.",
                  "noScreenReason":"백엔드 배치 설정만 변경합니다."}
                 """);
         interviewService.saveResult(frdId, result);
+        // ⚠ 새 인터뷰는 확인 필요를 남기지 않는다 — 옛 결과로 저장된 것만 이 문을 탄다.
+        analysisNotes.insert(new FrdAnalysisNote("9900001", frdId, 1, FrdAnalysisNote.Kind.OPEN_ISSUE,
+                "적용할 실행 시간을 확인해야 합니다.", null));
 
         mvc.perform(post("/projects/{p}/artifacts/frds/{f}/pick", p.getId(), frdId)
                         .with(user(planner)).with(csrf()))
@@ -1290,6 +1294,69 @@ class FrdScreenTest extends AbstractDbTest {
                 .andExpect(redirectedUrl("/projects/" + p.getId() + "/artifacts/frds/" + frdId + "/pick"));
         assertThat(developmentRequests.selectByFrdId(frdId)).isNull();
         assertThat(frds.selectById(frdId).state()).isEqualTo(Frd.State.SCOPE_REVIEW);
+    }
+
+    /**
+     * ⭐ <b>인터뷰는 확인 필요를 남기지 않고 정한 것만 남긴다</b> (2026-09-24 사용자 확정 · 목업 05r).
+     * 걸음3 은 질문과 답을 보여 주기만 하고, 권장안으로 정한 줄에는 「AI 권장안」을 붙인다.
+     * ⚠ 모델이 옛 칸(openIssues)을 쓰면 권장 기본값으로 정한 것으로 받는다 — 결과 전체를 버리지 않는다.
+     */
+    @Test
+    void 인터뷰가_정한_것을_개발_범위_확인에_질문과_답으로_보여준다() throws Exception {
+        Project p = readyProject("탐나는전");
+        String frdId = seedFrd(p, "배치 실행 시간 변경");
+        FrdInterviewReader.Result result = (FrdInterviewReader.Result) interviewReader.read("""
+                {"type":"RESULT","analysisSummary":"백엔드 배치 설정 변경입니다.",
+                 "title":"배치 실행 시간 변경",
+                 "items":[{"requirement":"배치 실행 시간을 변경한다","nature":"DEVELOP",
+                   "verdict":"NO_SCREEN","screens":[],"note":"배치 설정 변경"}],
+                 "backendChanges":[{"category":"BATCH","target":"정산 배치","changeDetail":"실행 시간 변경",
+                   "evidence":"요구사항","required":true}],
+                 "acceptanceCriteria":[],
+                 "decisions":[{"question":"언제부터 바꿀지","answer":"다음 달 1일부터 바꿉니다.","decidedBy":"INTERVIEW"},
+                              {"question":"실패하면 다시 돌릴지","answer":"한 번 다시 돌립니다.","decidedBy":"RECOMMENDATION"}],
+                 "openIssues":["알림 대상 확인"],
+                 "workMode":"FAST_TRACK","workModeReason":"화면 작업이 없습니다.",
+                 "noScreenReason":"백엔드 배치 설정만 변경합니다."}
+                """);
+        interviewService.saveResult(frdId, result);
+
+        assertThat(analysisNotes.selectByFrdId(frdId)).extracting(FrdAnalysisNote::kind)
+                .doesNotContain(FrdAnalysisNote.Kind.OPEN_ISSUE)
+                .contains(FrdAnalysisNote.Kind.DECISION_INTERVIEW, FrdAnalysisNote.Kind.DECISION_RECOMMENDED);
+
+        mvc.perform(post("/projects/{p}/artifacts/frds/{f}/pick", p.getId(), frdId)
+                        .with(user(planner)).with(csrf()))
+                .andExpect(status().is3xxRedirection());
+        String html = mvc.perform(get("/projects/{p}/artifacts/frds/{f}/pick", p.getId(), frdId)
+                        .with(user(planner)))
+                .andExpect(status().isOk()).andReturn().getResponse()
+                .getContentAsString(StandardCharsets.UTF_8);
+
+        assertThat(html).contains("정한 것")
+                .contains("언제부터 바꿀지").contains("다음 달 1일부터 바꿉니다.").contains("인터뷰 답변")
+                .contains("실패하면 다시 돌릴지").contains("한 번 다시 돌립니다.").contains("AI 권장안")
+                .contains("알림 대상 확인")
+                .contains("다르면 다시 인터뷰해 주세요.")
+                .doesNotContain("남은 확인 사항이 없습니다.")
+                .contains("개발요청서 바로 만들기");
+    }
+
+    /** ⭐ 결과 전에 남은 확인 사항을 묻는 질문은 다섯 번에 세지 않고 따로 센다. */
+    @Test
+    void 남은_확인_사항을_묻는_질문은_질문_횟수에_세지_않는다() throws Exception {
+        Project p = readyProject("탐나는전");
+        String frdId = seedFrd(p, "임시저장 화면 추가");
+        FrdInterviewReader.Question confirm = (FrdInterviewReader.Question) interviewReader.read("""
+                {"type":"QUESTION","analysisSummary":"확인한 사실","assistantMessage":null,
+                 "question":{"topic":"보관 기간","text":"임시 저장 문서를 30일 보관할까요?","reason":"정하지 않았습니다",
+                   "options":["권장안 적용 — 30일 보관","직접 입력"],"confirm":true}}
+                """);
+        interviewService.saveQuestion(frdId, confirm);
+
+        assertThat(confirm.topic()).isEqualTo(FrdInterviewReader.CONFIRM_TOPIC);
+        assertThat(interviewService.currentQuestionRound(frdId)).isZero();
+        assertThat(interviewService.currentConfirmRound(frdId)).isEqualTo(1);
     }
 
     @Test
@@ -2664,14 +2731,14 @@ class FrdScreenTest extends AbstractDbTest {
         var result = mvc.perform(post("/projects/{p}/artifacts/frds/{f}/complete", p.getId(), frdId)
                 .with(user(planner)).with(csrf()))
                 .andExpect(status().is3xxRedirection())
-                .andExpect(flash().attribute("message", "FRD 작업을 완료하고 개발요청서를 만들었습니다."))
+                .andExpect(flash().attribute("message", "FRD 작업을 완료했습니다. 개발요청서를 준비하고 있습니다."))
                 .andReturn();
 
         assertThat(frds.selectById(frdId).state()).isEqualTo(Frd.State.REVIEW);
         DevelopmentRequest request = developmentRequests.selectByFrdId(frdId);
         assertThat(request).isNotNull();
         assertThat(result.getResponse().getRedirectedUrl()).isEqualTo(
-                "/projects/" + p.getId() + "/artifacts/dev-requests/" + request.id());
+                "/projects/" + p.getId() + "/artifacts/frds/" + frdId + "/preparing");
         verify(workspaces).commitChanges(p.getId(), frdId, "docs: FRD-001 작업 완료");
 
         String completedFrd = mvc.perform(get("/projects/{p}/artifacts/frds/{f}", p.getId(), frdId)
@@ -2697,8 +2764,8 @@ class FrdScreenTest extends AbstractDbTest {
                 .contains("담당자")
                 .contains("이영희")
                 .contains("FRD 작업 재개")
-                // ⛔ 2026-09-06(003) — 첨부파일은 전송 레이어 안에 있었고 함께 없어졌다.
-                .doesNotContain("첨부파일")
+                // ⭐ 2026-09-24 되살렸다 — 첨부파일은 「개발에 넘기기」 레이어 안에 있다 (목업 06b).
+                .contains("id=\"dev-delivery-dialog\"").contains("첨부파일")
                 .doesNotContain("기준 FRD 보기")
                 .doesNotContain("변경 예정 기능정의서 만들기")
                 .doesNotContain("확인 필요 1건</span>");
@@ -2802,6 +2869,8 @@ class FrdScreenTest extends AbstractDbTest {
                 .willReturn(new FrdWorkspace.Commit(Path.of("test", "frd-" + frdId), "before", "after"));
         mvc.perform(post("/projects/{p}/artifacts/frds/{f}/complete", p.getId(), frdId)
                 .with(user(planner)).with(csrf())).andExpect(status().is3xxRedirection());
+        // ⚠ 준비가 끝난 요청서만 목록에 보인다 — 이 시험은 목록의 열을 잰다.
+        developmentRequests.markPrepared(developmentRequests.selectByFrdId(frdId).id());
 
         String html = devRequestList(p.getId());
 
@@ -2821,12 +2890,56 @@ class FrdScreenTest extends AbstractDbTest {
                 .willReturn(new FrdWorkspace.Commit(Path.of("test", "frd-" + frdId), "before", "after"));
         mvc.perform(post("/projects/{p}/artifacts/frds/{f}/complete", p.getId(), frdId)
                 .with(user(planner)).with(csrf())).andExpect(status().is3xxRedirection());
+        // ⚠ 준비가 끝난 요청서만 목록에 보인다 — 이 시험은 목록의 열을 잰다.
+        developmentRequests.markPrepared(developmentRequests.selectByFrdId(frdId).id());
 
         String html = devRequestList(p.getId());
 
         assertThat(html).contains("<th scope=\"col\">적용 대상</th>")
                 .contains("<span class=\"badge badge--outline\">익산</span>")
                 .contains("<span class=\"badge badge--outline\">제주</span>");
+    }
+
+    /**
+     * ⭐ <b>준비를 못 마치면 요청서를 거두고 FRD 를 완료 전으로 되돌린다</b> (2026-09-24 사용자 확정).
+     * 이 시험 자리에는 Claude 연결이 없어 테스트 시나리오 만들기가 곧 실패한다 — 그 길을 그대로 잰다.
+     * 준비 중인 요청서는 목록에 보이지 않고, 대기 화면은 까닭과 돌아갈 자리를 보인다.
+     */
+    @Test
+    void 테스트_시나리오를_못_만들면_개발요청서를_거두고_FRD를_완료_전으로_되돌린다() throws Exception {
+        Project p = readyProject("전자결재");
+        String frdId = seedDraftingFrd(p);
+        analysisNotes.insert(new FrdAnalysisNote(ids.next(IdSequence.Kind.FRD_ANALYSIS_NOTE), frdId, 1,
+                FrdAnalysisNote.Kind.ACCEPTANCE_CRITERION, "임시 저장한 문서를 다시 열 수 있습니다.", Instant.now()));
+        given(workspaces.commitChanges(anyString(), anyString(), anyString()))
+                .willReturn(new FrdWorkspace.Commit(Path.of("test", "frd-" + frdId), "before", "after"));
+        mvc.perform(post("/projects/{p}/artifacts/frds/{f}/complete", p.getId(), frdId)
+                .with(user(planner)).with(csrf())).andExpect(status().is3xxRedirection());
+        assertThat(developmentRequests.isPreparing(developmentRequests.selectByFrdId(frdId).id())).isTrue();
+        assertThat(devRequestList(p.getId())).doesNotContain("DR-001");
+
+        String state = "PREPARING";
+        for (int attempt = 0; attempt < 100 && !"FAILED".equals(state); attempt++) {
+            Thread.sleep(50);
+            state = com.jayway.jsonpath.JsonPath.read(mvc.perform(
+                            get("/projects/{p}/artifacts/frds/{f}/preparation-status", p.getId(), frdId)
+                                    .with(user(planner)))
+                    .andExpect(status().isOk()).andReturn().getResponse()
+                    .getContentAsString(StandardCharsets.UTF_8), "$.state");
+        }
+
+        assertThat(state).isEqualTo("FAILED");
+        assertThat(developmentRequests.selectByFrdId(frdId)).isNull();
+        assertThat(frds.selectById(frdId).state()).isNotEqualTo(Frd.State.REVIEW);
+        String html = mvc.perform(get("/projects/{p}/artifacts/frds/{f}/preparing", p.getId(), frdId)
+                        .with(user(planner)))
+                .andExpect(status().isOk()).andReturn().getResponse()
+                .getContentAsString(StandardCharsets.UTF_8);
+        // ⚠ 까닭은 먼저 멈춘 것 하나다 — 이 FRD 는 화면의 기능정의서 재료도 없어 어느 쪽이 먼저 잡힐지 모른다.
+        assertThat(html).contains("개발요청서를 준비하지 못했습니다.")
+                .containsAnyOf("테스트 시나리오를 만들지 못했습니다.", "변경 예정 기능정의서를 만들지 못했습니다")
+                .contains("다시 완료해 주세요.")
+                .contains("FRD 작업으로 돌아가기");
     }
 
     @Test

@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{fragments/shell :: layout(${title}, ${shape}, ${current}, ~{:: content})}">
+<body>
+<!--/*
+  FRD 작업 완료 뒤 개발요청서 준비 (목업 05s · 05t) — 완료는 준비까지 기다린다 (2026-09-24 사용자 확정).
+  준비 중이면 스스로 다시 묻고, 끝나면 개발요청서로 넘어간다. 못 마치면 까닭과 돌아갈 자리를 보인다.
+*/-->
+<div th:fragment="content" class="artifact-generation-layout"
+     th:attr="data-preparation-status-url=${failed ? null : statusUrl}">
+  <header class="rq-head">
+    <div class="rq-head__copy">
+      <span class="rq-kicker num" th:text="${frd.label()}">FRD-001</span>
+      <h1 th:text="${frd.title()}">FRD 제목</h1>
+      <p th:text="${failed ? '개발요청서 준비를 마치지 못해 FRD 작업을 완료 전으로 되돌렸습니다.' : 'FRD 작업을 완료했습니다. 개발요청서를 준비하고 있습니다.'}">FRD 작업을 완료했습니다.</p>
+    </div>
+  </header>
+
+  <section class="artifact-generation" aria-live="polite" th:unless="${failed}">
+    <p class="artifact-generation__label"><span class="artifact-generation__dot" aria-hidden="true"></span>개발요청서 준비 중</p>
+    <h2>변경 예정 기능정의서와 테스트 시나리오를 만들고 있습니다</h2>
+    <p class="artifact-generation__description">AI가 바뀐 화면의 기능정의서와 완료 조건마다 테스트 시나리오를 씁니다. 몇 분 걸립니다.</p>
+    <div class="artifact-generation__track" aria-hidden="true"></div>
+    <p class="artifact-generation__note">끝나면 개발요청서로 넘어갑니다. 이 화면을 닫아도 준비는 계속됩니다.</p>
+  </section>
+
+  <th:block th:if="${failed}">
+    <div class="state-panel state-panel--error" role="alert">
+      <strong>개발요청서를 준비하지 못했습니다.</strong>
+      <p th:text="${failure}">테스트 시나리오를 만들지 못했습니다. 다시 완료해 주세요.</p>
+    </div>
+    <p><a class="button button--primary" th:href="@{/projects/{p}/artifacts/frds/{f}(p=${projectId},f=${frd.id()})}">FRD 작업으로 돌아가기</a></p>
+  </th:block>
+
+  <script th:unless="${failed}">
+    (function () {
+      var root = document.querySelector('[data-preparation-status-url]');
+      if (!root) return;
+      var url = root.getAttribute('data-preparation-status-url');
+      var poll = function () {
+        fetch(url, { headers: { 'Accept': 'application/json' } })
+          .then(function (response) { return response.ok ? response.json() : null; })
+          .then(function (status) {
+            if (status && status.state === 'READY' && status.requestUrl) { window.location.assign(status.requestUrl); return; }
+            if (status && (status.state === 'FAILED' || status.state === 'NONE')) { window.location.reload(); return; }
+            setTimeout(poll, 3000);
+          })
+          .catch(function () { setTimeout(poll, 8000); });
+      };
+      setTimeout(poll, 3000);
+    })();
+  </script>
+</div>
+</body>
+</html>

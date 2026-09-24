@@ -257,6 +257,7 @@ public class ScreenPickWorker {
                         interviews.transcript(frdId), StandardCharsets.UTF_8);
             }
             int questionRound = interviews == null ? 0 : interviews.currentQuestionRound(frdId);
+            int confirmRound = interviews == null ? 0 : interviews.currentConfirmRound(frdId);
 
             // ⛔ 작업 디렉터리는 **클론 그 자체**다 — 원문 파일은 그 밖의 실행 전용 자리에 있다.
             /*
@@ -287,7 +288,7 @@ public class ScreenPickWorker {
                         workDir.resolve(ANALYSIS_CONTEXT_FILE).toString()) + executionPrompt;
             }
             if (interviews != null) {
-                executionPrompt += interviewRoundInstruction(questionRound);
+                executionPrompt += interviewRoundInstruction(questionRound, confirmRound);
             }
             if (businessContext.isPresent()) executionPrompt += businessContext.get().instruction();
             List<String> executionArgs = claudeArgs(workDir, resumeSessionId, codebaseMemoryConfigFile,
@@ -714,7 +715,8 @@ public class ScreenPickWorker {
                    "topic":{"type":"string"},
                    "text":{"type":"string"},
                    "reason":{"type":"string"},
-                   "options":{"type":"array","minItems":2,"maxItems":4,"items":{"type":"string"}}},
+                   "options":{"type":"array","minItems":2,"maxItems":4,"items":{"type":"string"}},
+                   "confirm":{"type":"boolean","description":"결과를 내기 전에 남은 확인 사항을 권장안과 함께 묻는 질문이면 true. 이 질문은 질문 횟수에 세지 않는다"}},
                  "required":["text","reason","options"]},
                "title":{"type":["string","null"],"description":"업무명 한 줄"},
                "items":{"type":"array","description":"요구사항 항목마다 하나. 평평한 배열이고 이 밖에 항목을 담는 자리는 없다",
@@ -727,7 +729,7 @@ public class ScreenPickWorker {
                        "items":{"type":"object",
                          "properties":{
                            "screenId":{"type":"string","description":"기존 화면은 index.json의 화면ID. 사용자가 미리 정한 신규 화면은 분석 조건의 TMP ID, 인터뷰에서 발견한 신규 화면은 의미를 알 수 있는 임시 후보 ID"},
-                           "system":{"type":"string","description":"webview·backoffice·online-pg"},
+                           "system":{"type":"string","description":"기존 화면은 index.json 의 그 화면 system 값 그대로. 신규 화면은 manifest.json 의 systems[].id 중 하나"},
                            "screenName":{"type":"string","description":"화면 md 의 화면명"},
                            "newScreen":{"type":"boolean","description":"기존 화면 수정이면 false, 인터뷰에서 새로 만들기로 확정한 화면이면 true"},
                            "screenType":{"type":["string","null"],"enum":["목록","상세","등록","수정","안내",null],"description":"신규 화면 유형. 기존 화면은 null"},
@@ -746,12 +748,18 @@ public class ScreenPickWorker {
                    "required":{"type":"boolean"}},
                  "required":["category","target","changeDetail","required"]}},
                "acceptanceCriteria":{"type":"array","items":{"type":"string"}},
-               "openIssues":{"type":"array","description":"확정하지 못한 내용과 권장 기본값, 확인 필요 여부","items":{"type":"string"}},
+               "decisions":{"type":"array","description":"인터뷰로 정한 것. 확인 필요를 남기지 않는다 — 사람이 답했으면 INTERVIEW, 일찍 정리해 권장안으로 정했으면 RECOMMENDATION",
+                 "items":{"type":"object",
+                   "properties":{
+                     "question":{"type":"string","description":"정해야 했던 것 한 문장"},
+                     "answer":{"type":"string","description":"정한 답 한 문장"},
+                     "decidedBy":{"type":"string","enum":["INTERVIEW","RECOMMENDATION"]}},
+                   "required":["question","answer","decidedBy"]}},
                "workMode":{"type":["string","null"],"enum":["FAST_TRACK","FRD",null],"description":"FRD 작업대 생략 가능 여부"},
                "workModeReason":{"type":["string","null"],"description":"기획자가 진행 방식을 판단할 수 있는 근거 한 문장"},
                "noScreenReason":{"type":["string","null"],"description":"화면이 한 장도 없을 때의 까닭"}},
              "required":["type","analysisSummary","question","title","items","backendChanges",
-                         "acceptanceCriteria","openIssues","workMode","workModeReason","noScreenReason"]}""";
+                         "acceptanceCriteria","decisions","workMode","workModeReason","noScreenReason"]}""";
 
     /**
      * AI 에게 시키는 말.
@@ -798,7 +806,7 @@ public class ScreenPickWorker {
                   하나 이상 두고 그 항목의 `screens` 배열에 분석 조건 파일에 적힌 화면ID와 화면명을 넣어라.
                   해당 항목의 `requirement`에는 무엇을 화면에서 할지, `note`에는 위 화면 구성을 구체적으로
                   적어라. 이 내용은 뒤에서 AI가 첫 화면을 만드는 입력으로 사용한다.
-                  analysisSummary·assistantMessage·openIssues에만 신규 화면을 적는 것은 결과에 반영한 것이 아니다.
+                  analysisSummary·assistantMessage·decisions에만 신규 화면을 적는 것은 결과에 반영한 것이 아니다.
                 - 사용자가 고른 화면이라는 이유만으로 개발 대상이라고 단정하지 마라. 기존 기능으로
                   처리할 수 있거나 수정할 필요가 없으면 그 근거를 분석 결과에 분명히 적어라.
                 - `수정할 솔루션 목업`이 `선택 없음`이면 화면 작업이 없다는 뜻이 아니다. 사용자가
@@ -948,7 +956,7 @@ public class ScreenPickWorker {
                    ⭐ **가르는 질문은 하나다 — 「그 일을 할 기능이 이미 있나」.**
                    - `OPERATE` — **기능이 이미 있다.** 운영자가 그 화면에서 자료·콘텐츠·설정을
                      바꾸면 끝난다. **개발이 필요 없다.** 예: 게시물 삭제, 공지 등록, 설정값 변경
-                   - `OUTSIDE` — 이 저장소가 다루는 시스템(webview·backoffice·online-pg) 밖의 일이다.
+                   - `OUTSIDE` — 이 저장소가 다루는 시스템(`manifest.json` 의 `systems[].id`) 밖의 일이다.
                      어느 시스템 일로 보이는지 `note` 에 적어라
                    - `DEVELOP` — 그 일을 할 기능이 **없다.** 만들거나 고쳐야 한다
                      (화면·로직·배치·API)
@@ -1005,13 +1013,13 @@ public class ScreenPickWorker {
                  "items":[{"requirement":"요구사항 항목을 원문 그대로",
                            "nature":"DEVELOP | OPERATE | OUTSIDE",
                            "verdict":"SCREEN | NO_SCREEN | NOT_INDEXED",
-                           "screens":[{"screenId":"화면ID","system":"webview",
+                           "screens":[{"screenId":"화면ID","system":"index.json 의 그 화면 system",
                                        "screenName":"화면명","newScreen":false,"screenType":null,
                                        "reason":"이 화면에 신규·수정할 구체적인 내용"}],
                            "note":"왜 그렇게 봤나 한 문장"}],
                  "backendChanges":[],
                  "acceptanceCriteria":[],
-                 "openIssues":[],
+                 "decisions":[],
                  "workMode":"FAST_TRACK | FRD",
                  "workModeReason":"왜 이 진행 방식이 적합한지 한 문장",
                  "noScreenReason":null}
@@ -1070,9 +1078,9 @@ public class ScreenPickWorker {
                  "analysisSummary":"지금까지 확인한 사실",
                  "assistantMessage":"말씀하신 범위도 확인했습니다. 정확히 정하려면 한 가지만 더 확인할게요.",
                  "question":{"topic":"확인 주제","text":"질문 하나",
-                             "reason":"이 답이 필요한 근거","options":["선택 1","선택 2"]},
+                             "reason":"이 답이 필요한 근거","options":["선택 1","선택 2"],"confirm":false},
                  "title":null,"items":[],"backendChanges":[],
-                 "acceptanceCriteria":[],"openIssues":[],"workMode":null,
+                 "acceptanceCriteria":[],"decisions":[],"workMode":null,
                  "workModeReason":null,"noScreenReason":null}
 
                 충분히 확인했으면 앞에서 설명한 items와 screens를 포함하고 아래 값을 추가해 결과를 낸다.
@@ -1086,7 +1094,7 @@ public class ScreenPickWorker {
                     "evidence":"저장소 또는 인터뷰 근거",
                     "verification":"무엇으로 됐다고 하나 — 검증 가능한 한 문장","required":true}],
                  "acceptanceCriteria":["검증 가능한 완료 기준"],
-                 "openIssues":["아직 확정하지 못한 내용"],
+                 "decisions":[{"question":"정해야 했던 것","answer":"정한 답","decidedBy":"INTERVIEW | RECOMMENDATION"}],
                  "workMode":"FAST_TRACK | FRD",
                  "workModeReason":"왜 이 진행 방식이 적합한지 한 문장","noScreenReason":null}
 
@@ -1102,9 +1110,8 @@ public class ScreenPickWorker {
 
                 RESULT의 `workMode`는 아래 기준으로 정한다.
                 - `FAST_TRACK`: 백엔드 변경만 있다 — `SCREEN` 항목과 신규 화면이 하나도 없이
-                  `backendChanges`만 있고, 미확정 사항이 없다.
+                  `backendChanges`만 있다.
                 - `FRD`: 화면 작업이 하나라도 있으면 — 기존 화면 한 장의 문구 변경이어도 — `FRD`다.
-                  확인 필요 항목이 남았을 때도 `FRD`다.
                 판단이 애매하면 `FRD`로 두고 `workModeReason`에 이유를 적어라.
 
                 ⛔ QUESTION과 RESULT를 한 응답에 같이 넣지 마라. JSON 객체 하나만 출력하라.
@@ -1114,36 +1121,56 @@ public class ScreenPickWorker {
                 """.formatted(interviewFile);
     }
 
-    /** 인터뷰는 필요한 만큼 진행하되 다섯 번 안에 끝내고, 모르는 답은 확인 필요로 수렴시킨다. */
-    static String interviewRoundInstruction(int questionRound) {
+    /** 남은 확인 사항을 묻는 질문의 한도. 넘으면 남은 것은 AI 권장안으로 정한다 — 끝없이 묻지 않게 하는 안전판이다. */
+    static final int MAX_CONFIRM_QUESTIONS = 5;
+
+    /**
+     * 인터뷰는 필요한 만큼 진행하되 일반 질문은 다섯 번 안에 끝낸다.
+     *
+     * <p>⭐ <b>확인 필요를 남기지 않는다</b> (2026-09-24 사용자 확정). 결과 전에 남은 확인 사항은
+     * 권장안을 첫 선택지로 둔 확인 질문으로 묻고 — 이 질문은 다섯 번에 세지 않는다 —
+     * 사람이 「현재 내용으로 범위 정리」로 일찍 끝내면 남은 것은 AI 권장안으로 정한다.
+     */
+    static String interviewRoundInstruction(int questionRound, int confirmRound) {
         int asked = Math.max(0, questionRound);
         int remaining = Math.max(0, 5 - asked);
+        int confirmRemaining = Math.max(0, MAX_CONFIRM_QUESTIONS - Math.max(0, confirmRound));
         String roundRule;
         if (asked == 0) {
             roundRule = "질문이 필요하면 1차 질문으로 작업 목적과 큰 범위 중 가장 중요한 것 하나를 묻는다.";
         } else if (asked < 5) {
             roundRule = "추가 질문이 꼭 필요하면 화면·백엔드·권한·완료 기준 중 아직 결과를 바꾸는 가장 중요한 것 하나만 묻는다.";
         } else {
-            roundRule = "질문을 더 만들지 마라. 반드시 RESULT를 반환하고, 확정하지 못한 내용은 권장 기본값과 함께 openIssues에 `확인 필요`로 남긴다.";
+            roundRule = "일반 질문을 더 만들지 마라. 아래 「남은 확인 사항」 규칙만 따른다.";
         }
+        String confirmRule = confirmRemaining > 0
+                ? "RESULT를 내기 전에 확정하지 못한 것이 남았으면, 하나씩 확인 질문으로 묻는다 — `question.confirm`을 true로, "
+                        + "`options`의 첫 선택지는 저장소 근거로 정한 권장안이다. 이 질문은 위 질문 횟수에 세지 않는다."
+                : "확인 질문 한도를 다 썼다. 질문을 더 만들지 말고 RESULT를 반환하라. 남은 것은 권장안으로 정해 "
+                        + "`decisions`에 `decidedBy: RECOMMENDATION`으로 적는다.";
         return """
 
                 ## 인터뷰 종료 규칙
 
                 - 이 인터뷰 묶음에서 지금까지 질문한 횟수: %d회
                 - 남은 질문 횟수: %d회
+                - 남은 확인 질문 횟수: %d회
                 - %s
+                - 남은 확인 사항: %s
+                - ⛔ 확인 필요를 남긴 채 RESULT를 내지 마라. 정해야 했던 것은 모두 `decisions`에 질문과 답으로 적는다.
+                  사람이 답한 것은 `decidedBy: INTERVIEW`, 권장안으로 정한 것은 `decidedBy: RECOMMENDATION`이다.
                 - 사용자가 먼저 선택한 적용 대상·화면과 인터뷰에서 이미 답한 내용은 확정된 입력이다.
                   같은 뜻을 표현만 바꿔 다시 묻지 마라.
                 - 사용자가 `현재 내용으로 범위 정리`를 요청했으면 질문을 더 만들지 말고 반드시 RESULT를 반환하라.
+                  남은 것은 권장안으로 정해 `decisions`에 `decidedBy: RECOMMENDATION`으로 적는다.
                 - 사용자가 `모르겠다`, `잘 모르겠다`, `아직 결정하지 않았다`고 답하면 같은 질문을
                   반복하지 마라. 저장소 근거로 가장 타당한 기본값을 제안하라. 질문 횟수가 남았다면
                   `권장안 적용`을 첫 선택지로 두고 적용 여부만 묻는다.
-                - 질문 횟수가 남지 않았거나 근거가 부족하면 지어내지 말고, 권장 기본값과 그 근거를
-                  openIssues에 `확인 필요`로 남긴 뒤 RESULT를 반환하라.
+                - 일반 질문 횟수가 남지 않았으면 그 답은 확인 질문으로 권장안 적용 여부를 묻는다.
+                  권장안의 근거가 부족하면 지어내지 말고 가장 보수적인 선택(지금 동작을 바꾸지 않는 쪽)을 권장안으로 둔다.
                 - RESULT는 결정사항이다. analysisSummary에는 전체 판단, items에는 프론트 범위,
                   backendChanges에는 백엔드·권한 범위, acceptanceCriteria에는 완료 기준,
-                  openIssues에는 미확정 사항만 적어라.
+                  decisions에는 인터뷰로 정한 것(질문과 답)만 적어라.
                 - RESULT에서 기존 화면을 `SCREEN`으로 올리기 전에는 현재 HTML을 실제로 확인하라.
                   API·데이터·조회 조건만 달라지고 화면에 보이는 변경이 없으면 화면 작업 대상으로
                   올리지 말고 backendChanges에만 적어라. 같은 항목에 실제 화면 변경도 있으면
@@ -1154,7 +1181,7 @@ public class ScreenPickWorker {
                 - 신규 화면의 연결 `items`는 제목만 적은 빈 항목이 될 수 없다. `requirement`에는 화면이
                   제공할 업무를, `note`에는 진입·조회/입력·표시 항목·행동·처리 뒤 이동 중 확인된 내용을
                   적어라. `note`는 첫 화면 AI 초안의 화면별 요구사항으로 전달된다.
-                """.formatted(asked, remaining, roundRule);
+                """.formatted(asked, remaining, confirmRemaining, roundRule, confirmRule);
     }
 
     /**
@@ -1204,7 +1231,7 @@ public class ScreenPickWorker {
                 : analysis.workModeReason();
         return new FrdInterviewReader.Result(analysis.analysisSummary(), analysis.assistantMessage(),
                 new ScreenPickReader.Pick(analysis.pick().title(), List.copyOf(items), List.copyOf(picked), null),
-                analysis.backendChanges(), analysis.acceptanceCriteria(), analysis.openIssues(),
+                analysis.backendChanges(), analysis.acceptanceCriteria(), analysis.decisions(),
                 FrdInterviewReader.WorkMode.FRD, workModeReason);
     }
 

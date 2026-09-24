@@ -42,7 +42,14 @@ public class ScreenPickService {
      * AI 가 읽은 것의 사본이고, 두 판을 섞으면 요구사항 원문과 차례가 어긋난다.
      */
     @Transactional
-    public void savePick(String frdId, ScreenPickReader.Pick pick) {
+    public void savePick(String frdId, ScreenPickReader.Pick aiPick) {
+        /*
+         * ⭐ 시스템은 AI 가 아니라 색인이 정한다 — 처음 분석과 인터뷰 뒤 분석이 모두 여기를 지난다.
+         *   2026-09-23 FRD-006: 인터뷰 뒤 분석이 옛 규격 예시(webview)를 적어 초안이 떨어졌다.
+         */
+        Frd owner = frds.selectById(frdId);
+        ScreenPickReader.Pick pick = owner == null ? aiPick
+                : ScreenPickSystems.correct(aiPick, solutionScreens.read(owner.projectId()));
         String soleSystem = soleSystemOf(pick);
         frds.updateAfterPick(frdId, pick.title(), soleSystem, pick.noScreenReason(),
                 Frd.State.PICKED, null);

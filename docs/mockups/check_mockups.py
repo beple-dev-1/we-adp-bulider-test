@@ -35,8 +35,12 @@ PRODUCT_PAGES = [
     "05o-frd-interview-evidence.html",
     "05p-frd-interview-guided.html",
     "05q-frd-canvas.html",
+    "05r-frd-scope-decisions.html",
+    "05s-frd-preparing.html",
+    "05t-frd-preparation-failed.html",
     "06-dev-requests.html",
     "06a-dev-request-detail.html",
+    "06b-dev-request-send.html",
     "07-menu-tree.html",
     "07a-menu-tree-workbench.html",
     "08-solution-mockups.html",
@@ -45,6 +49,7 @@ PRODUCT_PAGES = [
     "09a-error-failed.html",
     "10-other.html",
     "12-design-guide.html",
+    "13-srt-detail-confirm.html",
 ]
 FORBIDDEN_COPY = (
     "올린다",

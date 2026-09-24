@@ -115,6 +115,31 @@ class ScreenPickTest extends AbstractDbTest {
                 });
     }
 
+    /**
+     * ⭐ <b>화면의 시스템은 AI 가 아니라 색인이 정한다</b> — 처음 분석과 인터뷰 뒤 분석이 모두 지나는
+     * {@link ScreenPickService#savePick} 에서 덮는다. 2026-09-23 FRD-006: 인터뷰 뒤 분석이 옛 규격 예시를
+     * 적어 초안이 「화면을 만들 pages 폴더가 없습니다」로 떨어졌다.
+     */
+    @Test
+    void 저장할_때_화면의_시스템을_색인_값으로_덮는다() throws IOException {
+        Project p = readyProjectWithClone("시스템-덮기");
+        Files.writeString(paths.cloneDir(p.getId()).resolve("index.json"), """
+                {"screens": {"wv-appr-write": {"system": "webview", "ia": {"종류": "화면"}}}}
+                """);
+        String frdId = seedFrd(p, "임시저장");
+        ScreenPickReader.Pick pick = new ScreenPickReader.Pick("임시저장", List.of(
+                new ScreenPickReader.Item("임시저장을 지원한다", ScreenPickReader.Nature.DEVELOP,
+                        ScreenPickReader.Verdict.SCREEN, List.of("wv-appr-write"), "작성 화면")),
+                List.of(new ScreenPickReader.Picked("wv-appr-write", "지어낸-시스템", "결재 문서 작성",
+                        "상단에 임시저장 버튼을 더한다")), null);
+
+        picks.savePick(frdId, pick);
+
+        assertThat(screens.selectByFrdId(frdId)).singleElement()
+                .extracting(FrdScreen::systemCode).isEqualTo("webview");
+        assertThat(frds.selectById(frdId).systemCode()).isEqualTo("webview");
+    }
+
     @Test
     void 분석에서_확인한_시스템과_화면별_변경_내용을_신규_화면에도_반영한다() {
         Project p = readyProjectWithClone("탐나는전");
@@ -810,9 +835,9 @@ class ScreenPickTest extends AbstractDbTest {
 
     @Test
     void 인터뷰는_필요한_질문을_다섯_번_안에_마치고_사용자가_원하면_바로_정리한다() {
-        String first = ScreenPickWorker.interviewRoundInstruction(0);
-        String second = ScreenPickWorker.interviewRoundInstruction(1);
-        String finished = ScreenPickWorker.interviewRoundInstruction(5);
+        String first = ScreenPickWorker.interviewRoundInstruction(0, 0);
+        String second = ScreenPickWorker.interviewRoundInstruction(1, 0);
+        String finished = ScreenPickWorker.interviewRoundInstruction(5, 0);
 
         assertThat(first)
                 .contains("남은 질문 횟수: 5회")
@@ -825,9 +850,31 @@ class ScreenPickTest extends AbstractDbTest {
                 .contains("화면·백엔드·권한·완료 기준");
         assertThat(finished)
                 .contains("남은 질문 횟수: 0회")
-                .contains("질문을 더 만들지 마라")
-                .contains("반드시 RESULT")
-                .contains("openIssues", "확인 필요", "acceptanceCriteria");
+                .contains("일반 질문을 더 만들지 마라")
+                .contains("decisions", "acceptanceCriteria");
+    }
+
+    /**
+     * ⭐ <b>확인 필요를 남기지 않는다</b> (2026-09-24 사용자 확정). 남은 확인 사항은 권장안을 첫 선택지로 둔
+     * 확인 질문으로 묻고 — 다섯 번에 세지 않는다 — 한도를 다 쓰거나 일찍 정리하면 권장안으로 정한다.
+     */
+    @Test
+    void 남은_확인_사항은_권장안을_첫_선택지로_묻고_한도를_넘으면_권장안으로_정한다() {
+        String asking = ScreenPickWorker.interviewRoundInstruction(5, 0);
+        String exhausted = ScreenPickWorker.interviewRoundInstruction(5, ScreenPickWorker.MAX_CONFIRM_QUESTIONS);
+
+        assertThat(asking)
+                .contains("남은 확인 질문 횟수: " + ScreenPickWorker.MAX_CONFIRM_QUESTIONS + "회")
+                .contains("`question.confirm`을 true로")
+                .contains("첫 선택지는 저장소 근거로 정한 권장안")
+                .contains("질문 횟수에 세지 않는다")
+                .contains("확인 필요를 남긴 채 RESULT를 내지 마라");
+        assertThat(exhausted)
+                .contains("남은 확인 질문 횟수: 0회")
+                .contains("질문을 더 만들지 말고 RESULT를 반환하라")
+                .contains("decidedBy: RECOMMENDATION");
+        assertThat(asking).contains("현재 내용으로 범위 정리")
+                .contains("남은 것은 권장안으로 정해 `decisions`에");
     }
 
     @Test
@@ -841,7 +888,7 @@ class ScreenPickTest extends AbstractDbTest {
                 .contains("\"question\":null")
                 .contains("\"backendChanges\":[]")
                 .contains("\"acceptanceCriteria\":[]")
-                .contains("\"openIssues\":[]")
+                .contains("\"decisions\":[]")
                 .doesNotContain("{\"title\":\"업무명 한 줄\"");
     }
 

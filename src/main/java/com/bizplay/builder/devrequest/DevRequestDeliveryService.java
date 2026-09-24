@@ -66,6 +66,7 @@ public class DevRequestDeliveryService {
     private final ProjectService projects;
     private final ProjectPaths paths;
     private final IdSequence ids;
+    private final List<DevRequestSourceFiles> sourceFiles;
 
     public DevRequestDeliveryService(DevelopmentRequestMapper requests,
                                      DevelopmentRequestService requestService,
@@ -75,6 +76,21 @@ public class DevRequestDeliveryService {
                                      DevRequestPackage packages, DevRequestDocument documents,
                                      ExpectedBackDocument expectedBacks,
                                      ProjectService projects, ProjectPaths paths, IdSequence ids) {
+        this(requests, requestService, frds, screens, histories, workspaces, deliveries, packages, documents,
+                expectedBacks, projects, paths, ids, List.of());
+    }
+
+    @org.springframework.beans.factory.annotation.Autowired
+    public DevRequestDeliveryService(DevelopmentRequestMapper requests,
+                                     DevelopmentRequestService requestService,
+                                     FrdMapper frds, FrdScreenMapper screens,
+                                     FrdScreenHistoryMapper histories, FrdWorkspace workspaces,
+                                     DevRequestDeliveryWorkspace deliveries,
+                                     DevRequestPackage packages, DevRequestDocument documents,
+                                     ExpectedBackDocument expectedBacks,
+                                     ProjectService projects, ProjectPaths paths, IdSequence ids,
+                                     List<DevRequestSourceFiles> sourceFiles) {
+        this.sourceFiles = sourceFiles == null ? List.of() : List.copyOf(sourceFiles);
         this.requests = requests;
         this.requestService = requestService;
         this.frds = frds;
@@ -100,6 +116,9 @@ public class DevRequestDeliveryService {
         DevelopmentRequest request = requests.selectById(requestId);
         if (request == null || !request.projectId().equals(projectId)) {
             throw new IllegalArgumentException("개발요청서를 찾을 수 없습니다.");
+        }
+        if (requests.isPreparing(requestId)) {
+            throw new IllegalStateException("개발요청서를 아직 준비하고 있습니다. 준비가 끝난 뒤 넘겨 주세요.");
         }
         // ⛔ 막는 항목이 있으면 보내지 않는다 — 「보내기 전 확인」이 판정한다.
         DevRequestPrecheck.Result gate = requestService.precheck(projectId, requestId);
@@ -237,8 +256,15 @@ public class DevRequestDeliveryService {
          */
         ExpectedBack back = ExpectedBack.of(DeliveryIndex.returnBranch(request.systemCode(), request.label()), base,
                 view.content(), List.of());
-        packages.write(frdWorktree, packageRequest(request, view, back), dir);
+        if (view.asIsOnly()) {
+            // ⭐ SRT — 작업 자리가 없다. as-is 는 이 전달이 딛고 선 기준판에서 뽑고 to-be 는 싣지 않는다.
+            packages.write(deliveryWorktree, packageRequest(request, view, back, base, null), dir);
+        } else {
+            packages.write(frdWorktree, packageRequest(request, view, back,
+                    request.workspaceBaseSha(), request.workspaceHeadSha()), dir);
+        }
         try {
+            copyAttachment(request, dir);
             Path manifest = dir.resolve("manifest.json");
             Files.writeString(dir.resolve("dev-request.md"),
                     documents.render(meta(request, view), view.content(), manifest),
@@ -255,13 +281,13 @@ public class DevRequestDeliveryService {
 
     private static DevRequestPackage.Request packageRequest(DevelopmentRequest request,
                                                             DevelopmentRequestService.View view,
-                                                            ExpectedBack back) {
+                                                            ExpectedBack back,
+                                                            String asIsCommit, String toBeCommit) {
         List<DevRequestPackage.Screen> screens = view.content().screens().stream()
                 .map(screen -> new DevRequestPackage.Screen(screen.systemCode(),
                         screen.deliveryScreenId(), screen.displayName(), screen.changes()))
                 .toList();
-        return new DevRequestPackage.Request(request.label(),
-                request.workspaceBaseSha(), request.workspaceHeadSha(), screens, back);
+        return new DevRequestPackage.Request(request.label(), asIsCommit, toBeCommit, screens, back);
     }
 
     private DevRequestDocument.Meta meta(DevelopmentRequest request,
@@ -272,7 +298,26 @@ public class DevRequestDeliveryService {
                 view.ownerName(), request.createdAt() == null ? null
                         : request.createdAt().atZone(java.time.ZoneId.systemDefault()).toLocalDate(),
                 request.developmentCompletedOn(), request.deploymentOn(), request.plannerComment(),
-                request.attachmentName(), request.attachmentSize());
+                request.attachmentName(), request.attachmentSize(), sourceFilesOf(request.frdId()));
+    }
+
+    /** 출처(플로우 원문)의 첨부 목록 — 「개발에 넘기기」 레이어와 10절이 같은 것을 쓴다. */
+    public List<DevRequestSourceFiles.SourceFile> sourceFilesOf(String frdId) {
+        List<DevRequestSourceFiles.SourceFile> files = new ArrayList<>();
+        sourceFiles.forEach(source -> files.addAll(source.of(frdId)));
+        return files;
+    }
+
+    /** 기획자가 올린 파일을 꾸러미의 {@code attachments/} 에 그대로 둔다. 파일이 사라졌으면 넘기지 않는다. */
+    private static void copyAttachment(DevelopmentRequest request, Path dir) throws IOException {
+        if (request.attachmentName() == null || request.attachmentName().isBlank()) return;
+        Path source = request.attachmentPath() == null ? null : Path.of(request.attachmentPath());
+        if (source == null || !Files.isRegularFile(source)) {
+            throw new IllegalStateException("첨부파일을 찾지 못했습니다. 첨부파일을 다시 올려 주세요.");
+        }
+        Path target = dir.resolve(DevRequestDocument.ATTACHMENTS_DIR).resolve(request.attachmentName());
+        Files.createDirectories(target.getParent());
+        Files.copy(source, target, java.nio.file.StandardCopyOption.REPLACE_EXISTING);
     }
 
     private static String sha256(byte[] bytes) {

@@ -43,7 +43,8 @@ public class DevRequestDeliveryWorkspace {
      * ⭐ 받기 커밋의 신원 — 기획이 만든 커밋과 <b>이력에서 갈린다</b>(설계 「커밋 신원 — 빌더 수신」).
      * ⛔ 기획 쪽 신원과 같게 두지 마라 — 무엇이 개발에서 온 것인지 나중에 못 가린다.
      */
-    private static final String RECEIVER_NAME = "WE-ADP Builder 수신";
+    /** 받기 커밋의 작성자. ⚠ 개발 입구 README 도 이 글자로 알린다 — 개발이 「받아졌나」를 이것으로 찾는다. */
+    public static final String RECEIVER_NAME = "WE-ADP Builder 수신";
     private static final String RECEIVER_EMAIL = "builder+received@we-adp.local";
 
     /** ⚠ 올리기는 검사보다 오래 걸린다 — 자산이 함께 나가므로 넉넉히 둔다. */
