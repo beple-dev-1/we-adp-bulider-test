@@ -5,6 +5,9 @@
  * 퍼블리셔에서 복사한 넷(tokens · reset · typography · components)은 손대지 않는다.
  * 빌더 몫 스타일은 전부 이 파일에 있다 — 그래서 어느 줄이 누구 것인지 파일로 갈린다.
  * 고칠 것이 생기면 퍼블리셔 쪽을 고치고 다시 복사한다.
+ * ⚠ 예외 하나 — 2026-09-24 키컬러 통일 결정(송하준 승인)으로 tokens · components 의 보라를
+ *   사본에서 직접 갈았다. 덮개(이 파일에서 다시 덮기)로 가지 않은 것은 결정이 그렇게 정했기 때문이다.
+ *   퍼블리셔 원본에서 다시 복사하면 보라가 되살아나니, 복사 전에 이 결정을 먼저 옮겨 적는다.
  *
  * 색이 보이는 자리는 두 곳뿐이다 — 좌측 패널(지금 여기 · 지금 돈다) · 빨강(막혔다).
  * 상태는 글자가 정본이고 색은 거들기다.
@@ -12,8 +15,14 @@
  * ⚠ 2026-09-21 에 기획실 「사이드바 키컬러 변경 제안」의 **WE-ADP Builder = A : Deep Ink** 를
  *   입혔다. 005(2026-09-06)의 남색(#00008B) 계열은 그때 끝났다 — 종전 주석이 「남색」이라
  *   적고 있었는데 그 말이 거짓이 되어 함께 고쳤다(005 가 「라일락」에 했던 것과 같은 일이다).
- *   ⛔ tokens.css 의 브랜드 강조색(라일락)은 이번에도 안 건드렸다 — 제안서의 「그레이 스케일」
- *      절을 통째로 입히는 일은 별건이고 아직 결정 전이다.
+ *
+ * ⚠ 2026-09-24 에 빌더 UI 키컬러를 좌측 패널 톤 하나로 통일했다 (송하준 승인).
+ *   tokens.css 의 브랜드 강조색(종전 라일락 · 보라 action)을 --builder-key-ink(#0A6ACC) 계열로 갈았고,
+ *   파일마다 박혀 있던 보라 값은 hue 만 210 으로 옮기고 밝기는 그대로 두었다
+ *   (흰 바탕 글자는 4.5:1 에 모자라면 밝기를 내렸다).
+ *   ⛔ 산출물 본문(.dg-render-scope 안 · iframe 속 대상 시스템 화면)은 대상이 아니다.
+ *   ⚠ 남긴 보라 둘 — screens.css 의 .frd-work-card--back · .fi-change-group--back 는 「FRONTEND(파랑) /
+ *     BACKEND(보라)」 짝을 가르는 색이라 파랑으로 돌리면 짝이 한 색이 된다. 그래서 그대로 두었다.
  */
 
 :root {
@@ -24,7 +33,8 @@
      ⛔ 패널은 아래 셋(키컬러 · 딥톤 · 호버)만 바꾸면 따라온다. 사이드바 안에 색을 새로 박지 마라.
      ⚠ 글자 셋(.app-nav__title · .app-nav__project-label · .app-nav a)은 배경에 묶여 있어
         여기만 바꾸면 겉돈다 — 배경을 손대면 그 셋도 같이 재고 맞춘다.
-     ⛔ tokens.css 의 브랜드 강조색은 이 작업의 범위가 아니다. 함께 갈지 마라. */
+     ⚠ tokens.css 의 브랜드 강조색은 2026-09-24 부터 아래 --builder-key-ink 와 같은 값이다.
+        키컬러를 다시 바꾸면 tokens.css 의 --color-action-primary 계열도 함께 간다. */
   --builder-key: #0D84FF;
   --builder-sidebar: #14243B;
   --builder-sidebar-hover: #133156;
@@ -227,7 +237,7 @@ body {
   border: 1px solid var(--color-line);
   border-radius: var(--radius-control);
   background: var(--color-canvas);
-  box-shadow: 0 1px 2px rgb(20 16 24 / 5%);
+  box-shadow: 0 1px 2px rgb(16 20 24 / 5%);
 }
 
 .notification-trigger svg {
@@ -241,16 +251,16 @@ body {
 }
 
 .notification-trigger:hover {
-  border-color: #c9bfd8;
+  border-color: #bfccd8;
   color: var(--color-action-primary);
   background: var(--color-action-primary-soft);
 }
 
 .pop--notifications[open] > .notification-trigger {
-  border-color: #bba9d6;
+  border-color: #a9bfd6;
   color: var(--color-action-primary);
   background: var(--color-action-primary-soft);
-  box-shadow: 0 0 0 3px rgb(98 81 125 / 10%);
+  box-shadow: 0 0 0 3px rgb(81 103 125 / 10%);
 }
 
 /* 오른쪽 마지막 사람 메뉴는 단순 이름이 아니라 펼침 메뉴임을 드러낸다. */
