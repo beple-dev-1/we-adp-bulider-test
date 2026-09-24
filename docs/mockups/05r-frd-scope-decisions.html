@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <link rel="stylesheet" href="../../src/main/resources/static/css/tokens.css">
+  <link rel="stylesheet" href="../../src/main/resources/static/css/reset.css">
+  <link rel="stylesheet" href="../../src/main/resources/static/css/typography.css">
+  <link rel="stylesheet" href="../../src/main/resources/static/css/components.css">
+  <link rel="stylesheet" href="../../src/main/resources/static/css/shell.css">
+  <link rel="stylesheet" href="_mock.css">
+  <link rel="stylesheet" href="../../src/main/resources/static/css/screens.css">
+  <link rel="stylesheet" href="_frd-interview.css">
+  <title>FRD 개발 범위 확인 — 정한 것</title>
+</head>
+<body>
+<!--
+  걸음3 개발 범위 확인에서 인터뷰가 정한 것을 확인하는 한 시점 (2026-09-24 사용자 확정).
+  - 인터뷰는 결과를 내기 전에 남은 확인 사항을 선택지 질문(권장안이 첫 선택지)으로 모두 묻는다 — 이 질문은 5회 제한에 세지 않는다.
+  - 「현재 내용으로 범위 정리」로 일찍 끝내면 남은 것은 AI 권장안으로 정해 「AI 권장안」 배지를 붙인다.
+  - 여기는 보여 주기만 한다. 다르면 「다시 인터뷰하기」. FRD 에는 열린 확인 필요가 남지 않는다.
+  - 정한 것은 개발요청서 6절에 「정한 것: 질문 → 답」으로 전달된다.
+-->
+<template id="본문">
+<main class="fi-page fi-page--result">
+  <header class="fi-head">
+    <div class="fi-head__copy"><span class="rq-kicker num">FRD-006</span><h1>결재 문서 임시 저장</h1><p>수정하거나 추가할 프론트 화면과 백엔드 작업을 확인합니다.</p></div>
+    <div class="fi-head__actions"><button class="button" type="button">다시 인터뷰하기</button><a class="button button--primary" href="05a-frd-workbench.html">FRD 작업하기</a></div>
+  </header>
+  <nav class="fi-steps" aria-label="FRD 작업 만들기 진행 단계">
+    <div class="fi-step is-done"><i>✓</i><span>요구사항 입력</span></div>
+    <div class="fi-step is-done"><i>✓</i><span>AI 인터뷰</span></div>
+    <div class="fi-step is-current" aria-current="step"><i>3</i><span>개발 범위 확인</span></div>
+  </nav>
+  <div class="fi-result-layout fi-result-board">
+    <aside class="fi-scope-context" aria-labelledby="scope-context-title">
+      <section class="fi-card">
+        <header class="fi-card__head"><div><h2 id="scope-context-title">인터뷰 정리</h2><p>확인한 요구사항과 범위 판단 기준입니다.</p></div></header>
+        <div class="fi-card__body fi-scope-context__body">
+          <section class="fi-scope-summary"><div class="fi-scope-section-head"><h3>요구사항 요약</h3><span>최종 분석</span></div><p>결재 문서를 작성 중 임시 저장하고, 작성자가 나중에 이어서 작성할 수 있도록 합니다.</p><details class="fi-scope-source"><summary>입력한 요구사항 보기</summary><p>결재 문서를 작성하다가 임시 저장하고 나중에 이어서 작성할 수 있어야 한다.</p></details></section>
+          <section class="fi-scope-section"><div class="fi-scope-section-head"><h3>확인된 요구사항</h3><span>2개</span></div><ol class="fi-scope-item-list"><li><div class="fi-scope-item-list__badges"><span class="badge fi-requirement-nature">개발</span><span class="badge badge--outline">화면</span></div><strong>작성 중인 결재 문서를 임시 저장한다.</strong><p>작성 화면에 임시 저장 버튼과 저장 결과 안내를 추가합니다.</p></li><li><div class="fi-scope-item-list__badges"><span class="badge fi-requirement-nature">개발</span><span class="badge badge--outline">화면</span></div><strong>임시 저장한 문서를 다시 열어 작성한다.</strong><p>작성자 본인의 임시 문서만 조회하고 수정합니다.</p></li></ol></section>
+          <section class="fi-scope-section"><div class="fi-scope-section-head"><h3>완료 기준</h3><span>2개</span></div><ul class="fi-scope-check-list"><li>저장 후 마지막 저장 시각이 표시된다.</li><li>임시 문서를 다시 열면 저장한 내용이 복원된다.</li></ul></section>
+          <section class="fi-scope-section" aria-labelledby="scope-decisions-title"><div class="fi-scope-section-head"><h3 id="scope-decisions-title">정한 것</h3><span>2개</span></div>
+            <ol class="issue-answer-list">
+              <li class="issue-answer"><strong>임시 저장을 자동으로 할지, 버튼을 눌렀을 때만 할지</strong><span class="issue-answer__label">답 <span class="badge fi-selection-source fi-selection-source--user">인터뷰 답변</span></span><p>버튼을 눌렀을 때만 저장합니다.</p></li>
+              <li class="issue-answer"><strong>임시 저장 문서를 얼마 동안 보관할지</strong><span class="issue-answer__label">답 <span class="badge fi-selection-source">AI 권장안</span></span><p>30일 동안 보관하고, 지나면 자동으로 삭제합니다.</p></li>
+            </ol>
+            <p class="fi-scope-empty">인터뷰를 일찍 정리해 AI 권장안으로 정한 것이 있습니다. 다르면 다시 인터뷰해 주세요.</p></section>
+        </div>
+      </section>
+    </aside>
+    <section class="fi-card fi-result-scope">
+      <header class="fi-card__head"><div><h2>수정·추가 범위</h2><p>인터뷰 내용을 기준으로 실제 개발 대상을 확인합니다.</p></div><dl class="fi-scope-counts"><div><dt>프론트</dt><dd>2개 화면</dd></div><div><dt>백엔드</dt><dd>3개 항목</dd></div></dl></header>
+      <div class="fi-card__body fi-work-stack">
+        <section class="fi-work-section fi-work-section--front">
+          <header class="fi-work-section__head"><h3>프론트 화면</h3><button class="button button--small" id="open-analysis-screen" type="button">화면 추가</button></header>
+          <ul class="fi-screen-list">
+            <li class="fi-screen-row"><div class="fi-screen-thumbnail"><div class="fi-screen-thumbnail__sample" aria-hidden="true"><i></i><b></b><b></b><b></b></div><span>현재 화면</span></div><div class="fi-screen-row__content"><div class="fi-screen-row__top"><strong>결재 문서 작성</strong><form class="fi-screen-remove-form" onsubmit="return confirm('이 화면을 작업 대상에서 제외할까요?');"><button class="button button--small button--text fi-screen-remove" type="submit">작업 대상에서 제외</button></form></div><div class="fi-screen-row__badges"><span class="badge badge--outline">기존 화면</span><span class="badge fi-selection-source fi-selection-source--ai">AI 선택</span></div><small class="num">webview · wv-appr-write</small><p>임시 저장 버튼, 저장 완료 시각, 저장 실패 안내를 추가합니다.</p></div></li>
+            <li class="fi-screen-row"><div class="fi-screen-thumbnail"><div class="fi-screen-thumbnail__sample" aria-hidden="true"><i></i><b></b><b></b><b></b></div><span>현재 화면</span></div><div class="fi-screen-row__content"><div class="fi-screen-row__top"><strong>임시 저장 문서함</strong><form class="fi-screen-remove-form" onsubmit="return confirm('이 화면을 작업 대상에서 제외할까요?');"><button class="button button--small button--text fi-screen-remove" type="submit">작업 대상에서 제외</button></form></div><div class="fi-screen-row__badges"><span class="badge badge--outline">기존 화면</span><span class="badge fi-selection-source fi-selection-source--user">사용자 선택</span></div><small class="num">webview · wv-appr-draft-list</small></div></li>
+          </ul>
+        </section>
+        <section class="fi-work-section fi-work-section--back">
+          <header class="fi-work-section__head"><h3>예상 백엔드 작업</h3></header>
+          <ul class="fi-back-list">
+            <li class="fi-back-row"><div class="fi-back-row__top"><strong>임시 저장 API</strong><span class="badge badge--outline">API</span></div><p>임시 저장·조회·수정·삭제 API를 제공합니다.</p></li>
+            <li class="fi-back-row"><div class="fi-back-row__top"><strong>임시 문서 데이터</strong><span class="badge badge--outline">데이터</span></div><p>작성자, 문서 내용, 상태, 마지막 저장 시각을 보관합니다.</p></li>
+            <li class="fi-back-row"><div class="fi-back-row__top"><strong>작성자 권한</strong><span class="badge badge--outline">권한</span></div><p>본인이 작성한 임시 문서만 조회·수정하도록 검사합니다.</p></li>
+          </ul>
+        </section>
+      </div>
+    </section>
+  </div>
+</main>
+</template>
+<script src="_shell.js"></script>
+<script>틀({제목:'FRD 분석 결과 확인',모양:'산출물',지금:'frds',프로젝트이름:'G2C',프로젝트번호:1,프로젝트들:['G2C','서울페이'],사람:'이영희',안읽은알림:2});</script>
+</body>
+</html>

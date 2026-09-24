@@ -59,8 +59,10 @@ python -m http.server 8099 --bind 127.0.0.1
 | 05o | `05o-frd-interview-evidence.html` | AI 인터뷰 고도화 시안 B — 요구사항과 현재 운영 화면의 근거를 비교해 범위를 선택 |
 | 05p | `05p-frd-interview-guided.html` | AI 인터뷰 고도화 시안 C — 완료·현재·다음 확인을 체크리스트로 안내 |
 | 05q | `05q-frd-canvas.html` | FRD 작업 공간 시안 — 전체 화면 연결을 보고 AI 레이어로 새 화면·연결을 제안한 뒤 화면 상세로 이동 |
+| 05r | `05r-frd-scope-decisions.html` | 개발 범위 확인 — 인터뷰가 정한 것(인터뷰 답변 · AI 권장안)을 보고 FRD 작업을 시작한다 |
 | 06 | `06-dev-requests.html` | 개발요청서의 개발 전달 상태 확인 |
 | 06a | `06a-dev-request-detail.html` | 요청 요약·완료 기준·확인 필요 사항을 먼저 보고 개발 범위와 화면·화면 외 구현 요건을 순서대로 확인 |
+| 06b | `06b-dev-request-send.html` | 개발에 넘기기 — 개발 완료일·배포일·전달사항·첨부파일을 고르고 플로우 원문 첨부를 함께 전달한다 |
 | 07 | `07-menu-tree.html` | 시스템별 메뉴 구조 관리 |
 | 07a | `07a-menu-tree-workbench.html` | 메뉴의 전체 경로와 연결 화면을 한 행에서 읽는 상세 시안 A |
 | 07b | `07b-menu-tree-hierarchy.html` | Depth 1부터 하위 메뉴와 화면을 펼쳐 읽는 계층형 상세 시안 B |
@@ -74,6 +76,7 @@ python -m http.server 8099 --bind 127.0.0.1
 | 09a | `09a-error-failed.html` | 전역 오류 화면 — 서버가 요청을 끝내지 못했을 때(500 계열) |
 | 10 | `10-other.html` | 개발요청서별 후속 산출물 확인 |
 | 12 | `12-design-guide.html` | 추출기가 만든 독립 HTML 디자인가이드를 Builder 안에서 안전하게 열어 실제 렌더 결과를 확인한다 |
+| 13 | `13-srt-detail-confirm.html` | SRT 상세 — AI가 짚은 고칠 화면과 권장안으로 채운 확인 필요를 확인한 뒤 개발요청서를 생성한다 |
 
 ### 로그인과 최초 설정
 

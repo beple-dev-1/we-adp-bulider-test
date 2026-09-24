@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <link rel="stylesheet" href="../../src/main/resources/static/css/tokens.css">
+  <link rel="stylesheet" href="../../src/main/resources/static/css/reset.css">
+  <link rel="stylesheet" href="../../src/main/resources/static/css/typography.css">
+  <link rel="stylesheet" href="../../src/main/resources/static/css/components.css">
+  <link rel="stylesheet" href="../../src/main/resources/static/css/shell.css">
+  <link rel="stylesheet" href="_mock.css">
+  <link rel="stylesheet" href="../../src/main/resources/static/css/screens.css">
+  <link rel="stylesheet" href="_requirement-concepts.css">
+  <title>개발요청서 상세 — 개발에 넘기기</title>
+</head>
+<body>
+<!--
+  막는 항목을 모두 푼 뒤 「개발에 넘기기」를 누른 한 시점 (2026-09-24 인터뷰로 정함).
+  - 개발 완료일 · 배포일 · 개발팀 전달사항 · 첨부파일을 여기서 고른다. 모두 선택이고, 비우면 개발요청서에 「미정」으로 나간다.
+  - 플로우에서 가져온 SRT 는 원문의 첨부 목록(이름 · 플로우 주소 · 크기)이 함께 나간다 — 파일은 내려받지 않는다.
+  - 올린 파일은 꾸러미의 attachments 폴더에 그대로 담긴다.
+  - 이 레이어는 2026-09-04 에 옛 전송 기능과 함께 지웠던 「개발요청」 레이어를 되살린 것이다 — 「앞 개발요청서」 칸은 되살리지 않는다.
+-->
+<template id="본문">
+  <div class="dev-request-detail">
+    <header class="rq-head dev-request-head">
+      <div class="rq-head__copy"><span class="rq-kicker num">DR-014</span><h1>이름입력시 한글만</h1><p>확정된 개발 범위와 구현 정보를 확인합니다.</p></div>
+      <div class="rq-head__actions">
+        <span class="status-badge status-badge--waiting">대기</span>
+        <a class="button rq-head__list-action" href="06-dev-requests.html">목록으로</a>
+        <button class="button button--primary" id="open-dev-delivery" type="button">개발에 넘기기</button>
+      </div>
+    </header>
+    <main class="dev-request-practical">
+      <dl class="dev-request-meta-grid"><div><dt>시스템</dt><dd>외부제공 웹뷰</dd></div><div><dt>적용 대상</dt><dd class="dev-request-meta-grid__facets"><span>에이블리</span></dd></div><div><dt>담당자</dt><dd>이영희</dd></div><div><dt>기준 SRT</dt><dd><a class="document-link num" href="_srt-list.html">SRT-004</a></dd></div><div><dt>생성 시각</dt><dd><time class="num" datetime="2026-09-24T11:02">2026-09-24 11:02</time></dd></div><div><dt>최종 수정</dt><dd><time class="num" datetime="2026-09-24T11:09">2026-09-24 11:09</time></dd></div></dl>
+    </main>
+  </div>
+
+  <dialog class="dialog dialog--layer dev-delivery-dialog" id="dev-delivery-dialog" aria-labelledby="dev-delivery-title" aria-describedby="dev-delivery-description">
+    <form class="dev-delivery-form" method="post" enctype="multipart/form-data">
+      <header class="dialog__header">
+        <div class="dialog__header-copy">
+          <span class="dialog__kicker num">DR-014</span>
+          <h2 class="dialog__title" id="dev-delivery-title">개발에 넘기기</h2>
+          <p class="dialog__description" id="dev-delivery-description">개발팀에 함께 전달할 일정과 파일을 확인해 주세요.</p>
+        </div>
+        <button class="dialog__close" type="button" aria-label="개발에 넘기기 레이어 닫기"></button>
+      </header>
+      <div class="dialog__body dev-delivery-dialog__body">
+        <section class="dev-delivery-summary" aria-label="전송 대상">
+          <span>전송 대상</span><strong>이름입력시 한글만</strong>
+          <small><b>SRT-004</b> 기준으로 확정된 개발 범위를 기획 저장소의 <b class="num">dr/EXW/DR-014</b> 브랜치로 보냅니다.</small>
+        </section>
+        <div class="dev-delivery-date-grid">
+          <div class="field"><label class="field__label" for="development-completed-on">개발 완료일 <span>선택</span></label><input class="field__control" id="development-completed-on" name="developmentCompletedOn" type="date"><p class="field__help">개발 완료를 요청하는 날짜입니다. 비워 두면 「미정」으로 전달됩니다.</p></div>
+          <div class="field"><label class="field__label" for="deployment-on">배포일 <span>선택</span></label><input class="field__control" id="deployment-on" name="deploymentOn" type="date"><p class="field__help">운영 반영을 요청하는 날짜입니다. 비워 두면 「미정」으로 전달됩니다.</p></div>
+        </div>
+        <div class="field">
+          <label class="field__label" for="planner-comment">개발팀 전달사항 <span>선택</span></label>
+          <textarea class="field__control" id="planner-comment" name="plannerComment" rows="5" maxlength="4000" placeholder="일정, 우선순위, 개발 시 주의사항을 입력해 주세요."></textarea>
+          <p class="field__help">개발요청서 본문에 없는 추가 안내만 입력해 주세요.</p>
+        </div>
+        <div class="field">
+          <label class="field__label" for="delivery-attachment">첨부파일 <span>선택</span></label>
+          <label class="dev-delivery-file" for="delivery-attachment"><strong>파일 선택</strong><span>전달할 파일이 있으면 추가해 주세요.</span></label>
+          <input class="sr-only" id="delivery-attachment" name="attachment" type="file">
+          <p class="field__help">파일 1개, 최대 20MB까지 첨부할 수 있습니다.</p>
+        </div>
+        <div class="field">
+          <span class="field__label">플로우 원문 첨부 <span>함께 전달</span></span>
+          <ul class="dev-delivery-links">
+            <li><span>이름입력_검증_화면캡처.png</span><small>플로우에서 열기 · 320KB</small></li>
+            <li><span>회원정보_규칙.xlsx</span><small>플로우에서 열기 · 48KB</small></li>
+          </ul>
+          <p class="field__help">파일은 옮기지 않고 이름과 플로우 주소를 목록으로 전달합니다.</p>
+        </div>
+      </div>
+      <div class="dialog__actions">
+        <p class="dialog__action-note">넘긴 뒤 개발이 돌려보내면 「개발 결과 받기」로 받습니다.</p>
+        <button class="button" type="button">취소</button>
+        <button class="button button--primary" type="submit">개발에 넘기기</button>
+      </div>
+    </form>
+  </dialog>
+</template>
+<script src="_shell.js"></script>
+<script>틀({제목:'개발요청서 상세',모양:'산출물',지금:'dev-requests',프로젝트이름:'G2C',프로젝트번호:1,프로젝트들:['G2C','서울페이'],사람:'이영희',안읽은알림:2});document.getElementById('dev-delivery-dialog').showModal();</script>
+</body>
+</html>
