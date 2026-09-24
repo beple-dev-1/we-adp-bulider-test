@@ -101,6 +101,9 @@ public class DevRequestDeliveryService {
         if (request == null || !request.projectId().equals(projectId)) {
             throw new IllegalArgumentException("개발요청서를 찾을 수 없습니다.");
         }
+        if (requests.isPreparing(requestId)) {
+            throw new IllegalStateException("개발요청서를 아직 준비하고 있습니다. 준비가 끝난 뒤 넘겨 주세요.");
+        }
         // ⛔ 막는 항목이 있으면 보내지 않는다 — 「보내기 전 확인」이 판정한다.
         DevRequestPrecheck.Result gate = requestService.precheck(projectId, requestId);
         if (!gate.sendable()) {

@@ -36,6 +36,8 @@ PRODUCT_PAGES = [
     "05p-frd-interview-guided.html",
     "05q-frd-canvas.html",
     "05r-frd-scope-decisions.html",
+    "05s-frd-preparing.html",
+    "05t-frd-preparation-failed.html",
     "06-dev-requests.html",
     "06a-dev-request-detail.html",
     "06b-dev-request-send.html",

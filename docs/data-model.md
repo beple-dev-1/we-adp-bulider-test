@@ -211,7 +211,7 @@ BRD 의 잠금과 워크트리 배정 · 개발 전송 상태 셋이 어디 사�
 > 정본은 `src/main/resources/db/migration/*.sql` 이고 스크립트가 그것을 재생한다.
 > 다시 그리기: `python docs/tools/erd_from_migrations.py`
 >
-> 지금 기준 — 마이그레이션 **V80** · 표 **47개** · 열 **490개** (그중 **252개**에 한글 `COMMENT` 가 있다).
+> 지금 기준 — 마이그레이션 **V81** · 표 **47개** · 열 **491개** (그중 **253개**에 한글 `COMMENT` 가 있다).
 > 열 뒤의 `"..."` 는 DB 의 `COMMENT` 를 그대로 옮긴 것이다. 빈 것은 DB 에 뜻이 안 적힌 열이다.
 > **PK** 기본키 · **FK** 외래키 · **UK** 유니크.
 > 관계선 — `||--|{` 여럿(필수) · `||--o{` 여럿(널 허용) · `||--||` 하나(필수) · `||--o|` 하나(널 허용).
@@ -590,6 +590,7 @@ erDiagram
         varchar development_sync_error "널 허용 · 마지막 상태 확인 또는 완료 브랜치 병합 실패 이유"
         varchar development_merged_sha "널 허용 · 기본 브랜치에 병합한 FRD 전달 기준 커밋"
         timestamp development_merged_at "널 허용 · 개발 완료 FRD 커밋의 기본 브랜치 반영 확인 시각"
+        timestamptz prepared_at "널 허용 · 준비(변경 예정 기능정의서 · 테스트 시나리오)가 끝난 시각. 비어 있으면 준비 중이라 목록에 보이지 않는다 — 완료가 만든…"
     }
     adk_builder_dev_request_delivery {
         varchar id PK

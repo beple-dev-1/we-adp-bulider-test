@@ -60,6 +60,8 @@ python -m http.server 8099 --bind 127.0.0.1
 | 05p | `05p-frd-interview-guided.html` | AI 인터뷰 고도화 시안 C — 완료·현재·다음 확인을 체크리스트로 안내 |
 | 05q | `05q-frd-canvas.html` | FRD 작업 공간 시안 — 전체 화면 연결을 보고 AI 레이어로 새 화면·연결을 제안한 뒤 화면 상세로 이동 |
 | 05r | `05r-frd-scope-decisions.html` | 개발 범위 확인 — 인터뷰가 정한 것(인터뷰 답변 · AI 권장안)을 보고 FRD 작업을 시작한다 |
+| 05s | `05s-frd-preparing.html` | FRD 작업 완료 뒤 개발요청서 준비 중 — 변경 예정 기능정의서와 테스트 시나리오가 끝나면 개발요청서로 넘어간다 |
+| 05t | `05t-frd-preparation-failed.html` | 개발요청서 준비를 못 마침 — 개발요청서를 거두고 FRD 를 완료 전으로 되돌렸다. 까닭을 보고 다시 완료한다 |
 | 06 | `06-dev-requests.html` | 개발요청서의 개발 전달 상태 확인 |
 | 06a | `06a-dev-request-detail.html` | 요청 요약·완료 기준·확인 필요 사항을 먼저 보고 개발 범위와 화면·화면 외 구현 요건을 순서대로 확인 |
 | 06b | `06b-dev-request-send.html` | 개발에 넘기기 — 개발 완료일·배포일·전달사항·첨부파일을 고르고 플로우 원문 첨부를 함께 전달한다 |

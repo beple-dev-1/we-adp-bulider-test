@@ -1189,8 +1189,9 @@ class FrdScreenTest extends AbstractDbTest {
                 .andReturn();
         DevelopmentRequest request = developmentRequests.selectByFrdId(frdId);
         assertThat(request).isNotNull();
+        // ⭐ 완료는 준비까지 기다린다 — 기획자는 FRD 의 대기 화면에서 기다린다 (2026-09-24).
         assertThat(result.getResponse().getRedirectedUrl()).isEqualTo(
-                "/projects/" + p.getId() + "/artifacts/dev-requests/" + request.id());
+                "/projects/" + p.getId() + "/artifacts/frds/" + frdId + "/preparing");
         assertThat(frds.selectById(frdId).state()).isEqualTo(Frd.State.REVIEW);
         verify(workspaces, never()).ensure(p.getId(), frdId);
     }
@@ -2730,14 +2731,14 @@ class FrdScreenTest extends AbstractDbTest {
         var result = mvc.perform(post("/projects/{p}/artifacts/frds/{f}/complete", p.getId(), frdId)
                 .with(user(planner)).with(csrf()))
                 .andExpect(status().is3xxRedirection())
-                .andExpect(flash().attribute("message", "FRD 작업을 완료하고 개발요청서를 만들었습니다."))
+                .andExpect(flash().attribute("message", "FRD 작업을 완료했습니다. 개발요청서를 준비하고 있습니다."))
                 .andReturn();
 
         assertThat(frds.selectById(frdId).state()).isEqualTo(Frd.State.REVIEW);
         DevelopmentRequest request = developmentRequests.selectByFrdId(frdId);
         assertThat(request).isNotNull();
         assertThat(result.getResponse().getRedirectedUrl()).isEqualTo(
-                "/projects/" + p.getId() + "/artifacts/dev-requests/" + request.id());
+                "/projects/" + p.getId() + "/artifacts/frds/" + frdId + "/preparing");
         verify(workspaces).commitChanges(p.getId(), frdId, "docs: FRD-001 작업 완료");
 
         String completedFrd = mvc.perform(get("/projects/{p}/artifacts/frds/{f}", p.getId(), frdId)
@@ -2868,6 +2869,8 @@ class FrdScreenTest extends AbstractDbTest {
                 .willReturn(new FrdWorkspace.Commit(Path.of("test", "frd-" + frdId), "before", "after"));
         mvc.perform(post("/projects/{p}/artifacts/frds/{f}/complete", p.getId(), frdId)
                 .with(user(planner)).with(csrf())).andExpect(status().is3xxRedirection());
+        // ⚠ 준비가 끝난 요청서만 목록에 보인다 — 이 시험은 목록의 열을 잰다.
+        developmentRequests.markPrepared(developmentRequests.selectByFrdId(frdId).id());
 
         String html = devRequestList(p.getId());
 
@@ -2887,12 +2890,56 @@ class FrdScreenTest extends AbstractDbTest {
                 .willReturn(new FrdWorkspace.Commit(Path.of("test", "frd-" + frdId), "before", "after"));
         mvc.perform(post("/projects/{p}/artifacts/frds/{f}/complete", p.getId(), frdId)
                 .with(user(planner)).with(csrf())).andExpect(status().is3xxRedirection());
+        // ⚠ 준비가 끝난 요청서만 목록에 보인다 — 이 시험은 목록의 열을 잰다.
+        developmentRequests.markPrepared(developmentRequests.selectByFrdId(frdId).id());
 
         String html = devRequestList(p.getId());
 
         assertThat(html).contains("<th scope=\"col\">적용 대상</th>")
                 .contains("<span class=\"badge badge--outline\">익산</span>")
                 .contains("<span class=\"badge badge--outline\">제주</span>");
+    }
+
+    /**
+     * ⭐ <b>준비를 못 마치면 요청서를 거두고 FRD 를 완료 전으로 되돌린다</b> (2026-09-24 사용자 확정).
+     * 이 시험 자리에는 Claude 연결이 없어 테스트 시나리오 만들기가 곧 실패한다 — 그 길을 그대로 잰다.
+     * 준비 중인 요청서는 목록에 보이지 않고, 대기 화면은 까닭과 돌아갈 자리를 보인다.
+     */
+    @Test
+    void 테스트_시나리오를_못_만들면_개발요청서를_거두고_FRD를_완료_전으로_되돌린다() throws Exception {
+        Project p = readyProject("전자결재");
+        String frdId = seedDraftingFrd(p);
+        analysisNotes.insert(new FrdAnalysisNote(ids.next(IdSequence.Kind.FRD_ANALYSIS_NOTE), frdId, 1,
+                FrdAnalysisNote.Kind.ACCEPTANCE_CRITERION, "임시 저장한 문서를 다시 열 수 있습니다.", Instant.now()));
+        given(workspaces.commitChanges(anyString(), anyString(), anyString()))
+                .willReturn(new FrdWorkspace.Commit(Path.of("test", "frd-" + frdId), "before", "after"));
+        mvc.perform(post("/projects/{p}/artifacts/frds/{f}/complete", p.getId(), frdId)
+                .with(user(planner)).with(csrf())).andExpect(status().is3xxRedirection());
+        assertThat(developmentRequests.isPreparing(developmentRequests.selectByFrdId(frdId).id())).isTrue();
+        assertThat(devRequestList(p.getId())).doesNotContain("DR-001");
+
+        String state = "PREPARING";
+        for (int attempt = 0; attempt < 100 && !"FAILED".equals(state); attempt++) {
+            Thread.sleep(50);
+            state = com.jayway.jsonpath.JsonPath.read(mvc.perform(
+                            get("/projects/{p}/artifacts/frds/{f}/preparation-status", p.getId(), frdId)
+                                    .with(user(planner)))
+                    .andExpect(status().isOk()).andReturn().getResponse()
+                    .getContentAsString(StandardCharsets.UTF_8), "$.state");
+        }
+
+        assertThat(state).isEqualTo("FAILED");
+        assertThat(developmentRequests.selectByFrdId(frdId)).isNull();
+        assertThat(frds.selectById(frdId).state()).isNotEqualTo(Frd.State.REVIEW);
+        String html = mvc.perform(get("/projects/{p}/artifacts/frds/{f}/preparing", p.getId(), frdId)
+                        .with(user(planner)))
+                .andExpect(status().isOk()).andReturn().getResponse()
+                .getContentAsString(StandardCharsets.UTF_8);
+        // ⚠ 까닭은 먼저 멈춘 것 하나다 — 이 FRD 는 화면의 기능정의서 재료도 없어 어느 쪽이 먼저 잡힐지 모른다.
+        assertThat(html).contains("개발요청서를 준비하지 못했습니다.")
+                .containsAnyOf("테스트 시나리오를 만들지 못했습니다.", "변경 예정 기능정의서를 만들지 못했습니다")
+                .contains("다시 완료해 주세요.")
+                .contains("FRD 작업으로 돌아가기");
     }
 
     @Test

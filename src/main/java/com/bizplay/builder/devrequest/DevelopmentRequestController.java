@@ -32,17 +32,30 @@ public class DevelopmentRequestController {
     private final DevRequestReceiveService receives;
     private final ProjectFacetMapper projectFacets;
     private final ProjectSystemService projectSystems;
+    /** ⚠ 없으면(단위 시험) 준비 중인 요청서를 재지 않는다. */
+    private final DevRequestPreparation preparation;
+
+    @org.springframework.beans.factory.annotation.Autowired
+    public DevelopmentRequestController(DevelopmentRequestService requests,
+                                        DevRequestDeliveryService deliveries,
+                                        DevRequestReceiveService receives,
+                                        ProjectFacetMapper projectFacets,
+                                        ProjectSystemService projectSystems,
+                                        DevRequestPreparation preparation) {
+        this.deliveries = deliveries;
+        this.receives = receives;
+        this.requests = requests;
+        this.projectFacets = projectFacets;
+        this.projectSystems = projectSystems;
+        this.preparation = preparation;
+    }
 
     public DevelopmentRequestController(DevelopmentRequestService requests,
                                         DevRequestDeliveryService deliveries,
                                         DevRequestReceiveService receives,
                                         ProjectFacetMapper projectFacets,
                                         ProjectSystemService projectSystems) {
-        this.deliveries = deliveries;
-        this.receives = receives;
-        this.requests = requests;
-        this.projectFacets = projectFacets;
-        this.projectSystems = projectSystems;
+        this(requests, deliveries, receives, projectFacets, projectSystems, null);
     }
 
     @GetMapping
@@ -54,6 +67,8 @@ public class DevelopmentRequestController {
                        @RequestParam(defaultValue = "1") int page,
                        @RequestParam(defaultValue = "10") int pageSize,
                        Model model) {
+        // ⭐ 준비 중인 요청서는 목록에 안 보인다 — 끝난 것은 올리고 못 마친 것은 거둔 뒤에 그린다.
+        if (preparation != null) preparation.settleProject(projectId);
         List<DevelopmentRequestService.Row> all = requests.list(projectId);
         var systemLabels = projectSystems.labels(projectId);
         List<DevelopmentRequestService.Row> matched = all.stream()
