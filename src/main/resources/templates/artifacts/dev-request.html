@@ -209,7 +209,11 @@
       </section>
     </div>
 
-    <aside class="dev-request-review-stack" th:if="${!#lists.isEmpty(content.openIssues()) || !#lists.isEmpty(content.acceptanceCriteria())}">
+    <aside class="dev-request-review-stack" th:if="${!#lists.isEmpty(content.openIssues()) || !#lists.isEmpty(content.decisions()) || !#lists.isEmpty(content.acceptanceCriteria())}">
+      <section class="dev-request-review" th:if="${!#lists.isEmpty(content.decisions())}" aria-labelledby="dev-decision-title">
+        <h2 id="dev-decision-title">정한 것 <span th:text="${content.decisions().size() + '건'}">1건</span></h2>
+        <ol><li th:each="decision : ${content.decisions()}"><span class="dev-request-check">✓</span><span><th:block th:if="${!decision.question().isEmpty()}" th:text="${decision.question() + ' → '}">질문 → </th:block><th:block th:text="${decision.answer()}">답</th:block><th:block th:if="${decision.recommended()}"> (AI 권장안)</th:block></span></li></ol>
+      </section>
       <section class="dev-request-review dev-request-review--issue" th:if="${!#lists.isEmpty(content.openIssues())}" aria-labelledby="dev-open-issue-title">
         <h2 id="dev-open-issue-title">확인 필요 <span th:text="${content.openIssues().size() + '건'}">1건</span></h2>
         <ul><li th:each="note : ${content.openIssues()}"><span class="dev-request-alert-mark">!</span><span th:text="${note.content()}">확인이 필요한 내용</span></li></ul>

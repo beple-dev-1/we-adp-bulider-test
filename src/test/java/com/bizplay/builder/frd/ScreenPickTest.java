@@ -835,9 +835,9 @@ class ScreenPickTest extends AbstractDbTest {
 
     @Test
     void 인터뷰는_필요한_질문을_다섯_번_안에_마치고_사용자가_원하면_바로_정리한다() {
-        String first = ScreenPickWorker.interviewRoundInstruction(0);
-        String second = ScreenPickWorker.interviewRoundInstruction(1);
-        String finished = ScreenPickWorker.interviewRoundInstruction(5);
+        String first = ScreenPickWorker.interviewRoundInstruction(0, 0);
+        String second = ScreenPickWorker.interviewRoundInstruction(1, 0);
+        String finished = ScreenPickWorker.interviewRoundInstruction(5, 0);
 
         assertThat(first)
                 .contains("남은 질문 횟수: 5회")
@@ -850,9 +850,31 @@ class ScreenPickTest extends AbstractDbTest {
                 .contains("화면·백엔드·권한·완료 기준");
         assertThat(finished)
                 .contains("남은 질문 횟수: 0회")
-                .contains("질문을 더 만들지 마라")
-                .contains("반드시 RESULT")
-                .contains("openIssues", "확인 필요", "acceptanceCriteria");
+                .contains("일반 질문을 더 만들지 마라")
+                .contains("decisions", "acceptanceCriteria");
+    }
+
+    /**
+     * ⭐ <b>확인 필요를 남기지 않는다</b> (2026-09-24 사용자 확정). 남은 확인 사항은 권장안을 첫 선택지로 둔
+     * 확인 질문으로 묻고 — 다섯 번에 세지 않는다 — 한도를 다 쓰거나 일찍 정리하면 권장안으로 정한다.
+     */
+    @Test
+    void 남은_확인_사항은_권장안을_첫_선택지로_묻고_한도를_넘으면_권장안으로_정한다() {
+        String asking = ScreenPickWorker.interviewRoundInstruction(5, 0);
+        String exhausted = ScreenPickWorker.interviewRoundInstruction(5, ScreenPickWorker.MAX_CONFIRM_QUESTIONS);
+
+        assertThat(asking)
+                .contains("남은 확인 질문 횟수: " + ScreenPickWorker.MAX_CONFIRM_QUESTIONS + "회")
+                .contains("`question.confirm`을 true로")
+                .contains("첫 선택지는 저장소 근거로 정한 권장안")
+                .contains("질문 횟수에 세지 않는다")
+                .contains("확인 필요를 남긴 채 RESULT를 내지 마라");
+        assertThat(exhausted)
+                .contains("남은 확인 질문 횟수: 0회")
+                .contains("질문을 더 만들지 말고 RESULT를 반환하라")
+                .contains("decidedBy: RECOMMENDATION");
+        assertThat(asking).contains("현재 내용으로 범위 정리")
+                .contains("남은 것은 권장안으로 정해 `decisions`에");
     }
 
     @Test
@@ -866,7 +888,7 @@ class ScreenPickTest extends AbstractDbTest {
                 .contains("\"question\":null")
                 .contains("\"backendChanges\":[]")
                 .contains("\"acceptanceCriteria\":[]")
-                .contains("\"openIssues\":[]")
+                .contains("\"decisions\":[]")
                 .doesNotContain("{\"title\":\"업무명 한 줄\"");
     }
 

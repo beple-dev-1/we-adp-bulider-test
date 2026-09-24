@@ -33,7 +33,10 @@ public class FrdInterviewService {
         return messages.selectByFrdId(frdId);
     }
 
-    /** 마지막 기획자 추가 메시지 이후 AI가 물은 질문 수. 새 인터뷰를 시작하면 다시 0부터 센다. */
+    /**
+     * 마지막 기획자 추가 메시지 이후 AI가 물은 질문 수. 새 인터뷰를 시작하면 다시 0부터 센다.
+     * ⭐ 결과 전에 남은 확인 사항을 묻는 질문({@link FrdInterviewReader#CONFIRM_TOPIC})은 세지 않는다.
+     */
     @Transactional(readOnly = true)
     public int currentQuestionRound(String frdId) {
         int count = 0;
@@ -42,7 +45,25 @@ public class FrdInterviewService {
                     && message.kind() == FrdInterviewMessage.Kind.MESSAGE) {
                 count = 0;
             } else if (message.role() == FrdInterviewMessage.Role.AI
-                    && message.kind() == FrdInterviewMessage.Kind.QUESTION) {
+                    && message.kind() == FrdInterviewMessage.Kind.QUESTION
+                    && !FrdInterviewReader.CONFIRM_TOPIC.equals(message.questionTopic())) {
+                count++;
+            }
+        }
+        return count;
+    }
+
+    /** 마지막 기획자 추가 메시지 이후 AI가 결과 전에 물은 확인 질문 수 — 한도를 넘지 않게 센다. */
+    @Transactional(readOnly = true)
+    public int currentConfirmRound(String frdId) {
+        int count = 0;
+        for (FrdInterviewMessage message : messages.selectByFrdId(frdId)) {
+            if (message.role() == FrdInterviewMessage.Role.USER
+                    && message.kind() == FrdInterviewMessage.Kind.MESSAGE) {
+                count = 0;
+            } else if (message.role() == FrdInterviewMessage.Role.AI
+                    && message.kind() == FrdInterviewMessage.Kind.QUESTION
+                    && FrdInterviewReader.CONFIRM_TOPIC.equals(message.questionTopic())) {
                 count++;
             }
         }
@@ -170,7 +191,11 @@ public class FrdInterviewService {
 
         notes.deleteByFrdId(frdId);
         saveNotes(frdId, FrdAnalysisNote.Kind.ACCEPTANCE_CRITERION, result.acceptanceCriteria());
-        saveNotes(frdId, FrdAnalysisNote.Kind.OPEN_ISSUE, result.openIssues());
+        int decisionSeq = 0;
+        for (FrdAnalysisNote.Decision decision : result.decisions()) {
+            notes.insert(new FrdAnalysisNote(ids.next(IdSequence.Kind.FRD_ANALYSIS_NOTE),
+                    frdId, ++decisionSeq, decision.kind(), decision.content(), null));
+        }
         FrdAnalysisNote.Kind workModeKind = result.workMode() == FrdInterviewReader.WorkMode.FAST_TRACK
                 ? FrdAnalysisNote.Kind.WORK_MODE_FAST_TRACK : FrdAnalysisNote.Kind.WORK_MODE_FRD;
         saveNotes(frdId, workModeKind, List.of(result.workModeReason()));

@@ -6,6 +6,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -160,10 +161,22 @@ public class DevRequestDocument {
                 .map(note -> nvl(note.content())).toList(), "완료 조건이 아직 없습니다.");
     }
 
+    /**
+     * 6절 — 정한 것. ⭐ 인터뷰가 확인 필요를 남기지 않으므로 개발은 「질문 → 답」만 받는다 (2026-09-24 사용자 확정).
+     * 옛 요청서의 확인 필요는 뒤에 그대로 붙인다.
+     */
     private static void openIssues(StringBuilder md, DevelopmentRequestContent content) {
-        md.append("## 6. 확인 필요\n\n");
-        list(md, content.openIssues().stream()
-                .map(note -> nvl(note.content())).toList(), "확인할 것이 없습니다.");
+        md.append("## 6. 정한 것\n\n");
+        List<String> lines = new ArrayList<>();
+        for (var decision : content.decisions()) {
+            String line = decision.question().isEmpty()
+                    ? decision.answer() : decision.question() + " → " + decision.answer();
+            lines.add(decision.recommended() ? line + " (AI 권장안)" : line);
+        }
+        for (var note : content.openIssues()) {
+            lines.add("확인 필요: " + nvl(note.content()));
+        }
+        list(md, lines, "따로 정한 것이 없습니다.");
     }
 
     private static void backendChanges(StringBuilder md, DevelopmentRequestContent content) {

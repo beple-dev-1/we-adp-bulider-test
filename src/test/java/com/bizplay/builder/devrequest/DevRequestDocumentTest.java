@@ -36,7 +36,7 @@ class DevRequestDocumentTest {
                 .isLessThan(md.indexOf("## 2. 요구사항 전체"));
         assertThat(md.indexOf("## 3. 개발 범위"))
                 .isLessThan(md.indexOf("## 4. 제외 범위"));
-        assertThat(md).contains("## 5. 완료 조건", "## 6. 확인 필요", "## 7. 화면 외 구현",
+        assertThat(md).contains("## 5. 완료 조건", "## 6. 정한 것", "## 7. 화면 외 구현",
                 "## 8. 화면별 산출물 목록", "## 9. 전송 정보", "## 10. 첨부 목록",
                 "## 11. 돌려받을 것");
         assertThat(md.indexOf("## 10. 첨부 목록")).isLessThan(md.indexOf("## 11. 돌려받을 것"));
@@ -79,13 +79,17 @@ class DevRequestDocumentTest {
      * {@code ACCEPTANCE} 로 적어 놓고도 초록이었다.
      */
     @Test
-    void 완료_조건과_확인_필요는_제목만_아니라_속이_찬다() throws IOException {
+    void 완료_조건과_정한_것은_제목만_아니라_속이_찬다() throws IOException {
         String md = documents.render(meta(), content(), manifest());
-        String acceptance = md.substring(md.indexOf("## 5. 완료 조건"), md.indexOf("## 6. 확인 필요"));
-        String issues = md.substring(md.indexOf("## 6. 확인 필요"), md.indexOf("## 7. 화면 외 구현"));
+        String acceptance = md.substring(md.indexOf("## 5. 완료 조건"), md.indexOf("## 6. 정한 것"));
+        String decided = md.substring(md.indexOf("## 6. 정한 것"), md.indexOf("## 7. 화면 외 구현"));
 
         assertThat(acceptance).contains("프리필된 값으로 가입이 끝난다");
-        assertThat(issues).contains("생년월일이 없는 회원은 어떻게 하나");
+        // ⭐ 개발은 「질문 → 답」을 받는다 — 권장안으로 정한 것은 그렇다고 적는다 (2026-09-24 사용자 확정).
+        assertThat(decided)
+                .contains("- 생년월일이 없는 회원은 어떻게 하나 → 빈칸으로 두고 가입을 막지 않는다")
+                .contains("- 동의 문구를 바꿀지 → 바꾸지 않는다 (AI 권장안)")
+                .contains("확인 필요: 옛 결과의 확인 필요");
     }
 
     @Test
@@ -174,7 +178,10 @@ class DevRequestDocumentTest {
                         "domains/join/prefill.md", "회원정보 조회 응답에 생년월일을 더한다",
                         1, "민원 2026-09-14", "응답 스키마에 필드가 있는지 본다", true)),
                 List.of(new DevelopmentRequestContent.Note("ACCEPTANCE_CRITERION", "프리필된 값으로 가입이 끝난다"),
-                        new DevelopmentRequestContent.Note("OPEN_ISSUE", "생년월일이 없는 회원은 어떻게 하나")));
+                        new DevelopmentRequestContent.Note("DECISION_INTERVIEW",
+                                "생년월일이 없는 회원은 어떻게 하나\n빈칸으로 두고 가입을 막지 않는다"),
+                        new DevelopmentRequestContent.Note("DECISION_RECOMMENDED", "동의 문구를 바꿀지\n바꾸지 않는다"),
+                        new DevelopmentRequestContent.Note("OPEN_ISSUE", "옛 결과의 확인 필요")));
     }
 
     private Path manifest() throws IOException {

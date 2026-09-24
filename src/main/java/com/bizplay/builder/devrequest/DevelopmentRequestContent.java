@@ -192,8 +192,18 @@ public record DevelopmentRequestContent(String summary, String interviewSummary,
         return notes.stream().filter(note -> "ACCEPTANCE_CRITERION".equals(note.kind())).toList();
     }
 
+    /** 옛 결과의 확인 필요 — 인터뷰가 확인 필요를 남기던 때(2026-09-24 전)에 만든 요청서에만 있다. */
     public List<Note> openIssues() {
         return notes.stream().filter(note -> "OPEN_ISSUE".equals(note.kind())).toList();
+    }
+
+    /** 인터뷰(또는 SRT 확인)로 정한 것 — 질문과 답. */
+    public List<com.bizplay.builder.frd.FrdAnalysisNote.Decision> decisions() {
+        return notes.stream()
+                .filter(note -> "DECISION_INTERVIEW".equals(note.kind()) || "DECISION_RECOMMENDED".equals(note.kind()))
+                .map(note -> com.bizplay.builder.frd.FrdAnalysisNote.Decision.parse(
+                        note.content(), "DECISION_RECOMMENDED".equals(note.kind())))
+                .toList();
     }
 
     /** 화면 외 구현 {@code seq}(1부터) 번째 항목의 단위테스트 시나리오. */

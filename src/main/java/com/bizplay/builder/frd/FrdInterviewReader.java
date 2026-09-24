@@ -38,14 +38,23 @@ public class FrdInterviewReader {
 
     public enum WorkMode { FAST_TRACK, FRD }
 
+    /**
+     * 결과를 내기 전에 남은 확인 사항을 묻는 질문의 주제. ⭐ 이 주제의 질문은 5회 제한에 세지 않는다
+     * ({@link FrdInterviewService#currentQuestionRound}) — 2026-09-24 사용자 확정.
+     */
+    public static final String CONFIRM_TOPIC = "남은 확인 사항";
+
+    /** 옛 모양(openIssues 글)으로 온 것을 정한 것으로 받을 때의 답. */
+    static final String LEGACY_ISSUE_ANSWER = "위에 적은 권장 기본값으로 정합니다.";
+
     public record Result(String analysisSummary, String assistantMessage, ScreenPickReader.Pick pick,
                          List<BackendChange> backendChanges, List<String> acceptanceCriteria,
-                         List<String> openIssues, WorkMode workMode,
+                         List<FrdAnalysisNote.Decision> decisions, WorkMode workMode,
                          String workModeReason) implements Turn {
         public Result(String analysisSummary, ScreenPickReader.Pick pick,
                       List<BackendChange> backendChanges, List<String> acceptanceCriteria,
-                      List<String> openIssues) {
-            this(analysisSummary, null, pick, backendChanges, acceptanceCriteria, openIssues,
+                      List<FrdAnalysisNote.Decision> decisions) {
+            this(analysisSummary, null, pick, backendChanges, acceptanceCriteria, decisions,
                     WorkMode.FRD, "FRD 작업에서 변경 내용을 구체화해야 합니다.");
         }
     }
@@ -82,6 +91,9 @@ public class FrdInterviewReader {
         }
         if (options.size() < 2 || options.size() > MAX_OPTIONS) {
             throw new IOException("인터뷰 질문의 선택지는 2개 이상 4개 이하여야 합니다.");
+        }
+        if (question.path("confirm").asBoolean(false)) {
+            topic = CONFIRM_TOPIC;
         }
         return new Question(text(root, "analysisSummary"), text(root, "assistantMessage"),
                 topic == null ? "확인할 내용" : cut(topic, 255), content, reason, List.copyOf(options));
@@ -128,7 +140,34 @@ public class FrdInterviewReader {
         return new Result(text(root, "analysisSummary"), text(root, "assistantMessage"),
                 pick, List.copyOf(backendChanges),
                 strings(root.path("acceptanceCriteria"), "완료 기준"),
-                strings(root.path("openIssues"), "확인 필요"), workMode, workModeReason);
+                decisions(root), workMode, workModeReason);
+    }
+
+    /**
+     * 정한 것. ⭐ 답이 빈 것은 받지 않는다 — 인터뷰가 다 묻거나 AI 권장안으로 정하기로 했으니 빈 답은 계약 위반이다.
+     * ⚠ 옛 모양 {@code openIssues}(글 목록)가 오면 권장 기본값으로 정한 것으로 받는다 — 모델이 옛 칸을 쓸 때 전체를 버리지 않으려고.
+     */
+    private List<FrdAnalysisNote.Decision> decisions(JsonNode root) throws IOException {
+        List<FrdAnalysisNote.Decision> decisions = new ArrayList<>();
+        JsonNode node = root.path("decisions");
+        if (!node.isMissingNode() && !node.isNull()) {
+            if (!node.isArray()) {
+                throw new IOException("정한 것(decisions)이 배열이 아닙니다.");
+            }
+            for (JsonNode decision : node) {
+                String question = text(decision, "question");
+                String answer = text(decision, "answer");
+                if (question == null || answer == null) {
+                    throw new IOException("정한 것의 질문(question) 또는 답(answer)이 비었습니다.");
+                }
+                boolean recommended = "RECOMMENDATION".equalsIgnoreCase(text(decision, "decidedBy"));
+                decisions.add(new FrdAnalysisNote.Decision(question, answer, recommended));
+            }
+        }
+        for (String legacy : strings(root.path("openIssues"), "확인 필요")) {
+            decisions.add(new FrdAnalysisNote.Decision(legacy, LEGACY_ISSUE_ANSWER, true));
+        }
+        return List.copyOf(decisions);
     }
 
     private WorkMode workMode(JsonNode root) throws IOException {

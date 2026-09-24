@@ -211,7 +211,7 @@ BRD 의 잠금과 워크트리 배정 · 개발 전송 상태 셋이 어디 사�
 > 정본은 `src/main/resources/db/migration/*.sql` 이고 스크립트가 그것을 재생한다.
 > 다시 그리기: `python docs/tools/erd_from_migrations.py`
 >
-> 지금 기준 — 마이그레이션 **V79** · 표 **47개** · 열 **490개** (그중 **251개**에 한글 `COMMENT` 가 있다).
+> 지금 기준 — 마이그레이션 **V80** · 표 **47개** · 열 **490개** (그중 **252개**에 한글 `COMMENT` 가 있다).
 > 열 뒤의 `"..."` 는 DB 의 `COMMENT` 를 그대로 옮긴 것이다. 빈 것은 DB 에 뜻이 안 적힌 열이다.
 > **PK** 기본키 · **FK** 외래키 · **UK** 유니크.
 > 관계선 — `||--|{` 여럿(필수) · `||--o{` 여럿(널 허용) · `||--||` 하나(필수) · `||--o|` 하나(널 허용).
@@ -382,8 +382,8 @@ erDiagram
         varchar id PK
         varchar frd_id FK
         integer seq
-        text kind "완료 기준, 확인 필요 항목 또는 AI가 권장한 작업 진행 방식이다."
-        text content
+        text kind "완료 기준 · 옛 확인 필요 항목 · AI가 권장한 작업 진행 방식 · 인터뷰가 정한 것(사람이 답함 DECISION_INTERVIEW,…"
+        text content "항목 내용. 정한 것(DECISION_*)은 첫 줄이 질문, 둘째 줄부터 답이다."
         timestamptz created_at
     }
     adk_builder_frd_backend_change {
@@ -417,7 +417,7 @@ erDiagram
 
 - `adk_builder_frd` — 8개: `id`, `project_id`, `title`, `system_code`, `source_imported_at`, `owner_account_id`, `created_at`, `updated_at`
 - `adk_builder_frd_item` — 3개: `id`, `frd_id`, `created_at`
-- `adk_builder_frd_analysis_note` — 5개: `id`, `frd_id`, `seq`, `content`, `created_at`
+- `adk_builder_frd_analysis_note` — 4개: `id`, `frd_id`, `seq`, `created_at`
 - `adk_builder_frd_backend_change` — 8개: `id`, `frd_id`, `seq`, `category`, `target`, `change_detail`, `evidence`, `created_at`
 - `adk_builder_frd_interview_message` — 9개: `id`, `frd_id`, `seq`, `role`, `kind`, `content`, `question_topic`, `question_reason`, `created_at`
 
